@@ -54,3 +54,13 @@ endif()
 install(TARGETS my_clap_plugin DESTINATION ${CLAP_INSTALL_DIR})
 
 message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.")
+
+# Google Test integration
+add_subdirectory(googletest)
+enable_testing()
+
+add_executable(my_plugin_tests test/test_my_plugin.cpp)
+target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+
+include(GoogleTest)
+gtest_discover_tests(my_plugin_tests)
