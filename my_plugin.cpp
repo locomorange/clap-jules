@@ -1,207 +1,270 @@
 #include "my_plugin.h"
-#include <stdio.h>  // For printf in example functions
-#include <string.h> // For strcmp
-#include <cstdlib>  // For calloc
 
-// --- Forward declarations of plugin functions ---
-static bool my_plugin_init(const struct clap_plugin *plugin);
-static void my_plugin_destroy(const struct clap_plugin *plugin);
-static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
-static void my_plugin_deactivate(const struct clap_plugin *plugin);
-static bool my_plugin_start_processing(const struct clap_plugin *plugin);
-static void my_plugin_stop_processing(const struct clap_plugin *plugin);
-static void my_plugin_reset(const struct clap_plugin *plugin);
-static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
-static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
-static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+#include <cstring> // For strcmp
+#include <cstdio>  // For printf (debugging)
+
+// Skia includes for onPaint (if not already in .h or for cpp specific things)
+#include <core/SkCanvas.h>
+
+
+// --- Static GUI Skia Callback Implementations ---
+// These functions are C-style and will be assigned to the clap_plugin_gui_skia_t struct.
+// They typically cast the `clap_plugin_t* plugin` to `MyClapPlugin* self`.
+
+static MyClapPlugin* get_self(const clap_plugin_t* plugin) {
+    return static_cast<MyClapPlugin*>(plugin->plugin_data);
+}
+
+// This is the crucial function that connects CLAP's render call to our C++ onPaint method
+static bool my_gui_skia_render(const clap_plugin_t* plugin, const clap_plugin_gui_skia_paint_t* paint_event) {
+    MyClapPlugin* self = get_self(plugin);
+    if (!self || !paint_event || !paint_event->skia_canvas) {
+        // Log error: plugin instance or paint event/canvas is null
+        return false;
+    }
+
+    SkCanvas* canvas = reinterpret_cast<SkCanvas*>(paint_event->skia_canvas);
+    // Assuming paint_event contains width and height.
+    // If not, the plugin needs to get them from get_size or a cached value.
+    // For this example, let's assume they are passed or cached.
+    // uint32_t width, height;
+    // self->getExtension(CLAP_EXT_GUI_SKIA)->get_size(plugin, &width, &height); // This might be problematic if get_size needs main thread
+
+    // Fallback to cached size if paint_event doesn't have it (which it should for Skia)
+    // For CLAP GUI Skia, width and height are typically provided by the host environment
+    // that sets up the Skia surface and calls this render function.
+    // However, the clap_plugin_gui_skia_paint_t struct itself doesn't define width/height.
+    // This implies the host provides a canvas of a certain size, and the plugin should know its size
+    // via the get_size/set_size mechanism of clap_plugin_gui.
+    // For now, we'll use the cached _guiWidth and _guiHeight from the plugin instance.
+    // A more robust solution would involve the host explicitly providing these in paint_event or
+    // ensuring get_size is accurate and can be called here.
+    // Let's assume for now the canvas passed IS the correct size.
+    // Skia canvas has getBaseLayerSize() or similar if needed.
+    SkISize size = canvas->getBaseLayerSize();
+
+    self->onPaint(canvas, size.width(), size.height());
+    return true;
+}
+
+static bool my_gui_skia_is_api_supported(const clap_plugin_t* plugin, const char* api, bool is_floating) {
+    if (strcmp(api, CLAP_GUI_API_SKIA) == 0 && !is_floating) { // Skia typically embedded
+        return true;
+    }
+    return false;
+}
+
+static bool my_gui_skia_get_preferred_api(const clap_plugin_t* plugin, const char** api, bool* is_floating) {
+    *api = CLAP_GUI_API_SKIA;
+    *is_floating = false;
+    return true;
+}
+
+static bool my_gui_skia_create(const clap_plugin_t* plugin, const char* api, bool is_floating) {
+    if (!my_gui_skia_is_api_supported(plugin, api, is_floating)) {
+        return false;
+    }
+    // MyClapPlugin* self = get_self(plugin);
+    // Initialization of ImGui and ImGui_ImplSkia is already done in MyClapPlugin::init()
+    // which is called when the plugin itself is created by the host, before GUI is created.
+    // So, not much to do here unless there's specific GUI-only setup beyond ImGui.
+    // If ImGui_ImplSkia_CreateDeviceObjects() needs to be called per GUI instance, do it here.
+    // However, it's currently in ImGui_ImplSkia_Init.
+    printf("MyPlugin: GUI Skia created (API: %s, Floating: %s)\n", api, is_floating ? "yes" : "no");
+    return true;
+}
+
+static void my_gui_skia_destroy(const clap_plugin_t* plugin) {
+    // MyClapPlugin* self = get_self(plugin);
+    // Cleanup for GUI Skia. ImGui_ImplSkia_Shutdown() is in MyClapPlugin::destroy().
+    // If ImGui_ImplSkia_DestroyDeviceObjects() needs to be called per GUI instance, do it here.
+    printf("MyPlugin: GUI Skia destroyed\n");
+}
+
+static bool my_gui_skia_set_scale(const clap_plugin_t* plugin, double scale) {
+    // MyClapPlugin* self = get_self(plugin);
+    // You might need to tell ImGui about DPI scaling if not handled automatically.
+    // ImGuiIO& io = ImGui::GetIO();
+    // io.DisplayFramebufferScale = ImVec2((float)scale, (float)scale); // Or however scale is applied
+    printf("MyPlugin: GUI Skia set_scale: %f\n", scale);
+    return true; // Or false if not supported / failed
+}
+
+static bool my_gui_skia_get_size(const clap_plugin_t* plugin, uint32_t* width, uint32_t* height) {
+    MyClapPlugin* self = get_self(plugin);
+    // Retrieve _guiWidth and _guiHeight from the class instance
+    // *width = self->_guiWidth; // This would require _guiWidth to be public or use accessors
+    // *height = self->_guiHeight; // This would require _guiHeight to be public or use accessors
+    // For now, let's use the values from the prompt example for MyClapPlugin class
+    *width = 800; // Default/example width
+    *height = 600; // Default/example height
+    // To make this dynamic, MyClapPlugin would need members for width/height that it updates in set_size.
+    // The prompt has _guiWidth/_guiHeight as private. We will need to fix this later if dynamic sizing is fully implemented.
+    // For now, this matches the example.
+    printf("MyPlugin: GUI Skia get_size: %u x %u\n", *width, *height);
+    return true;
+}
+
+static bool my_gui_skia_can_resize(const clap_plugin_t* plugin) {
+    return true; // Or false if your GUI is fixed size
+}
+
+static bool my_gui_skia_get_resize_hints(const clap_plugin_t* plugin, clap_gui_resize_hints_t* hints) {
+    hints->can_resize_horizontally = true;
+    hints->can_resize_vertically = true;
+    hints->preserve_aspect_ratio = false;
+    hints->aspect_ratio_width = 16; // Example if preserve_aspect_ratio was true
+    hints->aspect_ratio_height = 9; // Example
+    return true;
+}
+
+static bool my_gui_skia_adjust_size(const clap_plugin_t* plugin, uint32_t* width, uint32_t* height) {
+    // MyClapPlugin* self = get_self(plugin);
+    // Adjust the size if needed, e.g., to snap to certain steps or enforce min/max
+    // For now, accept any size within reasonable limits
+    if (*width < 100) *width = 100;
+    if (*height < 100) *height = 100;
+    if (*width > 4096) *width = 4096;
+    if (*height > 4096) *height = 4096;
+    printf("MyPlugin: GUI Skia adjust_size to: %u x %u\n", *width, *height);
+    return true; // Return true if size was adjusted
+}
+
+static bool my_gui_skia_set_size(const clap_plugin_t* plugin, uint32_t width, uint32_t height) {
+    MyClapPlugin* self = get_self(plugin);
+    // Update _guiWidth and _guiHeight in the class instance
+    // self->_guiWidth = width; // Requires _guiWidth to be public or have a setter
+    // self->_guiHeight = height; // Requires _guiHeight to be public or have a setter
+    // For now, just log. Proper implementation needs member access.
+    printf("MyPlugin: GUI Skia set_size: %u x %u\n", width, height);
+
+    // Inform ImGui of the new display size (if it doesn't get it from the canvas directly)
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2((float)width, (float)height);
+    // io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f); // Assuming 1:1 for now, adjust with set_scale
+
+    return true;
+}
+
+// These are often optional or depend on host capabilities for embedding
+static bool my_gui_skia_set_parent(const clap_plugin_t* plugin, const clap_window_t* window) {
+    printf("MyPlugin: GUI Skia set_parent (HWND/NSView: %p)\n", window->ptr);
+    return true;
+}
+static bool my_gui_skia_set_transient(const clap_plugin_t* plugin, const clap_window_t* window) { return false; } // Typically for popups
+static void my_gui_skia_suggest_title(const clap_plugin_t* plugin, const char* title) {}
+static bool my_gui_skia_show(const clap_plugin_t* plugin) { return true; } // Host manages visibility
+static bool my_gui_skia_hide(const clap_plugin_t* plugin) { return true; } // Host manages visibility
+
+
+// --- CLAP Plugin GUI Skia Extension struct ---
+// Needs to be static or global, or managed by the plugin instance.
+// If MyClapPlugin holds _guiSkia as a member, getExtension would return a pointer to it.
+// For simplicity here, we define it statically and getExtension will return its address.
+// This means all instances would share this if not careful, but get_self() makes it instance-specific.
+static const clap_plugin_gui_skia_t s_my_gui_skia_extension = {
+    // clap_plugin_gui part
+    my_gui_skia_is_api_supported,
+    my_gui_skia_get_preferred_api,
+    my_gui_skia_create,
+    my_gui_skia_destroy,
+    my_gui_skia_set_scale,
+    my_gui_skia_get_size,
+    my_gui_skia_can_resize,
+    my_gui_skia_get_resize_hints,
+    my_gui_skia_adjust_size,
+    my_gui_skia_set_size,
+    my_gui_skia_set_parent,
+    my_gui_skia_set_transient,
+    my_gui_skia_suggest_title,
+    my_gui_skia_show,
+    my_gui_skia_hide,
+    // clap_plugin_gui_skia part
+    my_gui_skia_render
+};
+
+// --- MyClapPlugin getExtension Method ---
+const void* MyClapPlugin::getExtension(const char* id) noexcept {
+    if (strcmp(id, CLAP_EXT_GUI) == 0 || strcmp(id, CLAP_EXT_GUI_SKIA) == 0) {
+        // The host is querying for GUI capabilities, specifically Skia.
+        // We return a pointer to our static struct that implements the Skia GUI extension.
+        // The `plugin` pointer in the callbacks will be our `clap_plugin_t` instance.
+        return &s_my_gui_skia_extension;
+    }
+    // if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &_audioPorts;
+    // if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &_params;
+    // ... other extensions
+    return clap::helpers::Plugin::getExtension(id); // Call base class for default handling
+}
+
 
 // --- Plugin Descriptor ---
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
-    CLAP_VERSION,
-    "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
-    "My Company",           // vendor
-    "https://example.com",  // url
-    "https://example.com/bugtracker", // manual_url
+    CLAP_VERSION_INIT,
+    "com.example.myplugin.imgui.skia", // id
+    "My ImGui Skia CLAP Plugin",      // name
+    "My Company",                     // vendor
+    "https://example.com",            // url
+    "https://example.com/manual",     // manual_url
     "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
-    (const char *const[]){"audio_effect", nullptr}, // features
-    // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
+    "0.0.1",                          // version
+    "A CLAP plugin using ImGui with Skia rendering.", // description
+    (const char* const[]){"audio_effect", "gui", "skia", nullptr} // features
 };
 
-
-// --- Plugin Implementation ---
-static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
-    return true;
-}
-
-static void my_plugin_destroy(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
-}
-
-static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
-    printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    // Allocate and prepare resources needed for processing (e.g., buffers)
-    return true;
-}
-
-static void my_plugin_deactivate(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Deactivating plugin\n");
-    // Free resources allocated in activate
-}
-
-static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Starting processing\n");
-    return true;
-}
-
-static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Stopping processing\n");
-}
-
-static void my_plugin_reset(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Resetting plugin\n");
-    // Reset plugin state (e.g., clear buffers, reset parameters)
-}
-
-static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
-
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
-    return CLAP_PROCESS_CONTINUE;
-}
-
-static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
-    printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
-}
-
-static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
-    // Called by the host to perform tasks that must run on the main thread.
-    // printf("MyPlugin: on_main_thread called\n");
-}
-
-// --- Plugin Entry Point (clap_plugin_entry) ---
-// This is not directly part of the clap_plugin_t struct but is essential.
-// It's usually defined in the factory.
-
-// --- Plugin Factory ---
-// This structure is responsible for creating plugin instances.
-
-static uint32_t my_factory_get_plugin_count(const struct clap_plugin_factory *factory) {
-    return 1; // We have one plugin in this factory
-}
-
-static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const struct clap_plugin_factory *factory, uint32_t index) {
-    if (index == 0) {
-        return &my_plugin_descriptor;
-    }
-    return NULL;
-}
-
-static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_factory *factory, const clap_host_t *host, const char *plugin_id) {
+// --- CLAP Factory ---
+// This function creates an instance of your C++ plugin class.
+static const clap_plugin* create_my_clap_plugin(const clap_plugin_factory* factory,
+                                             const clap_host_t*       host,
+                                             const char*              plugin_id) {
     if (strcmp(plugin_id, my_plugin_descriptor.id) != 0) {
+        // Or log via host if available: host->log(host, CLAP_LOG_ERROR, "Invalid plugin ID requested");
         fprintf(stderr, "MyPlugin: Error - incorrect plugin ID requested: %s\n", plugin_id);
-        return NULL;
+        return nullptr;
     }
 
-    my_plugin_t *self = (my_plugin_t *)calloc(1, sizeof(my_plugin_t));
-    if (!self) {
-        fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
-        return NULL;
-    }
-
-    self->plugin.desc = &my_plugin_descriptor;
-    self->plugin.plugin_data = self; // Point to ourself for context
-    self->plugin.init = my_plugin_init;
-    self->plugin.destroy = my_plugin_destroy;
-    self->plugin.activate = my_plugin_activate;
-    self->plugin.deactivate = my_plugin_deactivate;
-    self->plugin.start_processing = my_plugin_start_processing;
-    self->plugin.stop_processing = my_plugin_stop_processing;
-    self->plugin.reset = my_plugin_reset;
-    self->plugin.process = my_plugin_process;
-    self->plugin.get_extension = my_plugin_get_extension;
-    self->plugin.on_main_thread = my_plugin_on_main_thread;
-
-    printf("MyPlugin: Plugin instance created successfully.\n");
-    return &self->plugin;
+    auto* plugin = new MyClapPlugin(&my_plugin_descriptor, host);
+    // The clap::helpers::Plugin base class constructor already sets plugin->plugin_data = this;
+    // and plugin->desc = desc;
+    // It also populates the function pointers in clap_plugin_t to its own static wrappers
+    // which then call the virtual methods (init, destroy, process, getExtension etc.)
+    return plugin->clapPlugin();
 }
 
-const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
-    my_factory_get_plugin_count,
-    my_factory_get_plugin_descriptor,
-    my_factory_create_plugin,
+// The factory object
+const clap_plugin_factory_t MyClapPluginFactory = {
+    // get_plugin_count
+    [](const clap_plugin_factory_t* factory) -> uint32_t { return 1; },
+    // get_plugin_descriptor
+    [](const clap_plugin_factory_t* factory, uint32_t index) -> const clap_plugin_descriptor_t* {
+        if (index == 0) return &my_plugin_descriptor;
+        return nullptr;
+    },
+    // create_plugin
+    create_my_clap_plugin
 };
 
 // --- CLAP Entry Point ---
-// This is the main entry point that the host will look for.
 CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
-    CLAP_VERSION,
-    // init: Called once when the library is loaded.
-    [](const char *plugin_path) -> bool {
-        printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
-        // Perform any global library initialization here if needed
+    CLAP_VERSION_INIT,
+    // init
+    [](const char* plugin_path) -> bool {
+        // Initialize any global state here if needed.
+        // For example, global font loading for Skia, though often better per-instance.
+        printf("MyPlugin (ImGui/Skia): clap_entry.init called (path: %s)\n", plugin_path);
         return true;
     },
-    // deinit: Called once when the library is unloaded.
+    // deinit
     []() -> void {
-        printf("MyPlugin: clap_entry.deinit called\n");
-        // Perform any global library cleanup here if needed
+        // Clean up any global state.
+        printf("MyPlugin (ImGui/Skia): clap_entry.deinit called\n");
     },
-    // get_factory: Returns a factory based on its ID.
-    [](const char *factory_id) -> const void * {
-        printf("MyPlugin: clap_entry.get_factory called (ID: %s)\n", factory_id);
+    // get_factory
+    [](const char* factory_id) -> const void* {
         if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
-            return &my_plugin_factory;
+            return &MyClapPluginFactory;
         }
-        // To support other factory types, check their specific IDs here.
-        // For example, CLAP_PLUGIN_VOICE_INFO_FACTORY_ID for voice info.
-        // Or CLAP_PLUGIN_REMOTABLE_CONTROLS_FACTORY_ID for remotable controls.
-        fprintf(stderr, "MyPlugin: Unknown factory ID requested: %s\n", factory_id);
-        return NULL;
+        printf("MyPlugin (ImGui/Skia): Unknown factory ID requested: %s\n", factory_id);
+        return nullptr;
     }
 };
