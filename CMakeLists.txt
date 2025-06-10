@@ -31,9 +31,24 @@ if (NOT CLAP_FOUND)
     add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
 endif()
 
+# Create ImGui static library
+# The imgui directory does not have its own CMakeLists.txt,
+# so we list the sources directly.
+add_library(imgui_lib STATIC
+    imgui/imgui.cpp
+    imgui/imgui_demo.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+    imgui/backends/imgui_impl_opengl3.cpp
+    imgui/backends/imgui_impl_glfw.cpp
+)
+target_include_directories(imgui_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
+set_target_properties(imgui_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap)
+target_link_libraries(my_clap_plugin PRIVATE clap imgui_lib)
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -41,6 +56,12 @@ else()
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "") # Use default suffix (.so or .dylib)
 endif()
 set_target_properties(my_clap_plugin PROPERTIES OUTPUT_NAME "MyFirstClapPlugin")
+
+# Add include directories for ImGui
+target_include_directories(my_clap_plugin PRIVATE imgui imgui/backends)
+
+# Add preprocessor definition for ImGui
+target_compile_definitions(my_clap_plugin PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD)
 
 
 # Install the plugin (optional, but good practice)
