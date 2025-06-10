@@ -1,0 +1,28 @@
+name: Build CLAP Plugin
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive' # To ensure submodules like 'clap' and 'googletest' are checked out
+
+      - name: Set up MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure CMake
+        run: cmake -B build -S .
+
+      - name: Build with CMake
+        run: cmake --build build --config Release
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyFirstClapPlugin
+          path: build/MyFirstClapPlugin.clap
