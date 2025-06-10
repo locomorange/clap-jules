@@ -47,6 +47,29 @@ jobs:
           $env:PATH = $OriginalPath
           Write-Host "Restored PATH: $env:PATH"
 
+          Write-Host "Searching for ft2build.h in skia/third_party/externals..."
+          $ft2buildPath = Get-ChildItem -Path "third_party/externals" -Filter "ft2build.h" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($null -ne $ft2buildPath) {
+              Write-Host "Found ft2build.h at: $($ft2buildPath.FullName)"
+              $freetypeIncludeDir = Split-Path -Path $ft2buildPath.FullName
+              # Go one level up if it's in a subdirectory like 'freetype/include' to get the base 'include'
+              # This is heuristic; ft2build.h is usually in .../freetype/include or .../freetype2/include
+              # Let's assume $freetypeIncludeDir is the directory containing ft2build.h, e.g., .../freetype/include
+              # The gn arg needs a path relative to the build directory (skia/out/Release)
+              # or relative to the skia source directory.
+              # Relative to skia source dir: $RelativefreetypeIncludeDir = $freetypeIncludeDir -replace ([regex]::Escape($env:GITHUB_WORKSPACE) + "[/\]skia[/\]"), ""
+              # For extra_cflags, it's usually relative to the file being compiled or an absolute path.
+              # Let's try to construct a relative path from skia source root.
+              $RelativefreetypeIncludeDir = $freetypeIncludeDir.Replace($env:PWD.Path + '\', "") # $PWD should be skia dir, ensure trailing slash for replacement
+              Write-Host "Relative FreeType include directory: $RelativefreetypeIncludeDir"
+              # Add this path to gn args' extra_cflags.
+              # This is tricky because the args string is complex.
+              # For now, let's just confirm its presence and location.
+              # The extra_cflags modification will be a separate step if needed.
+          } else {
+              Write-Warning "ft2build.h not found in skia/third_party/externals."
+          }
+
           Write-Host "Running gn gen..."
           bin/gn gen out/Release --args="is_official_build=true skia_use_system_libraries=false skia_use_libwebp=false skia_use_libjpeg_turbo=false skia_use_libpng=false skia_use_expat=false skia_use_freetype=true skia_enable_fontmgr_custom_directory=false skia_enable_fontmgr_custom_embedded=false skia_enable_fontmgr_custom_empty=true skia_use_harfbuzz=false"
           if ($LASTEXITCODE -ne 0) {
