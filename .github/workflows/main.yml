@@ -10,13 +10,27 @@ jobs:
   build_windows:
     runs-on: windows-latest
     steps:
+      - name: Set Git safe directory
+        run: git config --global --add safe.directory '*'
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
 
       - name: Set up MSVC build tools
         uses: microsoft/setup-msbuild@v1.1
         with:
           msbuild-architecture: 'x64' # Assuming 64-bit build, can be adjusted
+
+      - name: Clean previous build artifacts
+        run: |
+          if (Test-Path build) {
+            Remove-Item -Recurse -Force build
+          }
+          if (Test-Path CMakeCache.txt) {
+            Remove-Item CMakeCache.txt
+          }
+        shell: pwsh
 
       - name: Configure CMake
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
