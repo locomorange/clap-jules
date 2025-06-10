@@ -23,53 +23,62 @@ jobs:
           msbuild-architecture: 'x64' # Assuming 64-bit build, can be adjusted
 
       - name: Build Skia
-        shell: cmd
+        shell: pwsh
+        working-directory: skia
         run: |
-          cd skia
+          $OriginalPath = $env:PATH
+          Write-Host "Original PATH: $OriginalPath"
+          $PathSegments = $env:PATH.Split(';') | Where-Object { $_ -notlike '*emsdk*' }
+          $env:PATH = $PathSegments -join ';'
+          Write-Host "Temporarily modified PATH for git-sync-deps: $env:PATH"
 
-          echo Trying python3 for git-sync-deps...
+          Write-Host "Attempting git-sync-deps with python3..."
           python3 tools/git-sync-deps
-          IF %ERRORLEVEL% NEQ 0 (
-            echo python3 failed, trying python...
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "python3 tools/git-sync-deps failed. Attempting with python..."
             python tools/git-sync-deps
-            IF %ERRORLEVEL% NEQ 0 (
-              echo Error running git-sync-deps. Exiting.
-              exit /b %ERRORLEVEL%
-            )
-          ) ELSE (
-            echo python3 succeeded for git-sync-deps.
-          )
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "git-sync-deps failed after trying python3 and python. Exit code: $LASTEXITCODE"
+              $env:PATH = $OriginalPath # Restore PATH before exiting
+              exit 1
+            }
+          }
+          Write-Host "git-sync-deps completed successfully."
+          $env:PATH = $OriginalPath
+          Write-Host "Restored PATH: $env:PATH"
 
-          echo Running gn gen...
-          bin\gn gen out/Release --args="is_official_build=true skia_use_system_libraries=false skia_use_libwebp=false skia_use_libjpeg_turbo=false skia_use_libpng=false skia_use_expat=false skia_use_freetype=true skia_enable_fontmgr_custom_directory=false skia_enable_fontmgr_custom_embedded=false skia_enable_fontmgr_custom_empty=true skia_use_harfbuzz=false"
-          IF %ERRORLEVEL% NEQ 0 (
-            echo Error running gn gen. Exiting.
-            exit /b %ERRORLEVEL%
-          )
-          echo gn gen completed successfully.
+          Write-Host "Running gn gen..."
+          bin/gn gen out/Release --args="is_official_build=true skia_use_system_libraries=false skia_use_libwebp=false skia_use_libjpeg_turbo=false skia_use_libpng=false skia_use_expat=false skia_use_freetype=true skia_enable_fontmgr_custom_directory=false skia_enable_fontmgr_custom_embedded=false skia_enable_fontmgr_custom_empty=true skia_use_harfbuzz=false"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "gn gen failed. Exit code: $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "gn gen completed successfully."
 
-          echo Running ninja...
+          Write-Host "Running ninja..."
           ninja -C out/Release skia skshaper skparagraph
-          IF %ERRORLEVEL% NEQ 0 (
-            echo Error running ninja. Exiting.
-            exit /b %ERRORLEVEL%
-          )
-          echo ninja build completed successfully.
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "ninja build failed. Exit code: $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "ninja build completed successfully."
 
-          echo Listing contents of skia/out/Release:
-          dir out\Release
+          Write-Host "Listing contents of skia/out/Release:"
+          Get-ChildItem out/Release -Recurse -ErrorAction SilentlyContinue
 
-          echo Listing contents of skia/out/Release/lib:
-          dir out\Release\lib
+          Write-Host "Listing contents of skia/out/Release/lib:"
+          if (Test-Path out/Release/lib) {
+            Get-ChildItem out/Release/lib -Recurse -ErrorAction SilentlyContinue
+          } else {
+            Write-Host "skia/out/Release/lib does not exist."
+          }
 
-          IF EXIST out\Release\obj (
-            echo Listing contents of skia/out/Release/obj:
-            dir out\Release\obj
-          ) ELSE (
-            echo skia/out/Release/obj does not exist.
-          )
-
-          cd ..
+          Write-Host "Listing contents of skia/out/Release/obj:"
+          if (Test-Path out/Release/obj) {
+            Get-ChildItem out/Release/obj -Recurse -ErrorAction SilentlyContinue
+          } else {
+            Write-Host "skia/out/Release/obj does not exist."
+          }
 
       - name: Clean previous build artifacts
         run: |
