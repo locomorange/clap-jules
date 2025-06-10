@@ -1,0 +1,32 @@
+name: Build CLAP Plugin
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up MSVC build tools
+        uses: microsoft/setup-msbuild@v1.1
+        with:
+          msbuild-architecture: 'x64' # Assuming 64-bit build, can be adjusted
+
+      - name: Configure CMake
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build with CMake
+        run: cmake --build build --config Release
+
+      - name: Upload CLAP plugin artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: clap-plugin-windows
+          path: build/Release/*.clap # Assuming the plugin is in build/Release and has a .clap extension
+          if-no-files-found: error # Fail the workflow if the plugin isn't found
