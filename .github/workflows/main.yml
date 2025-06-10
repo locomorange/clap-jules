@@ -26,9 +26,49 @@ jobs:
         shell: cmd
         run: |
           cd skia
-          python tools/git-sync-deps
-          bin/gn gen out/Release --args="is_official_build=true skia_use_system_libraries=false skia_use_libwebp=false skia_use_libjpeg_turbo=false skia_use_libpng=false skia_use_expat=false skia_use_freetype=true skia_enable_fontmgr_custom_directory=false skia_enable_fontmgr_custom_embedded=false skia_enable_fontmgr_custom_empty=true skia_use_harfbuzz=false"
+
+          echo Trying python3 for git-sync-deps...
+          python3 tools/git-sync-deps
+          IF %ERRORLEVEL% NEQ 0 (
+            echo python3 failed, trying python...
+            python tools/git-sync-deps
+            IF %ERRORLEVEL% NEQ 0 (
+              echo Error running git-sync-deps. Exiting.
+              exit /b %ERRORLEVEL%
+            )
+          ) ELSE (
+            echo python3 succeeded for git-sync-deps.
+          )
+
+          echo Running gn gen...
+          bin\gn gen out/Release --args="is_official_build=true skia_use_system_libraries=false skia_use_libwebp=false skia_use_libjpeg_turbo=false skia_use_libpng=false skia_use_expat=false skia_use_freetype=true skia_enable_fontmgr_custom_directory=false skia_enable_fontmgr_custom_embedded=false skia_enable_fontmgr_custom_empty=true skia_use_harfbuzz=false"
+          IF %ERRORLEVEL% NEQ 0 (
+            echo Error running gn gen. Exiting.
+            exit /b %ERRORLEVEL%
+          )
+          echo gn gen completed successfully.
+
+          echo Running ninja...
           ninja -C out/Release skia skshaper skparagraph
+          IF %ERRORLEVEL% NEQ 0 (
+            echo Error running ninja. Exiting.
+            exit /b %ERRORLEVEL%
+          )
+          echo ninja build completed successfully.
+
+          echo Listing contents of skia/out/Release:
+          dir out\Release
+
+          echo Listing contents of skia/out/Release/lib:
+          dir out\Release\lib
+
+          IF EXIST out\Release\obj (
+            echo Listing contents of skia/out/Release/obj:
+            dir out\Release\obj
+          ) ELSE (
+            echo skia/out/Release/obj does not exist.
+          )
+
           cd ..
 
       - name: Clean previous build artifacts
