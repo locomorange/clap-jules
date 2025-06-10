@@ -25,7 +25,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Upload CLAP plugin artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: clap-plugin-windows
           path: build/Release/*.clap # Assuming the plugin is in build/Release and has a .clap extension
