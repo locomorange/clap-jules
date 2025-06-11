@@ -149,17 +149,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Example of using ImGui in the plugin
     if (self->imgui_context) {
         ImGui::SetCurrentContext(self->imgui_context);
-        
-        // Simple demonstration that ImGui is working
-        // Note: In a real plugin, you would set up proper rendering backend
-        // This is just to show the API is accessible and working
-        static bool demo_called = false;
-        if (!demo_called) {
-            printf("MyPlugin: ImGui integration working - can access ImGui::GetIO()\n");
-            ImGuiIO& io = ImGui::GetIO();
-            printf("MyPlugin: ImGui display size: %.1f x %.1f\n", io.DisplaySize.x, io.DisplaySize.y);
-            demo_called = true;
-        }
+        ImGui::ShowDemoWindow();
     }
 }
 
