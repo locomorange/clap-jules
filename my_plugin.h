@@ -1,6 +1,7 @@
 #pragma once
 
 #include <clap/clap.h>
+#include "imgui.h"
 
 // Basic plugin structure
 typedef struct {

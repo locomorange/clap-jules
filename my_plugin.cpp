@@ -3,6 +3,12 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+// It's also common to need <GLFW/glfw3.h> if dealing with window/context directly.
+// For now, assume it's available or handled by the host.
+
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -39,12 +45,30 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     // Initialize your plugin state here
+
+    // ImGui Initialization (placeholder - requires actual window and GL context)
+    // Предполагается, что у вас есть доступ к GLFW окну (window) и версии GLSL (glsl_version)
+    // Также, это должно происходить в контексте GUI-расширения (например, при вызове gui->create() или gui->embed())
+
+    // ImGui::CreateContext();
+    // ImGuiIO& io = ImGui::GetIO(); (void)io;
+    // ImGui_ImplGlfw_InitForOpenGL(window, true); // Замените 'window' на ваш GLFWwindow*
+    // ImGui_ImplOpenGL3_Init(glsl_version); // Замените 'glsl_version' на вашу строку версии GLSL, например "#version 150"
+    // ImGui::StyleColorsDark(); // или другая тема
+
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
     // Free any resources allocated in init
+
+    // ImGui Shutdown (placeholder)
+    // Это должно происходить в контексте GUI-расширения (например, при вызове gui->destroy())
+
+    // ImGui_ImplOpenGL3_Shutdown();
+    // ImGui_ImplGlfw_Shutdown();
+    // ImGui::DestroyContext();
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -125,6 +149,47 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
     // printf("MyPlugin: on_main_thread called\n");
+
+    // This is a plausible place for ImGui rendering if the plugin manages its own GUI loop
+    // or if the host calls this function regularly for GUI updates.
+    // For a proper CLAP GUI, you'd typically use the CLAP_EXT_GUI extension
+    // and render within its provided callbacks (e.g., if it has a draw or idle callback).
+
+    // In your plugin's GUI rendering loop or callback:
+    // ImGui_ImplOpenGL3_NewFrame();
+    // ImGui_ImplGlfw_NewFrame();
+    // ImGui::NewFrame();
+    //
+    // // 1. Show a simple window.
+    // bool show_demo_window = true; // remove this later
+    // if (show_demo_window)
+    //     ImGui::ShowDemoWindow(&show_demo_window);
+    //
+    // // 2. Show another simple window.
+    // {
+    //     static float f = 0.0f;
+    //     static int counter = 0;
+    //
+    //     ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
+    //
+    //     ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+    //     ImGui::Checkbox("Demo Window", &show_demo_window); // Edit bools storing our window open/close state
+    //
+    //     ImGui::SliderFloat("float", &f, 0.0f, 1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
+    //     // ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+    //
+    //     if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
+    //         counter++;
+    //     ImGui::SameLine();
+    //     ImGui::Text("counter = %d", counter);
+    //
+    //     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    //     ImGui::End();
+    // }
+    //
+    // // Rendering
+    // ImGui::Render();
+    // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
