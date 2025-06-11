@@ -42,6 +42,8 @@ set(IMGUI_SOURCES
 
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC imgui)
+# Add -fPIC flag to allow linking into shared libraries
+set_target_properties(imgui PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
@@ -73,6 +75,7 @@ enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin imgui)
+target_include_directories(my_plugin_tests PRIVATE ${CLAP_PATH}/include)
 
 add_executable(imgui_integration_tests test/test_imgui_integration.cpp)
 target_link_libraries(imgui_integration_tests PRIVATE gtest gtest_main imgui)

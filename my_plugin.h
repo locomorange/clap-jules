@@ -1,10 +1,13 @@
 #pragma once
 
 #include <clap/clap.h>
+#include <imgui.h>
 
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
+    // ImGui context for the plugin instance
+    ImGuiContext* imgui_context;
     // Add any other plugin-specific data here
 } my_plugin_t;
 

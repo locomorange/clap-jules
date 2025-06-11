@@ -36,15 +36,36 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize ImGui context for this plugin instance
+    self->imgui_context = ImGui::CreateContext();
+    if (!self->imgui_context) {
+        printf("MyPlugin: Warning - failed to create ImGui context\n");
+        return false;
+    }
+    
+    // Set the context as current and perform basic setup
+    ImGui::SetCurrentContext(self->imgui_context);
+    printf("MyPlugin: ImGui context created successfully (version: %s)\n", ImGui::GetVersion());
+    
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    // Clean up ImGui context
+    if (self->imgui_context) {
+        ImGui::SetCurrentContext(self->imgui_context);
+        ImGui::DestroyContext(self->imgui_context);
+        self->imgui_context = nullptr;
+        printf("MyPlugin: ImGui context destroyed\n");
+    }
+    
+    // Free any other resources allocated in init
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -123,8 +144,23 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
-    // Called by the host to perform tasks that must run on the main thread.
-    // printf("MyPlugin: on_main_thread called\n");
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Example of using ImGui in the plugin
+    if (self->imgui_context) {
+        ImGui::SetCurrentContext(self->imgui_context);
+        
+        // Simple demonstration that ImGui is working
+        // Note: In a real plugin, you would set up proper rendering backend
+        // This is just to show the API is accessible and working
+        static bool demo_called = false;
+        if (!demo_called) {
+            printf("MyPlugin: ImGui integration working - can access ImGui::GetIO()\n");
+            ImGuiIO& io = ImGui::GetIO();
+            printf("MyPlugin: ImGui display size: %.1f x %.1f\n", io.DisplaySize.x, io.DisplaySize.y);
+            demo_called = true;
+        }
+    }
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -156,6 +192,9 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
     }
+
+    // Initialize plugin data
+    self->imgui_context = nullptr;
 
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
