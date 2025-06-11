@@ -16,6 +16,9 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
+// Features array for the plugin descriptor
+static const char *const plugin_features[] = {"audio_effect", nullptr};
+
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
     "com.example.myplugin", // id
@@ -26,7 +29,7 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
     "https://example.com/support",    // support_url
     "0.0.1",                // version
     "A simple example CLAP audio plugin.", // description
-    (const char *const[]){"audio_effect", nullptr}, // features
+    plugin_features, // features
     // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
 
