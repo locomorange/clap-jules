@@ -75,7 +75,7 @@ enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin imgui)
-target_include_directories(my_plugin_tests PRIVATE ${CLAP_PATH}/include)
+target_include_directories(my_plugin_tests PRIVATE ${CLAP_PATH}/include ${CMAKE_SOURCE_DIR})
 
 add_executable(imgui_integration_tests test/test_imgui_integration.cpp)
 target_link_libraries(imgui_integration_tests PRIVATE gtest gtest_main imgui)
