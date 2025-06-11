@@ -3,8 +3,8 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
 // It's also common to need <GLFW/glfw3.h> if dealing with window/context directly.
 // For now, assume it's available or handled by the host.
 
