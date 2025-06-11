@@ -31,9 +31,21 @@ if (NOT CLAP_FOUND)
     add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
 endif()
 
+# ImGui integration
+set(IMGUI_SOURCES
+    imgui/imgui.cpp
+    imgui/imgui_demo.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+)
+
+add_library(imgui STATIC ${IMGUI_SOURCES})
+target_include_directories(imgui PUBLIC imgui)
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap)
+target_link_libraries(my_clap_plugin PRIVATE clap imgui)
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -60,7 +72,11 @@ add_subdirectory(googletest)
 enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
-target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin imgui)
+
+add_executable(imgui_integration_tests test/test_imgui_integration.cpp)
+target_link_libraries(imgui_integration_tests PRIVATE gtest gtest_main imgui)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+gtest_discover_tests(imgui_integration_tests)
