@@ -2,9 +2,9 @@ name: Build and Test Plugin
 
 on:
   push:
-    # branches: [ main, master ] # Also common to include master
+    branches: [ main, master ] # Also common to include master
   pull_request:
-    # branches: [ main, master ]
+    branches: [ main, master ]
 
 jobs:
   build:
