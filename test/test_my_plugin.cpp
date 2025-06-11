@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../my_plugin.h"
+#include <my_plugin.h>
 
 // Placeholder for functions from my_clap_plugin.h
 // For example, if you have a function like:
