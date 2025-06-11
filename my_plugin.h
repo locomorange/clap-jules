@@ -13,3 +13,6 @@ typedef struct {
 
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
+
+// Function to get the plugin factory (for cross-platform compatibility)
+CLAP_EXPORT const struct clap_plugin_factory* get_plugin_factory();

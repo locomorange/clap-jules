@@ -219,6 +219,11 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
     my_factory_create_plugin,
 };
 
+// Function to get the plugin factory (for cross-platform compatibility)
+CLAP_EXPORT const struct clap_plugin_factory* get_plugin_factory() {
+    return &my_plugin_factory;
+}
+
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
 CLAP_EXPORT const clap_plugin_entry_t clap_entry = {

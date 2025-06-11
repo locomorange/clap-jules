@@ -16,8 +16,8 @@ TEST(MyPluginTest, PlaceholderTest) {
 
 // Test that the plugin with ImGui integration can be created and destroyed properly
 TEST(MyPluginTest, PluginImGuiIntegration) {
-    // Access the plugin factory
-    extern const struct clap_plugin_factory my_plugin_factory;
+    // Access the plugin factory via function call (cross-platform compatible)
+    const struct clap_plugin_factory* factory = get_plugin_factory();
     
     // Mock host (minimal implementation for testing)
     static const clap_host_t test_host = {
@@ -34,7 +34,7 @@ TEST(MyPluginTest, PluginImGuiIntegration) {
     };
     
     // Create plugin instance
-    const clap_plugin_t* plugin = my_plugin_factory.create_plugin(&my_plugin_factory, &test_host, "com.example.myplugin");
+    const clap_plugin_t* plugin = factory->create_plugin(factory, &test_host, "com.example.myplugin");
     ASSERT_NE(plugin, nullptr);
     
     // Initialize the plugin (this should create ImGui context)
