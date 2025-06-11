@@ -1,0 +1,6 @@
+[submodule "clap"]
+	path = clap
+	url = https://github.com/free-audio/clap.git
+[submodule "googletest"]
+	path = googletest
+	url = https://github.com/google/googletest.git
