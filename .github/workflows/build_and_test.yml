@@ -1,0 +1,65 @@
+name: Build and Test Plugin
+
+on:
+  # push:
+    # branches: [ main, master ] # Also common to include master
+  pull_request:
+    # branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Set up MSVC (Windows only)
+      if: runner.os == 'Windows'
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure CMake
+      run: cmake . -B build
+
+    - name: Build project
+      run: cmake --build build --config Release
+
+    - name: Upload Windows Artifact
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: MyFirstClapPlugin-windows-${{ github.sha }}
+        path: build/Release/MyFirstClapPlugin.clap # Typical path for Release config with MSVC
+
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: build # Ensures build job completes before test job starts
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Set up MSVC (Windows only)
+      if: runner.os == 'Windows'
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure CMake
+      run: cmake . -B build
+
+    - name: Build project (including tests)
+      run: cmake --build build --config Release
+
+    - name: Run tests
+      run: ctest --test-dir build -C Release --output-on-failure
