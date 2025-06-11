@@ -1,10 +1,10 @@
 name: Build and Test Plugin
 
 on:
-#  push:
-#    branches: [ main, master ] # Also common to include master
+  push:
+    branches: [ main, master ] # Also common to include master
   pull_request:
-#    branches: [ main, master ]
+    branches: [ main, master ]
 
 jobs:
   build:
@@ -62,4 +62,4 @@ jobs:
       run: cmake --build build --config Release
 
     - name: Run tests
-      run: ctest --test-dir build --output-on-failure --config Release
+      run: ctest --test-dir build -C Release --output-on-failure
