@@ -78,7 +78,8 @@ jobs:
             libxi-dev \
             libxkbcommon-dev \
             libxkbcommon-x11-dev \
-            libxrender-dev
+            libxrender-dev \
+            qt6-base-dev
 
       - name: Clone clap-host repository
         run: |
