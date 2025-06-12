@@ -1,262 +1,37 @@
-name: Copilot Setup Steps - Build and Test clap-host Integration
+name: Copilot Setup Steps
 
-# This workflow builds the clap-jules plugin and tests its integration with clap-host
-# It's designed to be compatible with both GitHub-hosted and self-hosted runners
-# for use with GitHub Copilot Coding Agent
+# Environment setup for GitHub Copilot Coding Agent
+# This file configures the development environment with necessary tools and dependencies
 
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
+steps:
+  # Install development dependencies for Linux environments
+  - name: Install dependencies (Linux)
+    if: runner.os == 'Linux'
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y \
+        ninja-build \
+        cmake \
+        git \
+        build-essential \
+        pkg-config \
+        libasound2-dev \
+        curl
 
-jobs:
-  test-clap-host-integration:
-    name: Test clap-host Integration on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    
-    steps:
-    - name: Checkout clap-jules repository
-      uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
+  # Install development dependencies for Windows environments  
+  - name: Install dependencies (Windows)
+    if: runner.os == 'Windows'
+    run: |
+      choco install ninja cmake git -y
+    shell: powershell
 
-    # Install dependencies for Ubuntu (for testing we'll use system packages temporarily)
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        # Install minimal dependencies for basic clap-host functionality test
-        sudo apt-get install -y ninja-build cmake git build-essential pkg-config libasound2-dev
-        # For a simpler test, we'll try to get the clap-host binary from releases or build minimally
-        sudo apt-get install -y curl
+  # Set up the repository with submodules
+  - name: Initialize repository
+    run: |
+      git submodule update --init --recursive
 
-    # Install dependencies for Windows (will use static build)
-    - name: Set up MSVC (Windows only)
-      if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Install dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # Install ninja and cmake via chocolatey
-        choco install ninja cmake git -y
-        # Refresh environment
-        refreshenv
-      shell: powershell
-
-    # Build clap-jules plugin first
-    - name: Configure clap-jules CMake
-      run: cmake . -B build
-
-    - name: Build clap-jules plugin
-      run: cmake --build build --config Release
-
-    # Verify plugin was built correctly
-    - name: Verify clap-jules plugin (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        # Create plugin verification script
-        cat > verify_plugin.sh << 'EOF'
-        #!/bin/bash
-        PLUGIN_PATH="$1"
-        if [ ! -f "$PLUGIN_PATH" ]; then
-          echo "Plugin file not found: $PLUGIN_PATH"
-          exit 1
-        fi
-        echo "Verifying CLAP plugin: $PLUGIN_PATH"
-        if ! file "$PLUGIN_PATH" | grep -q "shared object"; then
-          echo "ERROR: File is not a shared library"
-          exit 1
-        fi
-        if command -v nm >/dev/null 2>&1; then
-          if nm -D "$PLUGIN_PATH" 2>/dev/null | grep -q "clap_entry"; then
-            echo "✓ Found clap_entry symbol"
-          else
-            echo "✗ clap_entry symbol not found"
-          fi
-        fi
-        SIZE=$(stat -c%s "$PLUGIN_PATH" 2>/dev/null || stat -f%z "$PLUGIN_PATH" 2>/dev/null)
-        if [ "$SIZE" -gt 1000 ]; then
-          echo "✓ Plugin file size is reasonable: $SIZE bytes"
-        else
-          echo "⚠ Plugin file seems very small: $SIZE bytes"
-        fi
-        echo "Plugin verification completed"
-        EOF
-        chmod +x verify_plugin.sh
-        ./verify_plugin.sh build/MyFirstClapPlugin.so
-
-    - name: Verify clap-jules plugin (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        if (Test-Path "build\Release\MyFirstClapPlugin.clap") {
-          $size = (Get-Item "build\Release\MyFirstClapPlugin.clap").Length
-          Write-Host "✓ Plugin file size: $size bytes"
-          Write-Host "Plugin verification completed"
-        } else {
-          Write-Error "Plugin not found!"
-        }
-      shell: powershell
-
-    # Clone clap-host repository
-    - name: Clone clap-host repository
-      run: |
-        git clone --recurse-submodules https://github.com/free-audio/clap-host
-        cd clap-host
-
-    # Build clap-host (Linux - try static build, fallback to basic verification)
-    - name: Build clap-host (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        cd clap-host
-        # First, try to check if there are pre-built releases
-        echo "Attempting to build clap-host..."
-        
-        # Try the static build (may fail due to network or dependency issues)
-        chmod +x scripts/build.sh
-        if timeout 900s scripts/build.sh; then
-          echo "Static build completed successfully"
-        else
-          echo "Static build failed, this is expected in some CI environments"
-          echo "The workflow demonstrates the integration process"
-          # Create a mock binary for testing the workflow structure
-          mkdir -p builds/test-build/host/Release
-          echo '#!/bin/bash' > builds/test-build/host/Release/clap-host
-          echo 'echo "Mock clap-host for workflow testing"' >> builds/test-build/host/Release/clap-host
-          echo 'echo "Usage: clap-host [options]"' >> builds/test-build/host/Release/clap-host
-          echo 'echo "  -p, --plugin <path>  path to the plugin"' >> builds/test-build/host/Release/clap-host
-          echo 'if [[ "$1" == "-p" && -f "$2" ]]; then' >> builds/test-build/host/Release/clap-host
-          echo '  echo "Loading plugin: $2"' >> builds/test-build/host/Release/clap-host
-          echo '  echo "Plugin loaded successfully (mock)"' >> builds/test-build/host/Release/clap-host
-          echo 'fi' >> builds/test-build/host/Release/clap-host
-          chmod +x builds/test-build/host/Release/clap-host
-          echo "Created mock clap-host for workflow testing"
-        fi
-
-    # Build clap-host (Windows - static build using vcpkg, with fallback)
-    - name: Build clap-host (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        cd clap-host
-        echo "Attempting to build clap-host on Windows..."
-        
-        # Try the static build (may fail due to network or dependency issues)
-        if timeout 900 ./scripts/build.sh; then
-          echo "Static build completed successfully"
-        else
-          echo "Static build failed, this is expected in some CI environments"
-          echo "The workflow demonstrates the integration process"
-          # Create a mock binary for testing the workflow structure
-          mkdir -p builds/test-build/host/Release
-          echo '@echo off' > builds/test-build/host/Release/clap-host.exe
-          echo 'echo Mock clap-host for workflow testing' >> builds/test-build/host/Release/clap-host.exe
-          echo 'echo Usage: clap-host [options]' >> builds/test-build/host/Release/clap-host.exe
-          echo 'echo   -p, --plugin ^<path^>  path to the plugin' >> builds/test-build/host/Release/clap-host.exe
-          echo 'if "%1"=="-p" if exist "%2" (' >> builds/test-build/host/Release/clap-host.exe
-          echo '  echo Loading plugin: %2' >> builds/test-build/host/Release/clap-host.exe
-          echo '  echo Plugin loaded successfully (mock)' >> builds/test-build/host/Release/clap-host.exe
-          echo ')' >> builds/test-build/host/Release/clap-host.exe
-          echo "Created mock clap-host.exe for workflow testing"
-        fi
-      shell: bash
-
-    # Test plugin loading with clap-host (Linux)
-    - name: Test plugin loading (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        cd clap-host
-        # Find the clap-host binary (static build path)
-        CLAP_HOST_BIN=$(find builds -name "clap-host" -type f | head -1)
-        if [ -z "$CLAP_HOST_BIN" ]; then
-          echo "clap-host binary not found!"
-          find builds -name "*clap*" -type f -o -name "*host*" -type f
-          exit 1
-        fi
-        echo "Found clap-host at: $CLAP_HOST_BIN"
-        
-        # Test that clap-host can show help (basic functionality test)
-        chmod +x "$CLAP_HOST_BIN"
-        "$CLAP_HOST_BIN" --help || true
-        
-        # Test plugin loading (absolute path)
-        PLUGIN_PATH="$(realpath ../build/MyFirstClapPlugin.so)"
-        echo "Testing plugin loading with path: $PLUGIN_PATH"
-        
-        # Run clap-host with the plugin (in non-interactive mode)
-        # Note: This may fail if X11 display is not available, which is expected in CI
-        timeout 10s "$CLAP_HOST_BIN" -p "$PLUGIN_PATH" || echo "Plugin loading test completed (GUI may not be available in CI)"
-        
-        echo "=== Integration Test Summary ==="
-        echo "✓ clap-jules plugin built successfully"
-        echo "✓ clap-host built and can be executed"
-        echo "✓ Plugin loading command executed"
-        echo "✓ clap-host integration workflow verified"
-
-    # Test plugin loading with clap-host (Windows)
-    - name: Test plugin loading (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        cd clap-host
-        # Find the clap-host binary
-        $clapHostBin = Get-ChildItem -Recurse -Name "clap-host.exe" | Select-Object -First 1
-        if (-not $clapHostBin) {
-          Write-Error "clap-host binary not found!"
-          Get-ChildItem -Recurse -Name "*clap*"
-          exit 1
-        }
-        Write-Host "Found clap-host at: $clapHostBin"
-        
-        # Test that clap-host can show help (basic functionality test)
-        & $clapHostBin --help
-        
-        # Test plugin loading (absolute path)
-        $pluginPath = Resolve-Path "..\build\Release\MyFirstClapPlugin.clap"
-        Write-Host "Testing plugin loading with path: $pluginPath"
-        
-        # Run clap-host with the plugin (in non-interactive mode)
-        # Note: This may fail if GUI is not available, which is expected in CI
-        Start-Process -FilePath $clapHostBin -ArgumentList "-p", $pluginPath -Wait -NoNewWindow -PassThru -TimeoutSec 10 -ErrorAction SilentlyContinue
-        Write-Host "Plugin loading test completed"
-        
-        Write-Host "=== Integration Test Summary ==="
-        Write-Host "✓ clap-jules plugin built successfully"
-        Write-Host "✓ clap-host built and can be executed"
-        Write-Host "✓ Plugin loading command executed"
-        Write-Host "✓ clap-host integration workflow verified"
-      shell: powershell
-
-    # Upload artifacts for debugging
-    - name: Upload clap-jules plugin (Linux)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      with:
-        name: clap-jules-plugin-linux-${{ github.sha }}
-        path: build/MyFirstClapPlugin.so
-
-    - name: Upload clap-jules plugin (Windows)
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v4
-      with:
-        name: clap-jules-plugin-windows-${{ github.sha }}
-        path: build/Release/MyFirstClapPlugin.clap
-
-    - name: Upload clap-host binary (Linux)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      with:
-        name: clap-host-linux-${{ github.sha }}
-        path: clap-host/builds/*/host/*/clap-host
-      continue-on-error: true
-
-    - name: Upload clap-host binary (Windows)
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v4
-      with:
-        name: clap-host-windows-${{ github.sha }}
-        path: clap-host/builds/*/host/*/clap-host.exe
-      continue-on-error: true
+  # Build the clap-jules plugin to verify environment setup
+  - name: Build clap-jules plugin
+    run: |
+      cmake . -B build
+      cmake --build build --config Release
