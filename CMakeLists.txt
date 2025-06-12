@@ -64,3 +64,33 @@ target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+
+# Add clap-host as a submodule for integration testing
+# Note: clap-host requires Qt6, so we make it optional
+option(BUILD_CLAP_HOST "Build clap-host for integration testing" OFF)
+
+if(BUILD_CLAP_HOST)
+    # Check if Qt6 is available
+    find_package(Qt6 COMPONENTS Core Widgets QUIET)
+    if(Qt6_FOUND)
+        message(STATUS "Qt6 found, building clap-host")
+        add_subdirectory(clap-host EXCLUDE_FROM_ALL)
+        
+        # Create a test target that uses clap-host
+        add_test(NAME plugin_integration_test_clap_host
+                 COMMAND clap-host -p $<TARGET_FILE:my_clap_plugin> --help
+                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+        message(WARNING "Qt6 not found, skipping clap-host build")
+    endif()
+endif()
+
+# Create a minimal CLAP plugin loader test for automated testing
+add_executable(clap_plugin_test test/clap_plugin_test.cpp)
+target_link_libraries(clap_plugin_test PRIVATE clap)
+target_include_directories(clap_plugin_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Test that loads and validates the plugin without GUI
+add_test(NAME plugin_load_test
+         COMMAND clap_plugin_test $<TARGET_FILE:my_clap_plugin>
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
