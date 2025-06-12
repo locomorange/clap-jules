@@ -194,37 +194,36 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: my_plugin_on_main_thread()\n");
 
     if (!self->gui_created || !self->gui_is_visible || !self->imgui_context) {
-        // Don't do any rendering if GUI is not created, not visible, or context is missing
+        printf("MyPlugin: GUI not created, not visible, or ImGui context missing. Skipping rendering.\n");
+        printf("MyPlugin: self->gui_created: %d, self->gui_is_visible: %d, self->imgui_context: %p\n",
+               self->gui_created, self->gui_is_visible, (void*)self->imgui_context);
+        printf("MyPlugin: my_plugin_on_main_thread finished early.\n");
         return;
     }
 
     ImGui::SetCurrentContext(self->imgui_context);
-    ImGuiIO& io = ImGui::GetIO();
+    printf("MyPlugin: ImGui context set to: %p\n", (void*)self->imgui_context);
+    printf("MyPlugin: self->is_opengl_gui: %d\n", self->is_opengl_gui);
+    // ImGuiIO& io = ImGui::GetIO(); // GetIO if needed for display size, etc.
 
-    // TODO: Update display size if it can change (e.g., from host resizing the window)
-    // For example:
-    // uint32_t width, height;
-    // if (gui_get_size(plugin, &width, &height)) { // Assuming gui_get_size can fetch current actual size
-    //    io.DisplaySize = ImVec2((float)width, (float)height);
-    // }
-    
-    // Call backend-specific NewFrame function
     if (self->is_opengl_gui) {
+        printf("MyPlugin: Calling ImGui_ImplOpenGL3_NewFrame()...\n");
         ImGui_ImplOpenGL3_NewFrame();
-    } else {
-        // If supporting other backends, their NewFrame calls would go here.
-        // For now, if not OpenGL, we might not be able to render ImGui.
+        printf("MyPlugin: ImGui_ImplOpenGL3_NewFrame() finished.\n"); // Removed glGetError()
     }
 
-    // Start the ImGui frame
+    printf("MyPlugin: Calling ImGui::NewFrame()...\n");
     ImGui::NewFrame();
+    printf("MyPlugin: ImGui::NewFrame() finished.\n");
 
     // --- Render Plugin UI ---
-    // For testing purposes, show the ImGui demo window
-    if (self->gui_is_visible) { // Double check visibility
+    if (self->gui_is_visible) {
+        printf("MyPlugin: Calling ImGui::ShowDemoWindow()...\n");
         ImGui::ShowDemoWindow(&self->gui_is_visible);
+        printf("MyPlugin: ImGui::ShowDemoWindow() finished.\n");
         
         // Example of a simple custom window:
         // ImGui::Begin("My Plugin Window");
@@ -233,16 +232,16 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     }
     // --- End Render Plugin UI ---
 
-    // Render ImGui draw data
+    printf("MyPlugin: Calling ImGui::Render()...\n");
     ImGui::Render();
+    printf("MyPlugin: ImGui::Render() finished.\n");
 
-    // Call backend-specific RenderDrawData function
     if (self->is_opengl_gui) {
-        // The host is responsible for setting up the viewport and clearing the framebuffer.
+        printf("MyPlugin: Calling ImGui_ImplOpenGL3_RenderDrawData()...\n");
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    } else {
-        // If supporting other backends, their RenderDrawData calls would go here.
+        printf("MyPlugin: ImGui_ImplOpenGL3_RenderDrawData() finished.\n"); // Removed glGetError()
     }
+    printf("MyPlugin: my_plugin_on_main_thread finished.\n");
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -347,55 +346,68 @@ static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_flo
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin GUI: Create (API: %s, Floating: %s)\n", api, is_floating ? "yes" : "no");
 
+    printf("MyPlugin: gui_create(api: %s, is_floating: %d)\n", api, is_floating);
     // Initialize ImGui context if not already done (should be done in plugin_init)
     if (!self->imgui_context) {
         self->imgui_context = ImGui::CreateContext();
         // Perform basic ImGui setup if needed (e.g. styles, fonts)
-        printf("MyPlugin GUI: ImGui context created in gui_create (as it was missing)\n");
+        printf("MyPlugin: ImGui context created in gui_create (as it was missing)\n");
     }
     ImGui::SetCurrentContext(self->imgui_context); // Ensure current context
-    printf("MyPlugin GUI: Using ImGui context %p\n", (void*)self->imgui_context);
+    printf("MyPlugin: Using ImGui context %p\n", (void*)self->imgui_context);
 
     self->is_opengl_gui = false; // Initialize flag
 
     // If gui_create is called, we assume the host has provided a compatible window
-    // and made an OpenGL context current (as per our gui_is_api_supported and
-    // gui_get_preferred_api setup which implies we want a native window for GL).
-    printf("MyPlugin GUI: Initializing ImGui OpenGL3 backend for API: %s\n", api);
+    // and made an OpenGL context current.
+    printf("MyPlugin: gui_create - Windowing API: %s. Attempting OpenGL initialization.\n", api);
 
-    if (!ImGui_ImplOpenGL3_Init(nullptr)) { // Pass nullptr to auto-detect GLSL version
-        printf("MyPlugin GUI: ERROR - Failed to initialize ImGui OpenGL3 backend.\n");
-        return false; // Backend initialization failed
+    // Note: Direct calls to glGetString/glGetError before ImGui_ImplOpenGL3_Init
+    // are problematic because ImGui's GL loader (via imgui_impl_opengl3.cpp)
+    // makes these functions available. GL version logging removed from here.
+    // It's typical to get a NO_ERROR (0) here if called before any GL operations,
+    // or an error if the context isn't set up as expected by the host yet.
+    // ImGui_ImplOpenGL3_Init itself will call glGetError.
+    // printf("MyPlugin: Last GL error before ImGui_ImplOpenGL3_Init: 0x%x\n", glGetError()); // REMOVED
+
+    printf("MyPlugin: Calling ImGui_ImplOpenGL3_Init()...\n");
+    bool success = ImGui_ImplOpenGL3_Init(nullptr); // Pass nullptr to auto-detect GLSL version
+    printf("MyPlugin: ImGui_ImplOpenGL3_Init() returned: %d\n", success);
+    if (success) {
+        // GL functions are loaded by ImGui's backend, direct glGetError from here is problematic.
+        printf("MyPlugin: ImGui_ImplOpenGL3_Init successful.\n");
+    } else {
+        printf("MyPlugin: ERROR - Failed to initialize ImGui OpenGL3 backend.\n");
+        // The duplicated lines below were a mistake from a previous merge, cleaning up.
+        self->gui_created = false; // Explicitly mark as not created if backend fails
+        printf("MyPlugin: gui_create finished with error.\n");
+        return false;
     }
-    printf("MyPlugin GUI: ImGui OpenGL3 backend initialized successfully.\n");
-    self->is_opengl_gui = true;
 
-    self->gui_created = true; // Mark GUI as created (even if backend init failed, context exists)
-                              // Or, set to true only if self->is_opengl_gui is true.
-                              // For now, let's say created = true if context exists and create was called.
-                              // The actual rendering will depend on is_opengl_gui.
+    printf("MyPlugin: ImGui OpenGL3 backend initialized successfully.\n");
+    self->is_opengl_gui = true;
+    self->gui_created = true;
+    printf("MyPlugin: gui_create finished successfully.\n");
     return true;
 }
 
 static void gui_destroy(const clap_plugin_t *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    printf("MyPlugin GUI: Destroy called.\n");
+    printf("MyPlugin: gui_destroy()\n");
 
     if (self->is_opengl_gui && self->imgui_context) {
-        ImGui::SetCurrentContext(self->imgui_context); // Ensure correct context for shutdown
+        ImGui::SetCurrentContext(self->imgui_context);
+        printf("MyPlugin: Calling ImGui_ImplOpenGL3_Shutdown()...\n");
         ImGui_ImplOpenGL3_Shutdown();
-        printf("MyPlugin GUI: ImGui OpenGL3 backend shutdown.\n");
+        printf("MyPlugin: ImGui_ImplOpenGL3_Shutdown() finished.\n");
     }
-    self->is_opengl_gui = false; // Reset flag
-
-    // The ImGui context (self->imgui_context) itself is destroyed in my_plugin_destroy.
-    // self->gui_created is also managed there or based on gui_create success.
-    // For this function, we only care about the backend part of the GUI.
-    self->gui_created = false; // Mark that the GUI is no longer in a "created" state.
+    self->is_opengl_gui = false;
+    self->gui_created = false;
+    printf("MyPlugin: gui_destroy finished.\n");
 }
 
 static bool gui_set_scale(const clap_plugin_t *plugin, double scale) {
-    printf("MyPlugin GUI: Set Scale (Scale: %.2f)\n", scale);
+    printf("MyPlugin: gui_set_scale(scale: %.2f)\n", scale);
     // TODO: Handle scaling if your GUI framework needs it. ImGui usually handles this via io.FontGlobalScale.
     // ImGuiIO& io = ImGui::GetIO();
     // io.FontGlobalScale = scale;
@@ -403,21 +415,22 @@ static bool gui_set_scale(const clap_plugin_t *plugin, double scale) {
 }
 
 static bool gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    printf("MyPlugin: gui_get_size()\n");
     // TODO: Return the actual size of your GUI.
     // For now, a fixed size.
     *width = 400;
     *height = 300;
-    printf("MyPlugin GUI: Get Size (Width: %u, Height: %u)\n", *width, *height);
+    printf("MyPlugin: gui_get_size returning width: %u, height: %u\n", *width, *height);
     return true;
 }
 
 static bool gui_can_resize(const clap_plugin_t *plugin) {
-    printf("MyPlugin GUI: Can Resize\n");
+    printf("MyPlugin: gui_can_resize()\n");
     return false; // For this example, let's say the GUI is not resizable.
 }
 
 static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
-    printf("MyPlugin GUI: Get Resize Hints\n");
+    printf("MyPlugin: gui_get_resize_hints()\n");
     // Fill in hints if resizable. Since gui_can_resize is false, this might not be called.
     hints->can_resize_horizontally = false;
     hints->can_resize_vertically = false;
@@ -427,16 +440,17 @@ static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hi
 }
 
 static bool gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
-    printf("MyPlugin GUI: Adjust Size (Requested Width: %u, Height: %u)\n", *width, *height);
+    printf("MyPlugin: gui_adjust_size(width: %u, height: %u)\n", *width, *height);
     // If resizable, adjust the requested size to the closest valid size.
     // Since not resizable, we can just return the fixed size.
-    *width = 400;
-    *height = 300;
+    *width = 400;  // Example fixed size
+    *height = 300; // Example fixed size
+    printf("MyPlugin: gui_adjust_size returning adjusted width: %u, height: %u\n", *width, *height);
     return true;
 }
 
 static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
-    printf("MyPlugin GUI: Set Size (Width: %u, Height: %u)\n", width, height);
+    printf("MyPlugin: gui_set_size(width: %u, height: %u)\n", width, height);
     // Handle if the host forces a size. If not resizable, this might conflict.
     // For ImGui, the display size is usually updated by the backend.
     // ImGuiIO& io = ImGui::GetIO();
@@ -445,7 +459,7 @@ static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t h
 }
 
 static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
-    printf("MyPlugin GUI: Set Parent (Window Handle: %p)\n", (void*)window->ptr);
+    printf("MyPlugin: gui_set_parent(api: %s, window_ptr: %p)\n", window->api, window->ptr);
     // This is where you would attach your GUI to the parent window.
     // For ImGui, the backend (e.g., ImGui_ImplOpenGL3_Init) often takes the window handle.
     // Store window->ptr if needed for backend initialization in gui_create or here.
@@ -455,18 +469,18 @@ static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *win
 }
 
 static bool gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
-    printf("MyPlugin GUI: Set Transient (Window Handle: %p)\n", (void*)window->ptr);
+    printf("MyPlugin: gui_set_transient(api: %s, window_ptr: %p)\n", window->api, window->ptr);
     // For floating windows, set them as transient to this window if applicable.
     return true;
 }
 
 static void gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
-    printf("MyPlugin GUI: Suggest Title (%s)\n", title);
+    printf("MyPlugin: gui_suggest_title(title: %s)\n", title);
     // Store this title if you want to use it for a floating window.
 }
 
 static bool gui_show(const clap_plugin_t *plugin) {
-    printf("MyPlugin GUI: Show\n");
+    printf("MyPlugin: gui_show()\n");
     // Make the GUI visible.
     // For ImGui, rendering usually happens in a loop controlled by the host or plugin's audio thread.
     // This call might just set a flag.
@@ -476,7 +490,7 @@ static bool gui_show(const clap_plugin_t *plugin) {
 }
 
 static bool gui_hide(const clap_plugin_t *plugin) {
-    printf("MyPlugin GUI: Hide\n");
+    printf("MyPlugin: gui_hide()\n");
     // Make the GUI invisible.
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     self->gui_is_visible = false;
