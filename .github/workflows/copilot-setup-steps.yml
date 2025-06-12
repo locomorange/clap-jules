@@ -51,54 +51,8 @@ jobs:
         if: steps.check_artifact.outputs.found == 'false'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            gperf \
-            ninja-build \
-            cmake \
-            git \
-            curl \
-            zip \
-            unzip \
-            tar \
-            pkg-config \
-            libatspi2.0-dev \
-            libfontconfig1-dev \
-            libfreetype-dev \
-            libgl1-mesa-dev \
-            libglu1-mesa-dev \
-            libx11-dev \
-            libx11-xcb-dev \
-            autoconf \
-            libtool \
-            libxcb-damage0-dev \
-            libxcb-dpms0-dev \
-            libxcb-glx0-dev \
-            libxcb-icccm4-dev \
-            libxcb-image0-dev \
-            libxcb-keysyms1-dev \
-            libxcb-present-dev \
-            libxcb-randr0-dev \
-            libxcb-record0-dev \
-            libxcb-render-util0-dev \
-            libxcb-render0-dev \
-            libxcb-res0-dev \
-            libxcb-shape0-dev \
-            libxcb-shm0-dev \
-            libxcb-sync0-dev \
-            libxcb-util-dev \
-            libxcb-xfixes0-dev \
-            libxcb-xinerama0-dev \
-            libxcb-xkb-dev \
-            libxcb1-dev \
-            libxext-dev \
-            libxfixes-dev \
-            libxi-dev \
-            libxkbcommon-dev \
-            libxkbcommon-x11-dev \
-            libxrender-dev \
-            libegl1-mesa-dev libgles2-mesa-dev libx11-dev libxcb1-dev libxcb-xinput-dev \
-            libegl1-mesa-dev libxcb-xinput-dev
+          #sudo apt-get install -y \
+            
 
       - name: Clone clap-host repository
         if: steps.check_artifact.outputs.found == 'false'
