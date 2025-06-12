@@ -86,8 +86,7 @@ jobs:
             libxi-dev \
             libxkbcommon-dev \
             libxkbcommon-x11-dev \
-            libxrender-dev \
-            nuget
+            libxrender-dev 
 
 
       - name: Clone clap-host repository
