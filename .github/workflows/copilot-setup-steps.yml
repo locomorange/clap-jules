@@ -27,3 +27,74 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install system dependencies for clap-host (vcpkg build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            gperf \
+            ninja-build \
+            cmake \
+            git \
+            curl \
+            zip \
+            unzip \
+            tar \
+            pkg-config \
+            libatspi2.0-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libx11-dev \
+            libx11-xcb-dev \
+            '^libxcb.*-dev' \
+            libxcb-damage0-dev \
+            libxcb-dpms0-dev \
+            libxcb-glx0-dev \
+            libxcb-icccm4-dev \
+            libxcb-image0-dev \
+            libxcb-keysyms1-dev \
+            libxcb-present-dev \
+            libxcb-randr0-dev \
+            libxcb-record0-dev \
+            libxcb-render-util0-dev \
+            libxcb-render0-dev \
+            libxcb-res0-dev \
+            libxcb-shape0-dev \
+            libxcb-shm0-dev \
+            libxcb-sync-dev \
+            libxcb-util-dev \
+            libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev \
+            libxcb-xkb-dev \
+            libxcb1-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libxrender-dev
+
+      - name: Clone clap-host repository
+        run: |
+          git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host
+
+      - name: Build clap-host using vcpkg
+        run: |
+          cd clap-host
+          # Bootstrap vcpkg
+          vcpkg/bootstrap-vcpkg.sh
+          # Build using the clap-host build script
+          scripts/build.sh
+
+      - name: Upload clap-host artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clap-host-linux-${{ github.sha }}
+          path: |
+            clap-host/builds/ninja-vcpkg/host/Release/clap-host
+          if-no-files-found: warn
