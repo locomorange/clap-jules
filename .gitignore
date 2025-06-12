@@ -38,3 +38,6 @@ CMakeUserPresets.json
 *.out
 *.app
 build/
+
+# External repositories (CI only)
+clap-host/

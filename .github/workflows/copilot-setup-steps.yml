@@ -46,12 +46,13 @@ jobs:
             pkg-config \
             libatspi2.0-dev \
             libfontconfig1-dev \
-            libfreetype6-dev \
+            libfreetype-dev \
             libgl1-mesa-dev \
             libglu1-mesa-dev \
             libx11-dev \
             libx11-xcb-dev \
-            '^libxcb.*-dev' \
+            autoconf \
+            libtool \
             libxcb-damage0-dev \
             libxcb-dpms0-dev \
             libxcb-glx0-dev \
@@ -66,7 +67,7 @@ jobs:
             libxcb-res0-dev \
             libxcb-shape0-dev \
             libxcb-shm0-dev \
-            libxcb-sync-dev \
+            libxcb-sync0-dev \
             libxcb-util-dev \
             libxcb-xfixes0-dev \
             libxcb-xinerama0-dev \
