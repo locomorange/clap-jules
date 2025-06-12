@@ -32,11 +32,11 @@ jobs:
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: clap-host-linux-${{ github.sha }}
           path: |
             clap-host/builds/ninja-vcpkg/host/Release/clap-host
-          continue-on-error: true
 
       - name: Check if artifact exists
         id: check_artifact
