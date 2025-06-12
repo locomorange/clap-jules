@@ -51,7 +51,10 @@ jobs:
         if: steps.check_artifact.outputs.found == 'false'
         run: |
           sudo apt update && sudo apt upgrade
-          sudo apt install \
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y \
             build-essential gperf ninja-build cmake \
             libatspi2.0-dev \
             libfontconfig1-dev \
@@ -86,8 +89,8 @@ jobs:
             libxi-dev \
             libxkbcommon-dev \
             libxkbcommon-x11-dev \
-            libxrender-dev 
-
+            libxrender-dev \
+            nuget
 
       - name: Clone clap-host repository
         if: steps.check_artifact.outputs.found == 'false'
