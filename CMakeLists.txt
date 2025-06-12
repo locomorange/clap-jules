@@ -31,6 +31,15 @@ if (NOT CLAP_FOUND)
     add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
 endif()
 
+# Find Vulkan
+find_package(Vulkan REQUIRED)
+if (NOT Vulkan_FOUND)
+    message(FATAL_ERROR "Vulkan SDK not found. Please install it or set Vulkan_SDK path.")
+else()
+    message(STATUS "Found Vulkan: ${Vulkan_LIBRARIES}")
+    message(STATUS "Vulkan include directories: ${Vulkan_INCLUDE_DIRS}")
+endif()
+
 # ImGui integration
 set(IMGUI_SOURCES
     imgui/imgui.cpp
@@ -38,16 +47,19 @@ set(IMGUI_SOURCES
     imgui/imgui_draw.cpp
     imgui/imgui_tables.cpp
     imgui/imgui_widgets.cpp
+    imgui/backends/imgui_impl_vulkan.cpp # Added Vulkan backend
 )
 
 add_library(imgui STATIC ${IMGUI_SOURCES})
-target_include_directories(imgui PUBLIC imgui)
+target_include_directories(imgui PUBLIC imgui ${Vulkan_INCLUDE_DIRS}) # Add Vulkan includes for imgui lib
+target_link_libraries(imgui PUBLIC Vulkan::Vulkan) # Link imgui lib with Vulkan
 # Add -fPIC flag to allow linking into shared libraries
 set_target_properties(imgui PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap imgui)
+target_include_directories(my_clap_plugin PRIVATE ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(my_clap_plugin PRIVATE clap imgui Vulkan::Vulkan) # Link plugin with Vulkan
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
