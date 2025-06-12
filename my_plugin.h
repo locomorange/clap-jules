@@ -8,6 +8,12 @@ typedef struct {
     clap_plugin_t plugin;
     // ImGui context for the plugin instance
     ImGuiContext* imgui_context;
+
+    // GUI related state
+    bool gui_created;
+    bool gui_is_visible;
+    clap_window_t parent_window; // To store parent window details
+
     // Add any other plugin-specific data here
 } my_plugin_t;
 
