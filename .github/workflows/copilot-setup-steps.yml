@@ -103,7 +103,7 @@ jobs:
             libxkbcommon-x11-dev \
             libxrender-dev \
             nuget \
-            libegl1-mesa-dev libgles2-mesa-dev libbcm-host-dev
+            libegl1-mesa-dev libgles2-mesa-dev
 
       - name: Clone clap-host repository
         if: steps.check_artifact.outputs.found == 'false'
