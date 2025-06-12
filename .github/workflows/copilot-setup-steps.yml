@@ -54,7 +54,13 @@ jobs:
           sudo apt install -y software-properties-common
           sudo add-apt-repository universe
           sudo apt update
-          sudo apt install -y \
+      
+          # Add Mono repository for nuget
+          sudo apt install -y wget
+          wget https://download.mono-project.com/repo/xamarin.gpg -O - | sudo tee /etc/apt/trusted.gpg.d/xamarin.asc
+          echo "deb https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+          sudo apt-get update
+          sudo apt-get install -y \
             build-essential gperf ninja-build cmake \
             libatspi2.0-dev \
             libfontconfig1-dev \
