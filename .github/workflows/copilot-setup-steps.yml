@@ -96,7 +96,9 @@ jobs:
             libxi-dev \
             libxkbcommon-dev \
             libxkbcommon-x11-dev \
-            libxrender-dev
+            libxrender-dev \
+            libegl1-mesa-dev libgles2-mesa-dev libx11-dev libxcb1-dev libxcb-xinput-dev \
+            libegl1-mesa-dev libxcb-xinput-dev
 
       - name: Clone clap-host repository
         if: steps.check_artifact.outputs.found == 'false'
