@@ -50,7 +50,7 @@ jobs:
       - name: Install system dependencies for clap-host (vcpkg build)
         if: steps.check_artifact.outputs.found == 'false'
         run: |
-          run: sudo apt update && sudo apt upgrade && sudo apt install
+          run: sudo apt update && sudo apt upgrade && sudo apt install /
           build-essential gperf ninja-build cmake /
           libatspi2.0-dev /
           libfontconfig1-dev /
