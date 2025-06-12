@@ -54,7 +54,8 @@ jobs:
           sudo apt-get install -y \
             qt6-base-dev \
             librtmidi-dev \
-            librtaudio-dev 
+            librtaudio-dev \
+            libasound2-dev
 
 
 
