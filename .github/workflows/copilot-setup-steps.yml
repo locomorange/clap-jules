@@ -96,8 +96,7 @@ jobs:
             libxi-dev \
             libxkbcommon-dev \
             libxkbcommon-x11-dev \
-            libxrender-dev \
-            qt6-base-dev
+            libxrender-dev
 
       - name: Clone clap-host repository
         if: steps.check_artifact.outputs.found == 'false'
@@ -109,7 +108,7 @@ jobs:
         run: |
           cd clap-host
           # Bootstrap vcpkg
-          vcpkg/bootstrap-vcpkg.sh
+          # vcpkg/bootstrap-vcpkg.sh
           # Build using the clap-host build script
           scripts/build.sh
 
