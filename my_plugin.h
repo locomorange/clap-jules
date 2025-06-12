@@ -13,6 +13,7 @@ typedef struct {
     bool gui_created;
     bool gui_is_visible;
     clap_window_t parent_window; // To store parent window details
+    bool is_opengl_gui;          // Flag to track if OpenGL backend is active
 
     // Add any other plugin-specific data here
 } my_plugin_t;

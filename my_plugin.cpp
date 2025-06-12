@@ -5,6 +5,14 @@
 #include "clap/ext/gui.h" // Include the CLAP GUI extension header
 #include "imgui.h"      // Assuming imgui.h is accessible
 
+// CLAP and ImGui backend headers
+#include "clap/ext/gui.h" // Include the CLAP GUI extension header (already present, but good to note order)
+#include "imgui/backends/imgui_impl_opengl3.h" // ImGui OpenGL3 backend header
+
+// Note: System <GL/gl.h> and <GL/glext.h> are NOT included here directly anymore.
+// imgui_impl_opengl3.cpp will include its own GL headers as needed.
+
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -202,19 +210,21 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     //    io.DisplaySize = ImVec2((float)width, (float)height);
     // }
     
-    // TODO: Call backend-specific NewFrame function (e.g., ImGui_ImplOpenGL3_NewFrame())
-    // This needs to be set up in gui_create() based on the API and window handle.
-    // For example, if using OpenGL: ImGui_ImplOpenGL3_NewFrame();
-    // For example, if using a windowing library like GLFW (often with OpenGL): glfwPollEvents(); ImGui_ImplGlfw_NewFrame();
-    // printf("MyPlugin GUI: Placeholder for backend NewFrame() call.\n");
+    // Call backend-specific NewFrame function
+    if (self->is_opengl_gui) {
+        ImGui_ImplOpenGL3_NewFrame();
+    } else {
+        // If supporting other backends, their NewFrame calls would go here.
+        // For now, if not OpenGL, we might not be able to render ImGui.
+    }
 
     // Start the ImGui frame
     ImGui::NewFrame();
 
     // --- Render Plugin UI ---
     // For testing purposes, show the ImGui demo window
-    if (self->gui_is_visible) { // Double check visibility, might be redundant but safe
-        ImGui::ShowDemoWindow(&self->gui_is_visible); // Pass visibility to allow closing
+    if (self->gui_is_visible) { // Double check visibility
+        ImGui::ShowDemoWindow(&self->gui_is_visible);
         
         // Example of a simple custom window:
         // ImGui::Begin("My Plugin Window");
@@ -226,11 +236,13 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Render ImGui draw data
     ImGui::Render();
 
-    // TODO: Call backend-specific RenderDrawData function
-    // (e.g., ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData()))
-    // This also needs to be set up in gui_create().
-    // For example, if using OpenGL: glClearColor(0.0f, 0.0f, 0.0f, 1.0f); glClear(GL_COLOR_BUFFER_BIT); ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    // printf("MyPlugin GUI: Placeholder for backend RenderDrawData() call.\n");
+    // Call backend-specific RenderDrawData function
+    if (self->is_opengl_gui) {
+        // The host is responsible for setting up the viewport and clearing the framebuffer.
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    } else {
+        // If supporting other backends, their RenderDrawData calls would go here.
+    }
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -296,9 +308,14 @@ CLAP_EXPORT const struct clap_plugin_factory* get_plugin_factory() {
 
 // --- GUI Function Implementations ---
 static bool gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
-    // For this example, we'll say we support the platform's native API for embedded GUIs.
-    // And that we do not support floating GUIs.
-    if (is_floating) return false;
+    // This function checks if the plugin supports the given windowing API (api)
+    // and whether it's for floating or embedded windows.
+    if (is_floating) {
+        return false; // This example supports only embedded windows.
+    }
+
+    // Check for supported windowing APIs. For ImGui with OpenGL,
+    // we rely on the host to provide a compatible parent window.
 #if defined(_WIN32)
     return strcmp(api, CLAP_WINDOW_API_WIN32) == 0;
 #elif defined(__APPLE__)
@@ -306,12 +323,14 @@ static bool gui_is_api_supported(const clap_plugin_t *plugin, const char *api, b
 #elif defined(__linux__) || defined(__FreeBSD__)
     return strcmp(api, CLAP_WINDOW_API_X11) == 0;
 #else
-    return false; // Unsupported platform
+    return false; // Unsupported platform for this example
 #endif
 }
 
 static bool gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
-    *is_floating = false; // We prefer embedded
+    *is_floating = false; // We prefer embedded.
+    // Suggest a preferred native windowing API. The host will make an OpenGL context
+    // current on this window if it intends for us to use OpenGL.
 #if defined(_WIN32)
     *api = CLAP_WINDOW_API_WIN32;
 #elif defined(__APPLE__)
@@ -319,7 +338,7 @@ static bool gui_get_preferred_api(const clap_plugin_t *plugin, const char **api,
 #elif defined(__linux__) || defined(__FreeBSD__)
     *api = CLAP_WINDOW_API_X11;
 #else
-    return false; // No preferred API on unsupported platform
+    return false; // No preference on unsupported platform
 #endif
     return true;
 }
@@ -331,36 +350,48 @@ static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_flo
     // Initialize ImGui context if not already done (should be done in plugin_init)
     if (!self->imgui_context) {
         self->imgui_context = ImGui::CreateContext();
-        ImGui::SetCurrentContext(self->imgui_context);
         // Perform basic ImGui setup if needed (e.g. styles, fonts)
-        printf("MyPlugin GUI: ImGui context created in gui_create\n");
-    } else {
-        ImGui::SetCurrentContext(self->imgui_context);
-        printf("MyPlugin GUI: Using existing ImGui context\n");
+        printf("MyPlugin GUI: ImGui context created in gui_create (as it was missing)\n");
     }
+    ImGui::SetCurrentContext(self->imgui_context); // Ensure current context
+    printf("MyPlugin GUI: Using ImGui context %p\n", (void*)self->imgui_context);
 
-    // TODO: Initialize ImGui rendering backend (e.g., ImGui_ImplOpenGL3_Init, ImGui_ImplDX11_Init)
-    // This depends on the host's graphics context provided via gui_set_parent or similar.
-    // For now, we'll assume this is handled elsewhere or by the host.
-    printf("MyPlugin GUI: Placeholder for ImGui backend initialization.\n");
+    self->is_opengl_gui = false; // Initialize flag
 
-    // Example: Store the fact that GUI has been created
-    self->gui_created = true;
+    // If gui_create is called, we assume the host has provided a compatible window
+    // and made an OpenGL context current (as per our gui_is_api_supported and
+    // gui_get_preferred_api setup which implies we want a native window for GL).
+    printf("MyPlugin GUI: Initializing ImGui OpenGL3 backend for API: %s\n", api);
 
+    if (!ImGui_ImplOpenGL3_Init(nullptr)) { // Pass nullptr to auto-detect GLSL version
+        printf("MyPlugin GUI: ERROR - Failed to initialize ImGui OpenGL3 backend.\n");
+        return false; // Backend initialization failed
+    }
+    printf("MyPlugin GUI: ImGui OpenGL3 backend initialized successfully.\n");
+    self->is_opengl_gui = true;
+
+    self->gui_created = true; // Mark GUI as created (even if backend init failed, context exists)
+                              // Or, set to true only if self->is_opengl_gui is true.
+                              // For now, let's say created = true if context exists and create was called.
+                              // The actual rendering will depend on is_opengl_gui.
     return true;
 }
 
 static void gui_destroy(const clap_plugin_t *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    printf("MyPlugin GUI: Destroy\n");
+    printf("MyPlugin GUI: Destroy called.\n");
 
-    // TODO: Shutdown ImGui rendering backend (e.g., ImGui_ImplOpenGL3_Shutdown)
-    printf("MyPlugin GUI: Placeholder for ImGui backend shutdown.\n");
+    if (self->is_opengl_gui && self->imgui_context) {
+        ImGui::SetCurrentContext(self->imgui_context); // Ensure correct context for shutdown
+        ImGui_ImplOpenGL3_Shutdown();
+        printf("MyPlugin GUI: ImGui OpenGL3 backend shutdown.\n");
+    }
+    self->is_opengl_gui = false; // Reset flag
 
-    // The ImGui context itself is destroyed in my_plugin_destroy,
-    // as it's tied to the plugin instance lifecycle, not just the GUI visibility.
-
-    self->gui_created = false;
+    // The ImGui context (self->imgui_context) itself is destroyed in my_plugin_destroy.
+    // self->gui_created is also managed there or based on gui_create success.
+    // For this function, we only care about the backend part of the GUI.
+    self->gui_created = false; // Mark that the GUI is no longer in a "created" state.
 }
 
 static bool gui_set_scale(const clap_plugin_t *plugin, double scale) {
@@ -480,3 +511,10 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         return NULL;
     }
 };
+
+// --- ImGui Backend Implementation ---
+// IMPORTANT: Only include this .cpp file ONCE in your project!
+#if defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+#include <glad/glad.h> // Ensure GLAD is included before if using GLAD for loader
+#endif
+#include "imgui/backends/imgui_impl_opengl3.cpp"
