@@ -92,7 +92,7 @@ jobs:
       - name: Install vcpkg ports
         working-directory: /tmp/clap-host
         run: |
-          vcpkg install egl
+          vcpkg install egl xcb libx11 libxkbcommon libxkbcommon
 
       - name: Build CLAP host using official build script
         continue-on-error: true
