@@ -84,6 +84,19 @@ jobs:
         run: |
           git clone --recursive \
             https://github.com/free-audio/clap-host.git /tmp/clap-host
+      
+      - name: 'Bootstrap VCPKG'
+        if: false
+        working-directory: /tmp/clap-host
+        shell: bash
+        run: vcpkg/bootstrap-vcpkg.sh
+
+      - name: Install vcpkg ports
+        if: false
+        working-directory: /tmp/clap-host
+        run: |
+          vcpkg install egl xcb libx11 libxkbcommon libxkbcommon
+
 
       - name: Build CLAP host using official build script
         continue-on-error: true
