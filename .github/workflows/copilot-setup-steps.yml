@@ -152,7 +152,7 @@ jobs:
             echo "=== Attempting full vcpkg build with scripts/build.sh ==="
             echo "Network connectivity is working, trying official build script..."
             
-            if timeout 600s ./scripts/build.sh 2>&1 | tee build_log.txt; then
+            if timeout 600s ./scripts/build.sh x64-linux 2>&1 | tee build_log.txt; then
               # Check if the build actually produced a binary
               if [ -f "builds/ninja-vcpkg/clap-host" ]; then
                 echo "✅ Official build script succeeded with vcpkg!"
