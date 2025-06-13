@@ -47,16 +47,16 @@ jobs:
 
       - name: Clone CLAP host repository
         run: |
-          git clone --recursive https://github.com/free-audio/clap-host.git /clap-host
+          git clone --recursive https://github.com/free-audio/clap-host.git /tmp/clap-host
 
       - name: Setup vcpkg (if needed for advanced building)
-        working-directory: /clap-host
+        working-directory: /tmp/clap-host
         run: |
           # Bootstrap vcpkg for potential future use
           vcpkg/bootstrap-vcpkg.sh
 
       - name: Verify CLAP host environment setup 
-        working-directory: /clap-host
+        working-directory: /tmp/clap-host
         run: |
           echo "CLAP Host repository cloned successfully"
           echo "Directory contents:"
@@ -71,7 +71,7 @@ jobs:
           echo "Environment ready for CLAP host development"
 
       - name: Optional build attempt (may fail due to dependency versions)
-        working-directory: /clap-host
+        working-directory: /tmp/clap-host
         continue-on-error: true
         run: |
           echo "Attempting basic configuration test..."
@@ -79,7 +79,7 @@ jobs:
           cmake --preset ninja-system > /dev/null 2>&1 && echo "✓ Configuration successful" || echo "✗ Configuration failed (expected for system libraries)"
 
       - name: Build CLAP host
-        working-directory: /clap-host
+        working-directory: /tmp/clap-host
         run: |
           echo "Starting CLAP host build process..."
           echo "Step 1: Configure with ninja-system preset"
