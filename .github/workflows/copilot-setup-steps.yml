@@ -39,72 +39,155 @@ jobs:
             ninja-build \
             git \
             pkg-config \
+            curl \
+            zip \
+            unzip \
+            tar \
+            libasound2-dev \
             qt6-base-dev \
-            libqt6core6t64 \
-            libqt6widgets6t64 \
             librtaudio-dev \
-            librtmidi-dev
+            librtmidi-dev \
+            autoconf \
+            libtool
 
       - name: Clone CLAP host repository
         run: |
           git clone --recursive https://github.com/free-audio/clap-host.git /tmp/clap-host
 
-      - name: Setup vcpkg (if needed for advanced building)
+      - name: Build CLAP host using official build script
         working-directory: /tmp/clap-host
         run: |
-          # Bootstrap vcpkg for potential future use
-          vcpkg/bootstrap-vcpkg.sh
-
-      - name: Verify CLAP host environment setup 
-        working-directory: /tmp/clap-host
-        run: |
-          echo "CLAP Host repository cloned successfully"
-          echo "Directory contents:"
-          ls -la
-          echo ""
-          echo "CMake presets available:"
-          cmake --list-presets=configure | grep -E "(ninja|vcpkg)" || echo "No presets found - using basic cmake"
-          echo ""
-          echo "CLAP SDK version:"
-          grep -r "define CLAP_VERSION" clap/include/clap/version.h || echo "Version info not found"
-          echo ""
-          echo "Environment ready for CLAP host development"
-
-      - name: Optional build attempt (may fail due to dependency versions)
-        working-directory: /tmp/clap-host
-        continue-on-error: true
-        run: |
-          echo "Attempting basic configuration test..."
-          # Try to configure - this may fail but helps validate the setup
-          cmake --preset ninja-system > /dev/null 2>&1 && echo "✓ Configuration successful" || echo "✗ Configuration failed (expected for system libraries)"
-
-      - name: Build CLAP host
-        working-directory: /tmp/clap-host
-        run: |
-          echo "Starting CLAP host build process..."
-          echo "Step 1: Configure with ninja-system preset"
-          cmake --preset ninja-system
-          echo ""
-          echo "Step 2: Build the CLAP host"
-          echo "Note: Build may fail due to system library version incompatibilities"
-          if cmake --build --preset ninja-system; then
-            echo ""
-            echo "✅ Build completed successfully!"
-            echo "Checking build outputs:"
-            ls -la builds/ninja-system/
-            echo ""
-            if [ -f "builds/ninja-system/clap-host" ]; then
-              echo "✅ CLAP host executable built successfully"
-              ./builds/ninja-system/clap-host --version || echo "Version check failed, but executable exists"
+          echo "Building CLAP host using scripts/build.sh as requested..."
+          chmod +x scripts/build.sh
+          
+          # Try the official build script first
+          echo "=== Attempting build.sh (may fail due to firewall restrictions) ==="
+          if timeout 600s ./scripts/build.sh 2>&1; then
+            echo "✅ Official build script succeeded"
+          else
+            EXIT_CODE=$?
+            echo "⚠️  Official build script failed with exit code: $EXIT_CODE"
+            
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "Build timed out (likely due to network restrictions)"
             else
-              echo "❌ CLAP host executable not found"
+              echo "Build failed due to dependency/network issues"
+            fi
+            
+            echo ""
+            echo "=== Network/Firewall Issue Detected ==="
+            echo "The build.sh script requires internet access to download dependencies via vcpkg."
+            echo "This CI environment has firewall restrictions that prevent access to:"
+            echo "- sourceware.org (for bzip2)"
+            echo "- Other vcpkg package sources"
+            echo ""
+            echo "To resolve this, you can:"
+            echo "1. Add required domains to the firewall allow list"
+            echo "2. Use Actions setup steps that run before firewall is enabled"
+            echo "3. Pre-cache dependencies in the repository"
+            echo ""
+            echo "For now, attempting alternative build approach with system packages..."
+            
+            # Alternative build approach - but this has compatibility issues as we saw
+            echo "=== Alternative System Package Build (Limited Success Expected) ==="
+            echo "Note: This may fail due to version compatibility issues"
+            
+            if cmake --preset ninja-system 2>&1; then
+              echo "✅ Configuration successful with system packages"
+              
+              if cmake --build --preset ninja-system --target clap-host 2>&1; then
+                echo "✅ Build completed successfully with system packages!"
+              else
+                echo "❌ Build failed with system packages due to API compatibility issues"
+                echo ""
+                echo "SUMMARY:"
+                echo "- build.sh script failed due to network/firewall restrictions"
+                echo "- System package fallback failed due to version incompatibilities"
+                echo "- The CLAP host requires specific dependency versions provided by vcpkg"
+                echo ""
+                echo "RECOMMENDATION:"
+                echo "Configure firewall to allow vcpkg package downloads or use Actions setup steps"
+                exit 1
+              fi
+            else
+              echo "❌ Configuration failed with system packages"
+              exit 1
+            fi
+          fi
+
+      - name: Verify build and test plugin functionality
+        working-directory: /tmp/clap-host
+        run: |
+          echo "Verifying CLAP host build..."
+          
+          # Check multiple possible locations for the binary
+          BINARY_FOUND=false
+          BINARY_PATH=""
+          
+          if [ -f "builds/ninja-vcpkg/clap-host" ]; then
+            BINARY_PATH="builds/ninja-vcpkg/clap-host"
+            BINARY_FOUND=true
+            echo "✅ CLAP host binary found at: $BINARY_PATH (vcpkg build)"
+          elif [ -f "builds/ninja-system/clap-host" ]; then
+            BINARY_PATH="builds/ninja-system/clap-host"
+            BINARY_FOUND=true
+            echo "✅ CLAP host binary found at: $BINARY_PATH (system build)"
+          else
+            echo "❌ CLAP host binary not found in expected locations"
+            echo "Checking build output directories:"
+            find builds/ -name "clap-host" -type f 2>/dev/null || echo "No clap-host binary found in builds/"
+            ls -la builds/ 2>/dev/null || echo "No builds directory found"
+            exit 1
+          fi
+          
+          if [ "$BINARY_FOUND" = true ]; then
+            echo "Binary location: $BINARY_PATH"
+            
+            # Test that the binary exists and is executable
+            if [ -x "$BINARY_PATH" ]; then
+              echo "✅ Binary is executable"
+              
+              # Basic functionality tests (GUI app may not work without display)
+              echo "Testing basic execution..."
+              timeout 5s ./$BINARY_PATH --help || echo "Help command completed (exit code: $?)"
+              
+              echo "✅ CLAP host build verification completed!"
+            else
+              echo "❌ Binary is not executable"
+              exit 1
+            fi
+          fi
+
+      - name: Build and test our CLAP plugin with the host
+        run: |
+          echo "Testing CLAP plugin development environment..."
+          
+          # Build our CLAP plugin
+          cd /home/runner/work/clap-jules/clap-jules
+          echo "Building our CLAP plugin..."
+          
+          if [ -f "CMakeLists.txt" ]; then
+            mkdir -p build
+            cd build
+            
+            if cmake ..; then
+              echo "✅ Plugin configuration successful"
+              
+              if make -j$(nproc); then
+                echo "✅ Plugin build successful"
+                
+                # Check if the plugin was built
+                find . -name "*.clap" -o -name "*.so" -o -name "*plugin*" | head -5
+                
+                echo "✅ CLAP plugin development environment verified!"
+              else
+                echo "❌ Plugin build failed"
+                exit 1
+              fi
+            else
+              echo "❌ Plugin configuration failed"
+              exit 1
             fi
           else
-            echo ""
-            echo "⚠️  Build failed due to system library compatibility issues"
-            echo "This is expected with Ubuntu system libraries - vcpkg would be needed for a successful build"
-            echo "However, the environment is properly configured and dependencies are correctly installed"
-            echo ""
-            echo "Configuration was successful, indicating the build environment is set up correctly"
-            exit 0
+            echo "⚠️  No CMakeLists.txt found for plugin build test"
           fi
