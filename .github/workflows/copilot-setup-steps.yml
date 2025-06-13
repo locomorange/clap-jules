@@ -79,9 +79,7 @@ jobs:
             libegl1-mesa-dev \
             libgl1-mesa-dev \
             libgles2-mesa-dev \
-            libglvnd-dev \
-            qt6-base-dev
-
+            libglvnd-dev
 
       - name: Clone CLAP host repository
         run: |
