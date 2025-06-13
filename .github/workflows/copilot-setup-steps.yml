@@ -63,4 +63,15 @@ jobs:
           echo "CMake presets available:"
           cmake --list-presets=configure | grep -E "(ninja|vcpkg)" || echo "No presets found - using basic cmake"
           echo ""
+          echo "CLAP SDK version:"
+          grep -r "define CLAP_VERSION" clap/include/clap/version.h || echo "Version info not found"
+          echo ""
           echo "Environment ready for CLAP host development"
+
+      - name: Optional build attempt (may fail due to dependency versions)
+        working-directory: /tmp/clap-host
+        continue-on-error: true
+        run: |
+          echo "Attempting basic configuration test..."
+          # Try to configure - this may fail but helps validate the setup
+          cmake --preset ninja-system > /dev/null 2>&1 && echo "✓ Configuration successful" || echo "✗ Configuration failed (expected for system libraries)"
