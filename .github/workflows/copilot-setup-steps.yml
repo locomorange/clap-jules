@@ -91,7 +91,7 @@ jobs:
       - name: Install vcpkg ports
         working-directory: /tmp/clap-host
         run: |
-          vcpkg install egl mali vivante
+          vcpkg install egl vivante
 
       - name: Build CLAP host using official build script
         continue-on-error: true
