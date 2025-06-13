@@ -65,7 +65,6 @@ jobs:
             librtmidi-dev \
             autoconf \
             libtool
-            # qt6-base-dev
 
       - name: Install Qt dependencies for vcpkg build
         run: |
@@ -80,7 +79,8 @@ jobs:
             libegl1-mesa-dev \
             libgl1-mesa-dev \
             libgles2-mesa-dev \
-            libglvnd-dev 
+            libglvnd-dev \
+            qt6-base-dev
 
 
       - name: Clone CLAP host repository
