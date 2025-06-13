@@ -58,15 +58,16 @@ jobs:
             curl \
             zip \
             unzip \
-            tar \
-            libasound2-dev \
-            qt6-base-dev \
-            librtaudio-dev \
-            librtmidi-dev \
-            autoconf \
-            libtool
+            tar #\
+            #libasound2-dev \
+            #qt6-base-dev \
+            #librtaudio-dev \
+            #librtmidi-dev \
+            #autoconf \
+            #libtool
 
       - name: Install Qt dependencies for vcpkg build
+        if: false 
         run: |
           sudo apt install -y \
             '^libxcb.*-dev' \
@@ -91,7 +92,7 @@ jobs:
       - name: Install vcpkg ports
         working-directory: /tmp/clap-host
         run: |
-          vcpkg install egl vivante
+          vcpkg install egl
 
       - name: Build CLAP host using official build script
         continue-on-error: true
