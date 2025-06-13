@@ -1,3 +1,4 @@
+---
 name: "Copilot Setup Steps"
 
 env:
@@ -7,33 +8,38 @@ env:
     www.mirrorservice.org,
     download.qt.io,
     mirrors.ocf.berkeley.edu
-        
-# Automatically run the setup steps when they are changed to allow for easy validation, and
-# allow manual testing through the repository's "Actions" tab
+
+# Automatically run the setup steps when they are changed to allow for
+# easy validation, and allow manual testing through the repository's
+# "Actions" tab
 on:
   workflow_dispatch:
   push:
-   paths:
-     - .github/workflows/copilot-setup-steps.yml
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
   pull_request:
     paths:
-     - .github/workflows/copilot-setup-steps.yml
+      - .github/workflows/copilot-setup-steps.yml
 
 jobs:
-  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+  # The job MUST be called `copilot-setup-steps` or it will not be
+  # picked up by Copilot.
   copilot-setup-steps:
     runs-on: ubuntu-latest
-    
-    # Set the permissions to the lowest permissions possible needed for your steps.
-    # Copilot will be given its own token for its operations.
+
+    # Set the permissions to the lowest permissions possible needed for
+    # your steps. Copilot will be given its own token for its operations.
     permissions:
-      # If you want to clone the repository as part of your setup steps, for example to install dependencies, you'll need the `contents: read` permission. If you don't clone the repository in your setup steps, Copilot will do this for you automatically after the steps complete.
+      # If you want to clone the repository as part of your setup steps,
+      # for example to install dependencies, you'll need the
+      # `contents: read` permission. If you don't clone the repository in
+      # your setup steps, Copilot will do this for you automatically
+      # after the steps complete.
       contents: read
 
-    
-
-    # You can define any steps you want, and they will run before the agent starts.
-    # If you do not check out your code, Copilot will do this for you.
+    # You can define any steps you want, and they will run before the
+    # agent starts. If you do not check out your code, Copilot will do
+    # this for you.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -74,15 +80,16 @@ jobs:
 
       - name: Clone CLAP host repository
         run: |
-          git clone --recursive https://github.com/free-audio/clap-host.git /tmp/clap-host
+          git clone --recursive \
+            https://github.com/free-audio/clap-host.git /tmp/clap-host
 
-      - name: Build CLAP host using official build script  
+      - name: Build CLAP host using official build script
         continue-on-error: true
         working-directory: /tmp/clap-host
         run: |
           echo "Building CLAP host using scripts/build.sh as requested..."
           chmod +x scripts/build.sh
-          
+
           # Try the official build script first
           echo "=== Attempting build.sh (may fail due to network restrictions) ==="
           if timeout 600s ./scripts/build.sh 2>&1; then
@@ -90,41 +97,41 @@ jobs:
           else
             EXIT_CODE=$?
             echo "⚠️  Official build script failed with exit code: $EXIT_CODE"
-            
+
             if [ $EXIT_CODE -eq 124 ]; then
               echo "Build timed out (likely due to network restrictions)"
             else
               echo "Build failed due to dependency/network issues"
             fi
-            
+
             echo ""
             echo "=== Attempting Alternative System Package Build ==="
             echo "When vcpkg fails due to network restrictions, using system packages as fallback..."
-            
+
             # Try system package build approach
             if cmake --preset ninja-system 2>&1; then
               echo "✅ Configuration successful with system packages"
-              
+
               if cmake --build --preset ninja-system --target clap-host 2>&1; then
                 echo "✅ Build completed successfully with system packages!"
               else
                 echo "❌ Build failed with system packages, trying without preset"
-                
+
                 # Manual build as final fallback
                 echo "=== Manual Build Approach ==="
                 mkdir -p builds/manual
                 cd builds/manual
-                
+
                 if cmake ../.. -GNinja -DCMAKE_BUILD_TYPE=Release 2>&1; then
                   echo "✅ Manual configuration successful"
-                  
+
                   if ninja clap-host 2>&1; then
                     echo "✅ Manual build completed successfully!"
                   else
                     echo "❌ Manual build failed"
                     echo ""
                     echo "SUMMARY:"
-                    echo "- build.sh script failed due to network/firewall restrictions"  
+                    echo "- build.sh script failed due to network/firewall restrictions"
                     echo "- All fallback build approaches failed"
                     echo "- The environment may need additional configuration"
                     exit 1
@@ -145,11 +152,11 @@ jobs:
         working-directory: /tmp/clap-host
         run: |
           echo "Checking CLAP host build results..."
-          
+
           # Check for successful builds
           BINARY_FOUND=false
           BINARY_PATH=""
-          
+
           # Check multiple possible locations for the binary
           if [ -f "builds/ninja-vcpkg/clap-host" ]; then
             BINARY_PATH="builds/ninja-vcpkg/clap-host"
@@ -174,18 +181,18 @@ jobs:
             find builds/ -name "clap-host" -type f 2>/dev/null || echo "No clap-host binary found"
             ls -la builds/ 2>/dev/null || echo "No builds directory found"
           fi
-          
+
           if [ "$BINARY_FOUND" = true ]; then
             echo "Binary location: $BINARY_PATH"
-            
+
             # Test that the binary exists and is executable
             if [ -x "$BINARY_PATH" ]; then
               echo "✅ Binary is executable"
-              
+
               # Basic functionality tests (GUI app may not work without display)
               echo "Testing basic execution..."
               timeout 5s ./$BINARY_PATH --help || echo "Help command completed (exit code: $?)"
-              
+
               echo "✅ CLAP host build verification completed!"
             else
               echo "❌ Binary is not executable"
@@ -197,11 +204,11 @@ jobs:
       - name: Build and test our CLAP plugin with the host
         run: |
           echo "Testing CLAP plugin development environment..."
-          
+
           # Build our CLAP plugin
           cd /home/runner/work/clap-jules/clap-jules
           echo "Building our CLAP plugin..."
-          
+
           if [ -f "CMakeLists.txt" ]; then
             # Ensure submodules are initialized (should already be done in checkout step)
             echo "Checking submodules..."
@@ -209,35 +216,35 @@ jobs:
               echo "Initializing CLAP submodules..."
               git submodule update --init --recursive
             fi
-            
+
             mkdir -p build
             cd build
-            
+
             if cmake ..; then
               echo "✅ Plugin configuration successful"
-              
+
               if make -j$(nproc); then
                 echo "✅ Plugin build successful"
-                
+
                 # Check if the plugin was built
                 echo "Built plugin files:"
                 find . -name "*.clap" -o -name "*.so" -o -name "*plugin*" | head -5
-                
+
                 # Verify plugin file exists and has correct structure
                 if [ -f "MyFirstClapPlugin.so" ]; then
                   echo "✅ Plugin binary created: MyFirstClapPlugin.so"
-                  
+
                   # Basic file checks
                   echo "Plugin file info:"
                   file MyFirstClapPlugin.so
                   ls -lh MyFirstClapPlugin.so
-                  
+
                   # Test if we can load symbols (basic validation)
                   if command -v nm >/dev/null 2>&1; then
                     echo "Plugin symbols check:"
                     nm -D MyFirstClapPlugin.so | grep -E "(clap_|CLAP_)" | head -3 || echo "No CLAP symbols found with nm"
                   fi
-                  
+
                   # Test with the CLAP host if available
                   CLAP_HOST=""
                   if [ -f "/tmp/clap-host/builds/ninja-vcpkg/clap-host" ]; then
@@ -254,33 +261,33 @@ jobs:
                     echo "This is expected when host build fails due to dependency version issues."
                     echo "However, the plugin built successfully, demonstrating working CLAP development environment!"
                   fi
-                  
+
                   if [ -n "$CLAP_HOST" ]; then
                     echo "Testing plugin with CLAP host..."
                     # Copy plugin to a known location for testing
                     mkdir -p /tmp/test-plugins
                     cp MyFirstClapPlugin.so /tmp/test-plugins/
-                    
+
                     # Test if the host can scan the plugin (may fail without display)
                     echo "Attempting to scan plugin with CLAP host..."
                     export CLAP_PLUGIN_PATH=/tmp/test-plugins
                     timeout 10s $CLAP_HOST --help 2>&1 || echo "Host execution completed (exit code: $?)"
-                    
+
                     echo "✅ Plugin-host integration test completed"
                   fi
-                  
+
                   echo ""
                   echo "✅ CLAP PLUGIN DEVELOPMENT ENVIRONMENT SUCCESSFULLY VERIFIED!"
                   echo "✅ Plugin built successfully: MyFirstClapPlugin.so"
                   echo "✅ Environment is ready for CLAP plugin development"
-                  
+
                 else
                   echo "❌ Plugin binary not found (expected: MyFirstClapPlugin.so)"
                   echo "Build output files:"
                   find . -name "*" -type f | head -10
                   exit 1
                 fi
-                
+
               else
                 echo "❌ Plugin build failed"
                 exit 1
