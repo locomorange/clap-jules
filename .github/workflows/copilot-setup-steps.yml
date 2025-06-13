@@ -134,9 +134,21 @@ jobs:
             echo "Network connectivity is working, trying official build script..."
             
             if timeout 600s ./scripts/build.sh 2>&1 | tee build_log.txt; then
-              echo "✅ Official build script succeeded with vcpkg!"
-              echo "BUILD_SUCCESS=true" >> $GITHUB_ENV
-              echo "BUILD_METHOD=vcpkg" >> $GITHUB_ENV
+              # Check if the build actually produced a binary
+              if [ -f "builds/ninja-vcpkg/clap-host" ]; then
+                echo "✅ Official build script succeeded with vcpkg!"
+                echo "BUILD_SUCCESS=true" >> $GITHUB_ENV
+                echo "BUILD_METHOD=vcpkg" >> $GITHUB_ENV
+              else
+                echo "⚠️  Build script completed but no binary found"
+                echo "Checking for vcpkg/cmake errors in build log..."
+                if grep -q "BUILD_FAILED" build_log.txt || grep -q "CMake Error" build_log.txt; then
+                  echo "❌ Build script failed due to vcpkg/cmake errors"
+                else
+                  echo "❌ Build script failed for unknown reasons"
+                fi
+                echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
+              fi
             else
               EXIT_CODE=$?
               echo "⚠️  Official build script failed with exit code: $EXIT_CODE"
@@ -148,6 +160,10 @@ jobs:
               echo "Checking for Qt-specific errors..."
               if grep -q "qtbase" build_log.txt; then
                 echo "Qt-related build failure detected, falling back to system packages..."
+              fi
+              if grep -q "Could not resolve host" build_log.txt; then
+                echo "DNS/Network failure detected despite connectivity test"
+                echo "This suggests firewall restrictions on Qt download domains"
               fi
               
               echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
@@ -173,38 +189,71 @@ jobs:
                 echo "BUILD_SUCCESS=true" >> $GITHUB_ENV
                 echo "BUILD_METHOD=system" >> $GITHUB_ENV
               else
-                echo "❌ System package build failed, trying manual approach..."
+                echo "❌ System package build failed"
+                echo "Checking errors..."
+                tail -10 system_build.log
                 
-                # Manual build as final fallback
-                echo "=== Manual build approach ==="
-                mkdir -p builds/manual
-                cd builds/manual
+                # Try without Qt dependencies - build a minimal host
+                echo "=== Trying minimal build without Qt GUI ==="
+                mkdir -p builds/minimal
+                cd builds/minimal
 
-                if cmake ../.. -GNinja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee manual_config.log; then
-                  echo "✅ Manual configuration successful"
+                if cmake ../.. -GNinja -DCMAKE_BUILD_TYPE=Release -DCLAP_HOST_GUI=OFF 2>&1 | tee minimal_config.log; then
+                  echo "✅ Minimal configuration successful"
 
-                  if ninja clap-host 2>&1 | tee manual_build.log; then
-                    echo "✅ Manual build completed successfully!"
-                    echo "BUILD_SUCCESS=true" >> $GITHUB_ENV  
-                    echo "BUILD_METHOD=manual" >> $GITHUB_ENV
+                  if ninja 2>&1 | tee minimal_build.log; then
+                    echo "✅ Minimal build completed successfully!"
+                    # Check if we got any useful binaries
+                    find . -name "*clap*" -type f -executable | head -3
+                    
+                    if [ -f "clap-host" ]; then
+                      echo "✅ Found clap-host binary!"
+                      echo "BUILD_SUCCESS=true" >> $GITHUB_ENV
+                      echo "BUILD_METHOD=minimal" >> $GITHUB_ENV
+                    else
+                      echo "⚠️  Build completed but no recognizable clap-host binary"
+                      echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
+                    fi
                   else
-                    echo "❌ Manual build failed"
+                    echo "❌ Minimal build failed"
                     echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
-                    echo ""
-                    echo "SUMMARY:"
-                    echo "- scripts/build.sh failed due to network/dependency restrictions"
-                    echo "- System package build failed" 
-                    echo "- Manual build failed"
-                    echo "- This may be due to dependency version incompatibilities"
                   fi
                 else
-                  echo "❌ Manual configuration failed"
+                  echo "❌ Minimal configuration failed"
                   echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
                 fi
               fi
             else
               echo "❌ System package configuration failed"
-              echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
+              echo "Checking configuration errors..."
+              tail -10 system_config.log
+              
+              # Try manual approach as final fallback
+              echo "=== Manual build approach ==="
+              mkdir -p builds/manual
+              cd builds/manual
+
+              if cmake ../.. -GNinja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee manual_config.log; then
+                echo "✅ Manual configuration successful"
+
+                if ninja clap-host 2>&1 | tee manual_build.log; then
+                  echo "✅ Manual build completed successfully!"
+                  echo "BUILD_SUCCESS=true" >> $GITHUB_ENV  
+                  echo "BUILD_METHOD=manual" >> $GITHUB_ENV
+                else
+                  echo "❌ Manual build failed"
+                  echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
+                  echo ""
+                  echo "SUMMARY:"
+                  echo "- scripts/build.sh failed due to network/dependency restrictions"
+                  echo "- System package build failed" 
+                  echo "- Manual build failed"
+                  echo "- This may be due to dependency version incompatibilities"
+                fi
+              else
+                echo "❌ Manual configuration failed"
+                echo "BUILD_SUCCESS=false" >> $GITHUB_ENV
+              fi
             fi
           fi
 
