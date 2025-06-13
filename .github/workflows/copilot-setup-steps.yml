@@ -60,11 +60,11 @@ jobs:
             unzip \
             tar \
             libasound2-dev \
-            # qt6-base-dev \
             librtaudio-dev \
             librtmidi-dev \
             autoconf \
             libtool
+            # qt6-base-dev
 
       - name: Install Qt dependencies for vcpkg build
         run: |
@@ -76,9 +76,9 @@ jobs:
             libxi-dev \
             libxkbcommon-dev \
             libxkbcommon-x11-dev \
-            libegl1-mesa-dev #\
-            #libgl1-mesa-dev \ 
-            #libgles2-mesa-dev
+            libegl1-mesa-dev # \
+            # libgl1-mesa-dev \ 
+            # libgles2-mesa-dev
 
       - name: Clone CLAP host repository
         run: |
