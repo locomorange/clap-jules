@@ -133,6 +133,14 @@ jobs:
         run: |
           echo "Building CLAP host using scripts/build.sh as requested..."
           chmod +x scripts/build.sh
+          
+          # Fix EGL/OpenGL conflict by adding opengl feature to Qt build flags
+          echo "Patching scripts/build.sh to add opengl feature for Qt build..."
+          sed -i 's/QT_FEATURES=",xcb,xcb-xlib,xkb,xkbcommon-x11,xlib,xrender,fontconfig,harfbuzz,egl"/QT_FEATURES=",xcb,xcb-xlib,xkb,xkbcommon-x11,xlib,xrender,fontconfig,harfbuzz,egl,opengl"/' scripts/build.sh
+          
+          # Verify the patch was applied
+          echo "Checking Qt features after patch:"
+          grep "QT_FEATURES=" scripts/build.sh
 
           # Check environment variables set by previous steps
           echo "VCPKG_BOOTSTRAPPED: ${VCPKG_BOOTSTRAPPED:-false}"
