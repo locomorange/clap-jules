@@ -62,7 +62,13 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      shell: bash # Explicitly use bash for consistent if/else syntax
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          cmake . -B build -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=${{ github.workspace }}/build/libs/vstgui/vstgui/tests/unittest/Release
+        else
+          cmake . -B build
+        fi
 
     - name: Build project
       run: cmake --build build --config Release
@@ -137,10 +143,21 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      shell: bash # Explicitly use bash for consistent if/else syntax
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          cmake . -B build -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=${{ github.workspace }}/build/libs/vstgui/vstgui/tests/unittest/Release
+        else
+          cmake . -B build
+        fi
 
     - name: Build project (including tests)
       run: cmake --build build --config Release
+
+    - name: Run VSTGUI Unit Tests (Windows)
+      if: runner.os == 'Windows'
+      run: ${{ github.workspace }}/build/libs/vstgui/vstgui/tests/unittest/Release/unittests.exe
+      working-directory: ${{ github.workspace }} # Ensure working directory if needed, though absolute path should be fine
 
     - name: Run tests
       run: ctest --test-dir build -C Release --output-on-failure
