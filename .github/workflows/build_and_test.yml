@@ -28,6 +28,16 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Install VSTGUI dependencies (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install -y libx11-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev \
+                            libasound2-dev libfreetype6-dev libxcb-util-dev \
+                            libxcb-keysyms1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+                            libglib2.0-dev libcairo2-dev libpango1.0-dev libgtkmm-3.0-dev \
+                            libxcb-cursor-dev
+
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -102,6 +112,16 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+
+    - name: Install VSTGUI dependencies (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install -y libx11-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev \
+                            libasound2-dev libfreetype6-dev libxcb-util-dev \
+                            libxcb-keysyms1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+                            libglib2.0-dev libcairo2-dev libpango1.0-dev libgtkmm-3.0-dev \
+                            libxcb-cursor-dev
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
