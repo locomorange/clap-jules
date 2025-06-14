@@ -16,7 +16,7 @@ if (NOT CLAP_FOUND)
         # CLAP_PATH is already set (e.g. by cmake -DCLAP_PATH=...)
     else()
         # Try a default location (e.g. a submodule)
-        set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/clap")
+        set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
     endif()
 
     if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
@@ -56,7 +56,7 @@ install(TARGETS my_clap_plugin DESTINATION ${CLAP_INSTALL_DIR})
 message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.")
 
 # Google Test integration
-add_subdirectory(googletest)
+add_subdirectory(libs/googletest)
 enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
