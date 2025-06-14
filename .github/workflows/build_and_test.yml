@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -61,12 +61,28 @@ jobs:
         echo "Getting plugin info with clap-info..."
         clap-info build/MyFirstClapPlugin.so --brief
 
-    - name: Upload Windows Artifact
+    - name: Upload Artifact (Windows)
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
         name: MyFirstClapPlugin-windows-${{ github.sha }}
-        path: build/Release/MyFirstClapPlugin.clap # Typical path for Release config with MSVC
+        path: build/Release/MyFirstClapPlugin.clap
+        retention-days: 10
+
+    - name: Upload Artifact (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: MyFirstClapPlugin-linux-${{ github.sha }}
+        path: build/MyFirstClapPlugin.so
+        retention-days: 10
+
+    - name: Upload Artifact (macOS)
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v4
+      with:
+        name: MyFirstClapPlugin-macos-${{ github.sha }}
+        path: build/MyFirstClapPlugin.dylib
         retention-days: 10
 
   test:
@@ -75,7 +91,7 @@ jobs:
     needs: build # Ensures build job completes before test job starts
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
