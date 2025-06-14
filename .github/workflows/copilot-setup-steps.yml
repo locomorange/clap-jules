@@ -32,6 +32,7 @@ jobs:
           submodules: 'recursive'
 
       - name: Setup CLAP Tools
+        continue-on-error: true
         run: |
           # Download and setup clap-validator
           wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
