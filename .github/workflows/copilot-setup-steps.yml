@@ -34,7 +34,7 @@ jobs:
       - name: Setup CLAP Tools
         run: |
           # Download and setup clap-validator
-          wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/0.3.2/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
+          wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/0.3.2/clap-validator-0.3.2-ubuntu-18.04.tar.gz
           tar -xzf clap-validator.tar.gz
           chmod +x clap-validator
           
