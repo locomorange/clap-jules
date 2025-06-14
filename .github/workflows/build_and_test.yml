@@ -64,6 +64,15 @@ jobs:
     - name: Configure CMake
       run: cmake . -B build
 
+    - name: Create dummy unittests.cmd for VSTGUI post-build (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        echo @echo OFF > D:\unittests.cmd
+        echo echo Dummy unittests.cmd executed to prevent VSTGUI post-build failure. >> D:\unittests.cmd
+        echo exit /B 0 >> D:\unittests.cmd
+        echo Created D:\unittests.cmd
+
     - name: Build project
       run: cmake --build build --config Release
 
@@ -139,8 +148,22 @@ jobs:
     - name: Configure CMake
       run: cmake . -B build
 
+    - name: Create dummy unittests.cmd for VSTGUI post-build (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        echo @echo OFF > D:\unittests.cmd
+        echo echo Dummy unittests.cmd executed to prevent VSTGUI post-build failure. >> D:\unittests.cmd
+        echo exit /B 0 >> D:\unittests.cmd
+        echo Created D:\unittests.cmd
+
     - name: Build project (including tests)
       run: cmake --build build --config Release
+
+    - name: Run VSTGUI Unit Tests (Windows)
+      if: runner.os == 'Windows'
+      run: ${{ github.workspace }}/build/libs/vstgui/vstgui/tests/unittest/Release/unittests.exe
+      working-directory: ${{ github.workspace }} # Ensure working directory if needed, though absolute path should be fine
 
     - name: Run tests
       run: ctest --test-dir build -C Release --output-on-failure
