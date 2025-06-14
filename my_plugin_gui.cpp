@@ -18,15 +18,33 @@ MyPluginEditor::~MyPluginEditor() {
 }
 
 bool MyPluginEditor::isApiSupported(const char* api, bool isFloating) {
-    // Support X11 for Linux
+    // Support platform-specific APIs
+#ifdef __linux__
     if (strcmp(api, CLAP_WINDOW_API_X11) == 0) {
         return true;
     }
+#elif defined(__APPLE__)
+    if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) {
+        return true;
+    }
+#elif defined(_WIN32)
+    if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0) {
+        return true;
+    }
+#endif
     return false;
 }
 
 bool MyPluginEditor::getPreferredApi(const char** api, bool* isFloating) {
+#ifdef __linux__
     *api = CLAP_WINDOW_API_X11;
+#elif defined(__APPLE__)
+    *api = CLAP_WINDOW_API_COCOA;
+#elif defined(_WIN32)
+    *api = CLAP_WINDOW_API_WIN32;
+#else
+    *api = CLAP_WINDOW_API_X11; // fallback
+#endif
     *isFloating = false;
     return true;
 }
@@ -36,7 +54,8 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
         return true;
     }
     
-    if (!api || strcmp(api, CLAP_WINDOW_API_X11) != 0) {
+    // Check if the API is supported for this platform
+    if (!isApiSupported(api, isFloating)) {
         return false;
     }
     

@@ -1,6 +1,8 @@
 #include "my_plugin.h"
+#if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
@@ -49,10 +51,12 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     if (self) {
+#if VSTGUI_ENABLED
         if (self->gui_editor) {
             delete self->gui_editor;
             self->gui_editor = nullptr;
         }
+#endif
         free(self);
     }
 }
@@ -126,6 +130,7 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 }
 
 // --- GUI Extension Implementation ---
+#if VSTGUI_ENABLED
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     if (self && self->gui_editor) {
@@ -261,15 +266,18 @@ static const clap_plugin_gui_t my_gui_extension = {
     my_plugin_gui_show,
     my_plugin_gui_hide
 };
+#endif // VSTGUI_ENABLED
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
     
+#if VSTGUI_ENABLED
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
         return &my_gui_extension;
     }
+#endif
     
     return NULL; // No other extensions supported in this basic example
 }
@@ -310,12 +318,14 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     }
 
     // Initialize GUI editor
+#if VSTGUI_ENABLED
     self->gui_editor = new MyPluginEditor();
     if (!self->gui_editor) {
         fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
         free(self);
         return NULL;
     }
+#endif
 
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
