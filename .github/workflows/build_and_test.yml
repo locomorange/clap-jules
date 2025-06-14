@@ -67,6 +67,7 @@ jobs:
       with:
         name: MyFirstClapPlugin-windows-${{ github.sha }}
         path: build/Release/MyFirstClapPlugin.clap # Typical path for Release config with MSVC
+        retention-days: 10
 
   test:
     name: Test on ${{ matrix.os }}
