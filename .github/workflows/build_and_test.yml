@@ -142,8 +142,13 @@ jobs:
     - name: Build project (including tests)
       run: cmake --build build --config Release
 
-    - name: Run tests
+    - name: Run tests (Linux)
+      if: runner.os == 'Linux'
       run: ctest --test-dir build -C Release --output-on-failure
+
+    - name: Run tests (Windows)
+      if: runner.os == 'Windows'
+      run: .\build\libs\vstgui\vstgui\tests\unittest\Release\unittests.exe
 
     - name: Validate CLAP Plugin (Ubuntu only)
       if: runner.os == 'Linux'
