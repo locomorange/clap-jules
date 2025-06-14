@@ -22,13 +22,13 @@ static const char *const plugin_features[] = {"audio_effect", nullptr};
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
     "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
+    "My First CLAP Plugin with VSTGUI", // name
     "My Company",           // vendor
     "https://example.com",  // url
     "https://example.com/bugtracker", // manual_url
     "https://example.com/support",    // support_url
     "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "A simple example CLAP audio plugin with VSTGUI interface.", // description
     plugin_features, // features
     // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
@@ -36,15 +36,31 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize GUI
+    self->gui = new PluginGUI(plugin);
+    if (!self->gui) {
+        printf("MyPlugin: Failed to create GUI\n");
+        return false;
+    }
+    
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    // Clean up GUI
+    if (self->gui) {
+        delete self->gui;
+        self->gui = nullptr;
+    }
+    
+    // Free the plugin instance
+    free(self);
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -116,10 +132,13 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 }
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
+    // Return GUI extension if requested
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &plugin_gui_extension;
+    }
+    
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    return NULL; // No other extensions supported in this example
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -159,6 +178,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
 
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
+    self->gui = nullptr; // Initialize GUI pointer
     self->plugin.init = my_plugin_init;
     self->plugin.destroy = my_plugin_destroy;
     self->plugin.activate = my_plugin_activate;
