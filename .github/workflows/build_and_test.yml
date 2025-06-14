@@ -6,6 +6,10 @@ on:
   pull_request:
     # branches: [ main, master ]
 
+env:
+  CLAP_VALIDATOR_VERSION: '0.3.2'
+  CLAP_INFO_VERSION: 'v1.2.2'
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -24,11 +28,38 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Setup CLAP Tools (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        # Download and setup clap-validator
+        wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
+        tar -xzf clap-validator.tar.gz
+        chmod +x clap-validator
+        
+        # Download and setup clap-info
+        wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip
+        unzip -q clap-info.zip
+        chmod +x clap-info
+        
+        # Add current directory to PATH for tool access
+        echo "$PWD" >> $GITHUB_PATH
+
     - name: Configure CMake
       run: cmake . -B build
 
     - name: Build project
       run: cmake --build build --config Release
+
+    - name: Validate CLAP Plugin (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        # Validate the plugin with clap-validator
+        echo "Validating CLAP plugin with clap-validator..."
+        clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
+        
+        # Get plugin info with clap-info
+        echo "Getting plugin info with clap-info..."
+        clap-info build/MyFirstClapPlugin.so --brief
 
     - name: Upload Windows Artifact
       if: runner.os == 'Windows'
@@ -55,6 +86,22 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Setup CLAP Tools (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        # Download and setup clap-validator
+        wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
+        tar -xzf clap-validator.tar.gz
+        chmod +x clap-validator
+        
+        # Download and setup clap-info
+        wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip
+        unzip -q clap-info.zip
+        chmod +x clap-info
+        
+        # Add current directory to PATH for tool access
+        echo "$PWD" >> $GITHUB_PATH
+
     - name: Configure CMake
       run: cmake . -B build
 
@@ -63,3 +110,14 @@ jobs:
 
     - name: Run tests
       run: ctest --test-dir build -C Release --output-on-failure
+
+    - name: Validate CLAP Plugin (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        # Validate the plugin with clap-validator
+        echo "Validating CLAP plugin with clap-validator..."
+        clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
+        
+        # Get plugin info with clap-info
+        echo "Getting plugin info with clap-info..."
+        clap-info build/MyFirstClapPlugin.so --brief

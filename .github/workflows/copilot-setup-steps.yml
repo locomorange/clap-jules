@@ -1,0 +1,47 @@
+name: "Copilot Setup Steps"
+
+# Automatically run the setup steps when they are changed to allow for easy validation, and
+# allow manual testing through the repository's "Actions" tab
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+env:
+  CLAP_VALIDATOR_VERSION: '0.3.2'
+  CLAP_INFO_VERSION: 'v1.2.2'
+
+jobs:
+  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    # Set the permissions to the lowest permissions possible needed for your steps.
+    # Copilot will be given its own token for its operations.
+    permissions:
+      # If you want to clone the repository as part of your setup steps, for example to install dependencies, you'll need the `contents: read` permission. If you don't clone the repository in your setup steps, Copilot will do this for you automatically after the steps complete.
+      contents: read
+
+    # You can define any steps you want, and they will run before the agent starts.
+    # If you do not check out your code, Copilot will do this for you.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup CLAP Tools
+        run: |
+          # Download and setup clap-validator
+          wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
+          tar -xzf clap-validator.tar.gz
+          chmod +x clap-validator
+          
+          # Download and setup clap-info
+          wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip
+          unzip -q clap-info.zip
+          chmod +x clap-info
+          
+          # Add current directory to PATH for tool access
+          echo "$PWD" >> $GITHUB_PATH
