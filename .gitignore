@@ -38,6 +38,7 @@ CMakeUserPresets.json
 *.out
 *.app
 build/
+test_build/
 
 # CLAP tools (should not be committed)
 clap-info

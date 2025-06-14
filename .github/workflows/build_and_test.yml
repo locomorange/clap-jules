@@ -27,6 +27,40 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: 'latest'
+
+    - name: Install VSTGUI dependencies (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          pkg-config \
+          libx11-dev \
+          libxcursor-dev \
+          libxrandr-dev \
+          libgl1-mesa-dev \
+          libasound2-dev \
+          libfreetype-dev \
+          libxcb-util-dev \
+          libxcb-keysyms1-dev \
+          libxcb-cursor-dev \
+          libxcb-xkb-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-dev \
+          libglib2.0-dev \
+          libcairo2-dev \
+          libpango1.0-dev \
+          libfontconfig1-dev
+
+    - name: Setup macOS dependencies
+      if: runner.os == 'macOS'
+      run: |
+        # Ensure XCode command line tools are available
+        xcode-select --install || true
+        # Install any additional dependencies if needed
+        echo "macOS dependencies configured"
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -102,6 +136,40 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: 'latest'
+
+    - name: Install VSTGUI dependencies (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          pkg-config \
+          libx11-dev \
+          libxcursor-dev \
+          libxrandr-dev \
+          libgl1-mesa-dev \
+          libasound2-dev \
+          libfreetype-dev \
+          libxcb-util-dev \
+          libxcb-keysyms1-dev \
+          libxcb-cursor-dev \
+          libxcb-xkb-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-dev \
+          libglib2.0-dev \
+          libcairo2-dev \
+          libpango1.0-dev \
+          libfontconfig1-dev
+
+    - name: Setup macOS dependencies
+      if: runner.os == 'macOS'
+      run: |
+        # Ensure XCode command line tools are available
+        xcode-select --install || true
+        # Install any additional dependencies if needed
+        echo "macOS dependencies configured"
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'

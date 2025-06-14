@@ -1,4 +1,9 @@
 #include "my_plugin.h"
+#if VSTGUI_ENABLED
+#include "my_plugin_gui.h"
+#include <clap/ext/gui.h>
+#endif
+#include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -16,8 +21,8 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
-// Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+// Features array for the plugin descriptor  
+static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
@@ -44,7 +49,16 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self) {
+#if VSTGUI_ENABLED
+        if (self->gui_editor) {
+            delete self->gui_editor;
+            self->gui_editor = nullptr;
+        }
+#endif
+        free(self);
+    }
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -115,11 +129,157 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     return CLAP_PROCESS_CONTINUE;
 }
 
+// --- GUI Extension Implementation ---
+#if VSTGUI_ENABLED
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->isApiSupported(api, is_floating);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->getPreferredApi(api, is_floating);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->create(api, is_floating);
+    }
+    return false;
+}
+
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        self->gui_editor->destroy();
+    }
+}
+
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setScale(scale);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->getSize(width, height);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->canResize();
+    }
+    return false;
+}
+
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->getResizeHints(hints);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->adjustSize(width, height);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setSize(width, height);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setParent(window);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setTransient(window);
+    }
+    return false;
+}
+
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        self->gui_editor->suggestTitle(title);
+    }
+}
+
+static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->show();
+    }
+    return false;
+}
+
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->hide();
+    }
+    return false;
+}
+
+static const clap_plugin_gui_t my_gui_extension = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    my_plugin_gui_get_resize_hints,
+    my_plugin_gui_adjust_size,
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    my_plugin_gui_set_transient,
+    my_plugin_gui_suggest_title,
+    my_plugin_gui_show,
+    my_plugin_gui_hide
+};
+#endif // VSTGUI_ENABLED
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    
+#if VSTGUI_ENABLED
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &my_gui_extension;
+    }
+#endif
+    
+    return NULL; // No other extensions supported in this basic example
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -156,6 +316,16 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
     }
+
+    // Initialize GUI editor
+#if VSTGUI_ENABLED
+    self->gui_editor = new MyPluginEditor();
+    if (!self->gui_editor) {
+        fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
+        free(self);
+        return NULL;
+    }
+#endif
 
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
