@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -39,9 +39,26 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add VSTGUI if available
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt")
+    message(STATUS "Found VSTGUI, adding as subdirectory")
+    # Configure VSTGUI to not build examples/tests and use PIC
+    set(VSTGUI_BUILD_TESTS OFF CACHE BOOL "Don't build VSTGUI tests")
+    set(VSTGUI_BUILD_EXAMPLES OFF CACHE BOOL "Don't build VSTGUI examples")
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    add_subdirectory(libs/vstgui)
+endif()
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp plugin_gui.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link VSTGUI if available
+if (TARGET vstgui)
+    target_link_libraries(my_clap_plugin PRIVATE vstgui)
+    target_include_directories(my_clap_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui)
+    message(STATUS "Linking VSTGUI to plugin")
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")

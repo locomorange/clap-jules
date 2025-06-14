@@ -38,3 +38,9 @@ CMakeUserPresets.json
 *.out
 *.app
 build/
+
+# CLAP tools downloaded by CI
+clap-validator.tar.gz
+clap-validator
+clap-info.zip
+clap-info

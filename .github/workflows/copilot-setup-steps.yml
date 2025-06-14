@@ -9,6 +9,8 @@ on:
       - .github/workflows/copilot-setup-steps.yml
 
 env:
+  COPILOT_AGENT_FIREWALL_ALLOW_LIST_ADDITIONS: >
+    esm.ubuntu.com
   CLAP_VALIDATOR_VERSION: '0.3.2'
   CLAP_INFO_VERSION: 'v1.2.2'
 
