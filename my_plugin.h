@@ -2,9 +2,13 @@
 
 #include <clap/clap.h>
 
+// Forward declaration
+class MyPluginEditor;
+
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
+    MyPluginEditor* gui_editor;
     // Add any other plugin-specific data here
 } my_plugin_t;
 

@@ -42,12 +42,19 @@ endif()
 # Add VSTGUI if available
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt")
     message(STATUS "Found VSTGUI, adding as subdirectory")
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     add_subdirectory(libs/vstgui)
 endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp my_plugin_gui.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link VSTGUI if available
+if (TARGET vstgui)
+    target_link_libraries(my_clap_plugin PRIVATE vstgui)
+    target_include_directories(my_clap_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui)
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
