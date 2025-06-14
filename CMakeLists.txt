@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -37,6 +37,15 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     set(CLAP_HELPERS_BUILD_TESTS OFF CACHE BOOL "Don't build clap-helpers tests")
     set(CLAP_HELPERS_NO_CLAP_IS_FATAL OFF CACHE BOOL "Don't make missing clap fatal for clap-helpers")
     add_subdirectory(libs/clap-helpers)
+endif()
+
+# Add VSTGUI if available
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt")
+    message(STATUS "Found VSTGUI, adding as subdirectory")
+    # Configure VSTGUI to not build examples/tests
+    set(VSTGUI_BUILD_TESTS OFF CACHE BOOL "Don't build VSTGUI tests")
+    set(VSTGUI_BUILD_EXAMPLES OFF CACHE BOOL "Don't build VSTGUI examples")
+    add_subdirectory(libs/vstgui)
 endif()
 
 # Add your plugin target here
