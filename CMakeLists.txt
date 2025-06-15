@@ -131,6 +131,8 @@ elseif(UNIX)
     target_compile_definitions(my_clap_plugin PRIVATE IS_LINUX=1)
 elseif(WIN32)
     target_compile_definitions(my_clap_plugin PRIVATE IS_WIN=1)
+    target_compile_definitions(my_clap_plugin PRIVATE _USE_MATH_DEFINES)
+    target_compile_definitions(my_clap_plugin PRIVATE NOMINMAX)
 endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
