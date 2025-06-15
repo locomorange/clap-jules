@@ -323,6 +323,11 @@ MyPluginEditor::~MyPluginEditor() {
 }
 
 bool MyPluginEditor::isApiSupported(const char* api, bool isFloating) {
+    // Check for null API parameter
+    if (api == nullptr) {
+        return false;
+    }
+    
     // Support platform-specific APIs
 #ifdef __linux__
     if (strcmp(api, CLAP_WINDOW_API_X11) == 0) {

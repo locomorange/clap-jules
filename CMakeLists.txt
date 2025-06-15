@@ -162,5 +162,10 @@ add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin clap)
 target_include_directories(my_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Ensure test has same VSTGUI definition as plugin
+if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
+    target_compile_definitions(my_plugin_tests PRIVATE VSTGUI_ENABLED=1)
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
