@@ -312,7 +312,6 @@ void MyPluginEditor::createControls() {
     auto volumeKnob = new CKnob(volumeKnobRect, nullptr, 0, nullptr, nullptr);
     volumeKnob->setDefaultValue(0.5f);
     volumeKnob->setValue(0.5f);
-    volumeKnob->setFrameColor(CColor(80, 80, 80, 255)); // Dark gray frame
     volumeKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
     volumeKnob->setColorHandle(CColor(200, 50, 50, 255)); // Red handle for visibility
     frame->addView(volumeKnob);
@@ -329,7 +328,6 @@ void MyPluginEditor::createControls() {
     auto filterKnob = new CKnob(filterKnobRect, nullptr, 0, nullptr, nullptr);
     filterKnob->setDefaultValue(0.7f);
     filterKnob->setValue(0.7f);
-    filterKnob->setFrameColor(CColor(80, 80, 80, 255)); // Dark gray frame
     filterKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
     filterKnob->setColorHandle(CColor(50, 150, 50, 255)); // Green handle for visibility
     frame->addView(filterKnob);
@@ -346,7 +344,6 @@ void MyPluginEditor::createControls() {
     auto resKnob = new CKnob(resKnobRect, nullptr, 0, nullptr, nullptr);
     resKnob->setDefaultValue(0.3f);
     resKnob->setValue(0.3f);
-    resKnob->setFrameColor(CColor(80, 80, 80, 255)); // Dark gray frame
     resKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
     resKnob->setColorHandle(CColor(50, 50, 200, 255)); // Blue handle for visibility
     frame->addView(resKnob);
@@ -394,23 +391,15 @@ void MyPluginEditor::createControls() {
     // Text buttons
     CRect button1Rect(30, 230, 120, 255);
     auto button1 = new CTextButton(button1Rect, nullptr, 0, "Play");
-    button1->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    button1->setBackColor(CColor(180, 230, 180, 255)); // Light green background
-    button1->setTextColor(CColor(20, 20, 20, 255)); // Dark text
     frame->addView(button1);
     
     CRect button2Rect(130, 230, 220, 255);
     auto button2 = new CTextButton(button2Rect, nullptr, 0, "Stop");
-    button2->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    button2->setBackColor(CColor(230, 180, 180, 255)); // Light red background
-    button2->setTextColor(CColor(20, 20, 20, 255)); // Dark text
     frame->addView(button2);
     
     // Kick button (momentary)
     CRect kickButtonRect(230, 230, 320, 255);
     auto kickButton = new CKickButton(kickButtonRect, nullptr, 0, nullptr);
-    kickButton->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    kickButton->setBackColor(CColor(200, 200, 255, 255)); // Light blue background
     frame->addView(kickButton);
     
     CRect kickLabelRect(230, 260, 320, 280);
@@ -429,9 +418,6 @@ void MyPluginEditor::createControls() {
     optionMenu->addEntry("Band Pass");
     optionMenu->addEntry("Notch");
     optionMenu->setCurrent(0);
-    optionMenu->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    optionMenu->setBackColor(CColor(255, 255, 255, 255)); // White background
-    optionMenu->setFontColor(CColor(20, 20, 20, 255)); // Dark text
     frame->addView(optionMenu);
     
     CRect menuLabelRect(30, 330, 150, 350);
@@ -481,8 +467,6 @@ void MyPluginEditor::createControls() {
     CRect switch1Rect(220, 375, 260, 390);
     auto switch1 = new COnOffButton(switch1Rect, nullptr, 0, nullptr, 0);
     switch1->setValue(1.0f); // On
-    switch1->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    switch1->setBackColor(CColor(100, 200, 100, 255)); // Green when on
     frame->addView(switch1);
     
     CRect switch1LabelRect(220, 400, 280, 420);
@@ -497,7 +481,6 @@ void MyPluginEditor::createControls() {
     auto knob4 = new CKnob(knob4Rect, nullptr, 0, nullptr, nullptr);
     knob4->setDefaultValue(0.8f);
     knob4->setValue(0.8f);
-    knob4->setFrameColor(CColor(80, 80, 80, 255)); // Dark gray frame
     knob4->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
     knob4->setColorHandle(CColor(200, 150, 0, 255)); // Orange handle for visibility
     frame->addView(knob4);
@@ -513,7 +496,6 @@ void MyPluginEditor::createControls() {
     auto knob5 = new CKnob(knob5Rect, nullptr, 0, nullptr, nullptr);
     knob5->setDefaultValue(0.4f);
     knob5->setValue(0.4f);
-    knob5->setFrameColor(CColor(80, 80, 80, 255)); // Dark gray frame
     knob5->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
     knob5->setColorHandle(CColor(150, 0, 150, 255)); // Purple handle for visibility
     frame->addView(knob5);
@@ -529,7 +511,6 @@ void MyPluginEditor::createControls() {
     auto knob6 = new CKnob(knob6Rect, nullptr, 0, nullptr, nullptr);
     knob6->setDefaultValue(0.6f);
     knob6->setValue(0.6f);
-    knob6->setFrameColor(CColor(80, 80, 80, 255)); // Dark gray frame
     knob6->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
     knob6->setColorHandle(CColor(0, 150, 150, 255)); // Cyan handle for visibility
     frame->addView(knob6);
@@ -559,26 +540,16 @@ void MyPluginEditor::createControls() {
     // More buttons on the right
     CRect button3Rect(350, 230, 440, 255);
     auto button3 = new CTextButton(button3Rect, nullptr, 0, "Record");
-    button3->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    button3->setBackColor(CColor(255, 200, 200, 255)); // Light pink background
-    button3->setTextColor(CColor(20, 20, 20, 255)); // Dark text
     frame->addView(button3);
     
     CRect button4Rect(450, 230, 540, 255);
     auto button4 = new CTextButton(button4Rect, nullptr, 0, "Bypass");
-    button4->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    button4->setBackColor(CColor(200, 200, 200, 255)); // Light gray background
-    button4->setTextColor(CColor(20, 20, 20, 255)); // Dark text
     frame->addView(button4);
     
     // VU Meter
     CRect vuMeterRect(350, 275, 430, 295);
     auto vuMeter = new CVuMeter(vuMeterRect, nullptr, nullptr, 10, CVuMeter::kHorizontal);
     vuMeter->setValue(0.6f);
-    vuMeter->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    vuMeter->setBackColor(CColor(40, 40, 40, 255)); // Dark background
-    vuMeter->setOnColor(CColor(0, 255, 0, 255)); // Bright green for active segments
-    vuMeter->setOffColor(CColor(100, 100, 100, 255)); // Gray for inactive segments
     frame->addView(vuMeter);
     
     CRect vuMeterLabelRect(350, 300, 430, 320);
@@ -591,15 +562,11 @@ void MyPluginEditor::createControls() {
     CRect switch2Rect(450, 275, 490, 290);
     auto switch2 = new COnOffButton(switch2Rect, nullptr, 0, nullptr, 0);
     switch2->setValue(0.0f); // Off
-    switch2->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    switch2->setBackColor(CColor(200, 100, 100, 255)); // Red when off
     frame->addView(switch2);
     
     CRect switch3Rect(500, 275, 540, 290);
     auto switch3 = new COnOffButton(switch3Rect, nullptr, 0, nullptr, 0);
     switch3->setValue(1.0f); // On
-    switch3->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    switch3->setBackColor(CColor(100, 200, 100, 255)); // Green when on
     frame->addView(switch3);
     
     CRect switchGroupLabelRect(450, 300, 540, 320);
