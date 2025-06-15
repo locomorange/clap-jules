@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Windows-specific compiler settings
-if(MSVC)
+if(WIN32 AND MSVC)
     # Disable MSVC warnings for standard library functions
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
     # Enable proper C++ exception handling

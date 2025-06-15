@@ -1,7 +1,8 @@
 #include "graphics_renderer.h"
 #include <vector>
 #include <cstring>
-#include <cstdio>
+#include <memory>
+#include <algorithm>
 
 namespace clap_jules {
 
@@ -82,7 +83,7 @@ public:
 };
 
 #ifdef HAVE_SKIA
-// This would be the Skia implementation
+// Skia implementation - only compiled when Skia is available
 #include "core/SkCanvas.h"
 #include "core/SkSurface.h"
 #include "core/SkPaint.h"

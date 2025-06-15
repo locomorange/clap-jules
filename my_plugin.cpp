@@ -1,9 +1,8 @@
 #include "my_plugin.h"
 #include "graphics_renderer.h"
-#include <stdio.h>  // For printf in example functions
-#include <string.h> // For strcmp
-#include <cstdlib>  // For calloc
-#include <memory>   // For unique_ptr
+#include <cstring>   // For strcmp
+#include <cstdlib>   // For calloc
+#include <memory>    // For unique_ptr
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -39,7 +38,6 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    printf("MyPlugin: Initializing plugin\n");
     
     // Initialize graphics renderer
     clap_jules::initializeGraphics(self);
@@ -48,7 +46,6 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Destroying plugin\n");
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
     // Cleanup graphics renderer
@@ -58,8 +55,6 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
-    printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
     // Demonstrate graphics rendering when plugin is activated
@@ -70,21 +65,17 @@ static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_r
 }
 
 static void my_plugin_deactivate(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Deactivating plugin\n");
     // Free resources allocated in activate
 }
 
 static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Starting processing\n");
     return true;
 }
 
 static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Stopping processing\n");
 }
 
 static void my_plugin_reset(const struct clap_plugin *plugin) {
-    printf("MyPlugin: Resetting plugin\n");
     // Reset plugin state (e.g., clear buffers, reset parameters)
 }
 
@@ -93,7 +84,6 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     // For this example, we'll just print a message once.
     // static bool first_process = true;
     // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
     //     first_process = false;
     // }
 
@@ -134,13 +124,11 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
-    printf("MyPlugin: Host requesting extension: %s\n", id);
     return NULL; // No extensions supported in this basic example
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
-    // printf("MyPlugin: on_main_thread called\n");
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -163,13 +151,11 @@ static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const st
 
 static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_factory *factory, const clap_host_t *host, const char *plugin_id) {
     if (strcmp(plugin_id, my_plugin_descriptor.id) != 0) {
-        fprintf(stderr, "MyPlugin: Error - incorrect plugin ID requested: %s\n", plugin_id);
         return NULL;
     }
 
     my_plugin_t *self = (my_plugin_t *)calloc(1, sizeof(my_plugin_t));
     if (!self) {
-        fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
     }
 
@@ -186,7 +172,6 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->plugin.get_extension = my_plugin_get_extension;
     self->plugin.on_main_thread = my_plugin_on_main_thread;
 
-    printf("MyPlugin: Plugin instance created successfully.\n");
     return &self->plugin;
 }
 
@@ -202,25 +187,21 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
     // init: Called once when the library is loaded.
     [](const char *plugin_path) -> bool {
-        printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
         // Perform any global library initialization here if needed
         return true;
     },
     // deinit: Called once when the library is unloaded.
     []() -> void {
-        printf("MyPlugin: clap_entry.deinit called\n");
         // Perform any global library cleanup here if needed
     },
     // get_factory: Returns a factory based on its ID.
     [](const char *factory_id) -> const void * {
-        printf("MyPlugin: clap_entry.get_factory called (ID: %s)\n", factory_id);
         if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
             return &my_plugin_factory;
         }
         // To support other factory types, check their specific IDs here.
         // For example, CLAP_PLUGIN_VOICE_INFO_FACTORY_ID for voice info.
         // Or CLAP_PLUGIN_REMOTABLE_CONTROLS_FACTORY_ID for remotable controls.
-        fprintf(stderr, "MyPlugin: Unknown factory ID requested: %s\n", factory_id);
         return NULL;
     }
 };
@@ -229,20 +210,13 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
 namespace clap_jules {
 
 void initializeGraphics(my_plugin_t* plugin) {
-    printf("MyPlugin: Initializing graphics renderer...\n");
+    // Initialize graphics renderer
     auto renderer = createGraphicsRenderer();
     plugin->graphics_renderer = renderer.release();
-    
-    #ifdef HAVE_SKIA
-    printf("MyPlugin: Skia graphics renderer initialized\n");
-    #else
-    printf("MyPlugin: Basic graphics renderer initialized\n");
-    #endif
 }
 
 void cleanupGraphics(my_plugin_t* plugin) {
     if (plugin->graphics_renderer) {
-        printf("MyPlugin: Cleaning up graphics renderer\n");
         delete static_cast<GraphicsRenderer*>(plugin->graphics_renderer);
         plugin->graphics_renderer = nullptr;
     }
@@ -271,9 +245,6 @@ void renderFrame(my_plugin_t* plugin, int width, int height) {
     }
     
     renderer->endFrame();
-    
-    printf("MyPlugin: Rendered frame %dx%d, data size: %zu bytes\n", 
-           width, height, renderer->getFrameSize());
 }
 
 } // namespace clap_jules
