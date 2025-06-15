@@ -8,6 +8,12 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+
+// Define math constants for Windows compatibility
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 #include <cmath>    // For FFT calculations
 #include <algorithm>
 #include <complex>
