@@ -52,18 +52,16 @@ jobs:
         sudo apt install -y \
           build-essential \
           pkg-config \
-          libx11-dev \
-          libxcb1-dev \
-          libxcb-util-dev \
           libxcb-cursor-dev \
           libxcb-keysyms1-dev \
-          libxcb-xkb-dev \
+          libxcb-util-dev \
           libxkbcommon-dev \
           libxkbcommon-x11-dev \
-          libfreetype6-dev \
-          libglib2.0-dev \
-          libcairo2-dev \
-          libpango1.0-dev
+          libcogl-pango-dev \
+          libpangoft2-1.0-0 \
+          libpango-1.0-0 \
+          libgtk-3-dev \
+          libgtkmm-3.0-dev
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -97,69 +95,6 @@ jobs:
         # Get plugin info with clap-info
         echo "Getting plugin info with clap-info..."
         clap-info build/MyFirstClapPlugin.so --brief
-
-    - name: Test GUI functionality (Linux with GUI only)
-      if: runner.os == 'Linux' && !contains(matrix.name, 'without GUI')
-      run: |
-        echo "Testing GUI functionality..."
-        # Create a simple test that verifies GUI extension works without crashing
-        cat > test_gui_simple.cpp << 'EOF'
-        #include <clap/clap.h>
-        #include <clap/ext/gui.h>
-        #include <dlfcn.h>
-        #include <iostream>
-        #include <cstring>
-        
-        static const void* host_get_extension(const clap_host_t *host, const char *ext) { return nullptr; }
-        static void host_request_restart(const clap_host_t *host) {}
-        static void host_request_process(const clap_host_t *host) {}
-        static void host_request_callback(const clap_host_t *host) {}
-        
-        static clap_host_t host = {
-            CLAP_VERSION, nullptr, "test-host", "Test Host", "1.0", 
-            "https://example.com", host_get_extension, host_request_restart, host_request_process, host_request_callback
-        };
-        
-        int main() {
-            void *lib = dlopen("build/MyFirstClapPlugin.so", RTLD_NOW);
-            if (!lib) return 1;
-            
-            auto entry = (const clap_plugin_entry_t*)dlsym(lib, "clap_entry");
-            if (!entry || !entry->init("test")) return 1;
-            
-            auto factory = (const clap_plugin_factory_t*)entry->get_factory(CLAP_PLUGIN_FACTORY_ID);
-            if (!factory) return 1;
-            
-            auto desc = factory->get_plugin_descriptor(factory, 0);
-            auto plugin = factory->create_plugin(factory, &host, desc->id);
-            if (!plugin || !plugin->init(plugin)) return 1;
-            
-            auto gui = (const clap_plugin_gui_t*)plugin->get_extension(plugin, CLAP_EXT_GUI);
-            if (!gui) {
-                std::cout << "No GUI extension" << std::endl;
-                plugin->destroy(plugin);
-                entry->deinit();
-                dlclose(lib);
-                return 0;
-            }
-            
-            // Test create/destroy cycle
-            if (gui->create(plugin, CLAP_WINDOW_API_X11, false)) {
-                std::cout << "GUI created successfully" << std::endl;
-                gui->destroy(plugin);
-                std::cout << "GUI destroyed successfully" << std::endl;
-            }
-            
-            plugin->destroy(plugin);
-            entry->deinit();
-            dlclose(lib);
-            std::cout << "GUI test completed without crashes" << std::endl;
-            return 0;
-        }
-        EOF
-        
-        g++ -std=c++17 -I libs/clap/include test_gui_simple.cpp -o test_gui_simple -ldl
-        ./test_gui_simple
 
     - name: Upload Artifact (Windows)
       if: runner.os == 'Windows'
@@ -227,18 +162,16 @@ jobs:
         sudo apt install -y \
           build-essential \
           pkg-config \
-          libx11-dev \
-          libxcb1-dev \
-          libxcb-util-dev \
           libxcb-cursor-dev \
           libxcb-keysyms1-dev \
-          libxcb-xkb-dev \
+          libxcb-util-dev \
           libxkbcommon-dev \
           libxkbcommon-x11-dev \
-          libfreetype6-dev \
-          libglib2.0-dev \
-          libcairo2-dev \
-          libpango1.0-dev
+          libcogl-pango-dev \
+          libpangoft2-1.0-0 \
+          libpango-1.0-0 \
+          libgtk-3-dev \
+          libgtkmm-3.0-dev
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
