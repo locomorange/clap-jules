@@ -22,7 +22,7 @@ protected:
         };
         
         // Create plugin instance
-        plugin_instance = my_plugin_factory.create_plugin(&my_plugin_factory, &test_host, "com.example.myplugin");
+        plugin_instance = my_plugin_factory.create_plugin(&my_plugin_factory, &test_host, "com.example.spectrum-analyzer");
         ASSERT_NE(plugin_instance, nullptr);
         
         // Initialize plugin
@@ -62,7 +62,7 @@ TEST_F(MyPluginTest, ParametersExtensionWorks) {
     clap_param_info_t param_info;
     ASSERT_TRUE(params_ext->get_info(plugin_instance, 0, &param_info));
     EXPECT_EQ(param_info.id, PARAM_SPECTRUM_DRAWING_STYLE);
-    EXPECT_STREQ(param_info.name, "Spectrum Style");
+    EXPECT_STREQ(param_info.name, "Drawing Style");
 }
 
 TEST_F(MyPluginTest, GUIExtensionWorks) {
@@ -70,6 +70,7 @@ TEST_F(MyPluginTest, GUIExtensionWorks) {
     const clap_plugin_gui_t* gui_ext = static_cast<const clap_plugin_gui_t*>(
         plugin_instance->get_extension(plugin_instance, CLAP_EXT_GUI));
     
+#if VSTGUI_ENABLED
     ASSERT_NE(gui_ext, nullptr);
     
     // Test API support
@@ -83,6 +84,10 @@ TEST_F(MyPluginTest, GUIExtensionWorks) {
     EXPECT_GT(height, 0u);
     
     gui_ext->destroy(plugin_instance);
+#else
+    // GUI extension should not be available when VSTGUI is disabled
+    EXPECT_EQ(gui_ext, nullptr);
+#endif
 }
 
 TEST_F(MyPluginTest, SpectrumAnalyzerProcessesAudio) {
