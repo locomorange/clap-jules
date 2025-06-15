@@ -1,3 +1,9 @@
+// Define math constants for Windows compatibility - must be before all includes
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#define NOMINMAX
+#endif
+
 #include "my_plugin.h"
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
@@ -8,11 +14,6 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
-
-// Define math constants for Windows compatibility
-#ifdef _WIN32
-#define _USE_MATH_DEFINES
-#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
