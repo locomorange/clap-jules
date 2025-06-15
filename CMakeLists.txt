@@ -12,8 +12,18 @@ project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Option to include GUI support (enabled by default)
-option(CLAP_INCLUDE_GUI "Include GUI support in the CLAP plugin" TRUE)
+# Option to include GUI support 
+# Disabled by default in CI environments to avoid dependency issues
+# Can be explicitly enabled with -DCLAP_INCLUDE_GUI=ON
+if(NOT DEFINED CLAP_INCLUDE_GUI)
+    if(DEFINED ENV{CI} OR DEFINED ENV{GITHUB_ACTIONS})
+        set(CLAP_INCLUDE_GUI FALSE CACHE BOOL "Include GUI support in the CLAP plugin")
+    else()
+        set(CLAP_INCLUDE_GUI TRUE CACHE BOOL "Include GUI support in the CLAP plugin")
+    endif()
+else()
+    option(CLAP_INCLUDE_GUI "Include GUI support in the CLAP plugin" ${CLAP_INCLUDE_GUI})
+endif()
 
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
