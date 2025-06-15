@@ -2,6 +2,8 @@
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#include <vstgui/lib/vstguiinit.h>
+#include <dlfcn.h>
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
@@ -357,12 +359,33 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     // init: Called once when the library is loaded.
     [](const char *plugin_path) -> bool {
         printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
+        
+#if VSTGUI_ENABLED
+        // Initialize VSTGUI with the library handle
+        // Get the library handle for Linux
+        void* handle = dlopen(plugin_path, RTLD_NOLOAD);
+        if (handle) {
+            printf("MyPlugin: Initializing VSTGUI...\n");
+            VSTGUI::init(handle);
+        } else {
+            printf("MyPlugin: Warning - could not get library handle for VSTGUI init\n");
+            // Try to initialize without handle
+            VSTGUI::init(nullptr);
+        }
+#endif
+        
         // Perform any global library initialization here if needed
         return true;
     },
     // deinit: Called once when the library is unloaded.
     []() -> void {
         printf("MyPlugin: clap_entry.deinit called\n");
+        
+#if VSTGUI_ENABLED
+        // Cleanup VSTGUI
+        VSTGUI::exit();
+#endif
+        
         // Perform any global library cleanup here if needed
     },
     // get_factory: Returns a factory based on its ID.

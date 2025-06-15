@@ -2,6 +2,9 @@
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
+#include <vstgui/lib/platform/iplatformframecallback.h>
+#include <vstgui/lib/vstguiinit.h>
+#include <vstgui/vstgui.h>
 #include <iostream>
 
 MyPluginEditor::MyPluginEditor()
@@ -10,6 +13,7 @@ MyPluginEditor::MyPluginEditor()
     , isVisible(false)
     , currentWidth(400)
     , currentHeight(300)
+    , parentWindowHandle(nullptr)
 {
 }
 
@@ -51,28 +55,40 @@ bool MyPluginEditor::getPreferredApi(const char** api, bool* isFloating) {
 
 bool MyPluginEditor::create(const char* api, bool isFloating) {
     if (isCreated) {
+        std::cout << "MyPlugin GUI: Already created, returning true" << std::endl;
         return true;
     }
     
     // Check if the API is supported for this platform
     if (!isApiSupported(api, isFloating)) {
+        std::cout << "MyPlugin GUI: API not supported: " << api << std::endl;
         return false;
     }
     
+    std::cout << "MyPlugin GUI: Creating frame..." << std::endl;
+    
     try {
-        // Create VSTGUI frame
+        // Create VSTGUI frame with proper size
         CRect rect(0, 0, currentWidth, currentHeight);
-        frame = new CFrame(rect, nullptr);
+        std::cout << "MyPlugin GUI: Creating CFrame with rect " << rect.left << "," << rect.top << " " << rect.getWidth() << "x" << rect.getHeight() << std::endl;
+        
+        frame = new CFrame(rect, this);
         
         if (frame) {
+            std::cout << "MyPlugin GUI: Frame created, adding controls..." << std::endl;
             createControls();
             isCreated = true;
-            std::cout << "MyPlugin GUI: Created successfully" << std::endl;
+            std::cout << "MyPlugin GUI: Created frame successfully" << std::endl;
             return true;
+        } else {
+            std::cout << "MyPlugin GUI: Failed to create CFrame" << std::endl;
         }
     }
     catch (const std::exception& e) {
-        std::cout << "MyPlugin GUI: Error creating GUI: " << e.what() << std::endl;
+        std::cout << "MyPlugin GUI: Exception creating GUI: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cout << "MyPlugin GUI: Unknown exception creating GUI" << std::endl;
     }
     
     return false;
@@ -80,11 +96,16 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
 
 void MyPluginEditor::destroy() {
     if (frame) {
+        // Close the frame properly first
+        if (frame->isAttached()) {
+            frame->close();
+        }
         frame->forget();
         frame = nullptr;
     }
     isCreated = false;
     isVisible = false;
+    parentWindowHandle = nullptr;
 }
 
 bool MyPluginEditor::setScale(double scale) {
@@ -126,20 +147,48 @@ bool MyPluginEditor::setSize(uint32_t width, uint32_t height) {
 
 bool MyPluginEditor::setParent(const clap_window_t* window) {
     if (!isCreated || !frame || !window) {
+        std::cout << "MyPlugin GUI: setParent failed - invalid state" << std::endl;
         return false;
     }
     
     try {
-        // Embed into X11 window
+        // Handle X11 window embedding
         if (window->api && strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
-            // Use VSTGUI's platform-specific methods to embed
-            // For now, just return true to indicate we can handle the parent window
-            std::cout << "MyPlugin GUI: Set parent window (X11 ID: " << window->x11 << ")" << std::endl;
-            return true;
+            // Store the parent window handle
+            parentWindowHandle = (void*)(uintptr_t)window->x11;
+            
+            std::cout << "MyPlugin GUI: Embedding into X11 window ID: " << window->x11 << std::endl;
+            
+            // Validate that we have a reasonable window ID (not zero and not obviously invalid)
+            if (window->x11 == 0) {
+                std::cout << "MyPlugin GUI: Invalid X11 window ID (0)" << std::endl;
+                return false;
+            }
+            
+            // Open the frame with the X11 parent window
+            // Note: This may fail if the window ID is not valid, but should not crash
+            try {
+                if (frame->open(parentWindowHandle, PlatformType::kX11EmbedWindowID)) {
+                    std::cout << "MyPlugin GUI: Successfully embedded into X11 window" << std::endl;
+                    return true;
+                } else {
+                    std::cout << "MyPlugin GUI: Failed to open frame with X11 parent (window may not exist)" << std::endl;
+                    return false;
+                }
+            } catch (const std::exception& e) {
+                std::cout << "MyPlugin GUI: Exception during frame open: " << e.what() << std::endl;
+                return false;
+            } catch (...) {
+                std::cout << "MyPlugin GUI: Unknown exception during frame open" << std::endl;
+                return false;
+            }
         }
     }
     catch (const std::exception& e) {
         std::cout << "MyPlugin GUI: Error setting parent: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cout << "MyPlugin GUI: Unknown error setting parent" << std::endl;
     }
     
     return false;
@@ -156,13 +205,20 @@ void MyPluginEditor::suggestTitle(const char* title) {
 
 bool MyPluginEditor::show() {
     if (!isCreated || !frame) {
+        std::cout << "MyPlugin GUI: Cannot show - frame not created" << std::endl;
         return false;
     }
     
     try {
+        // If frame is not yet opened (embedded), we can't show it
+        if (!frame->isAttached()) {
+            std::cout << "MyPlugin GUI: Cannot show - frame not embedded in parent window" << std::endl;
+            return false;
+        }
+        
         frame->setVisible(true);
         isVisible = true;
-        std::cout << "MyPlugin GUI: Shown" << std::endl;
+        std::cout << "MyPlugin GUI: Shown successfully" << std::endl;
         return true;
     }
     catch (const std::exception& e) {
@@ -180,7 +236,7 @@ bool MyPluginEditor::hide() {
     try {
         frame->setVisible(false);
         isVisible = false;
-        std::cout << "MyPlugin GUI: Hidden" << std::endl;
+        std::cout << "MyPlugin GUI: Hidden successfully" << std::endl;
         return true;
     }
     catch (const std::exception& e) {

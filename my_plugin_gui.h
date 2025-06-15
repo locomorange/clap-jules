@@ -7,7 +7,7 @@
 
 using namespace VSTGUI;
 
-class MyPluginEditor {
+class MyPluginEditor : public VSTGUIEditorInterface {
 public:
     MyPluginEditor();
     ~MyPluginEditor();
@@ -35,6 +35,7 @@ private:
     bool isVisible;
     uint32_t currentWidth;
     uint32_t currentHeight;
+    void* parentWindowHandle;
     
     void createControls();
 };
