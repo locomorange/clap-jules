@@ -1,4 +1,5 @@
 #include "my_plugin_gui.h"
+#include "eq_curve_view.h"
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
@@ -459,14 +460,12 @@ void MyPluginEditor::createControls() {
     
     // EQカーブビューを作成 (Create EQ curve view)
     CRect eqCurveRect(280, 70, 860, 420);
-    // TODO: カスタムEQCurveViewクラスを使用 (TODO: Use custom EQCurveView class)
-    // auto eqCurveView = new EQCurveView(eqCurveRect);
-    // frame->addView(eqCurveView);
-    
-    // 現在は簡易的な表示エリアを作成 (Create simplified display area for now)
-    auto eqBackground = new CView(eqCurveRect);
-    // CViewではsetBackgroundColorではなくdraw()をオーバーライドして背景を描画 (For CView, override draw() instead of setBackgroundColor)
-    frame->addView(eqBackground);
+    auto eqCurveView = new EQCurveView(eqCurveRect);
+    // TODO: パラメータ変更コールバックの設定 (TODO: Set parameter change callback)
+    // eqCurveView->setParameterChangeCallback([](int index, double freq, double gain) {
+    //     // パラメータマネージャーに変更を通知 (Notify parameter manager of changes)
+    // });
+    frame->addView(eqCurveView);
     
     CRect eqTitleRect(280, 45, 860, 70);
     auto eqTitle = new CTextLabel(eqTitleRect, "EQ CURVE - Auto Dynamic EQ (Double-click to add points, Right-click to remove)");
