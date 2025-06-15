@@ -8,6 +8,9 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <cmath>    // For FFT calculations
+#include <algorithm>
+#include <complex>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -20,6 +23,14 @@ static void my_plugin_reset(const struct clap_plugin *plugin);
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+
+// --- FFT and spectrum analysis functions ---
+static void init_fft_data(fft_data_t* fft_data, double sample_rate);
+static void cleanup_fft_data(fft_data_t* fft_data);
+static void generate_hann_window(std::vector<float>& window, size_t size);
+static void perform_fft(std::vector<std::complex<float>>& data);
+static void process_spectrum_analysis(my_plugin_t* self, const float* audio_data, uint32_t frame_count);
+static void update_spectrum_data(fft_data_t* fft_data);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor  
@@ -38,6 +49,143 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
     plugin_features, // features
 };
 
+//=============================================================================
+// FFT and Spectrum Analysis Implementation
+//=============================================================================
+
+static void init_fft_data(fft_data_t* fft_data, double sample_rate) {
+    fft_data->sample_rate = sample_rate;
+    fft_data->buffer_index = 0;
+    fft_data->frames_since_last_update = 0;
+    
+    // Initialize buffers
+    fft_data->fft_buffer.resize(SPECTRUM_FFT_SIZE);
+    fft_data->input_buffer.resize(SPECTRUM_FFT_SIZE);
+    fft_data->window_function.resize(SPECTRUM_FFT_SIZE);
+    
+    // Generate Hann window for better frequency resolution
+    generate_hann_window(fft_data->window_function, SPECTRUM_FFT_SIZE);
+    
+    // Initialize spectrum data
+    const size_t num_bins = SPECTRUM_FFT_SIZE / 2; // Only use positive frequencies
+    fft_data->spectrum_data.magnitudes.resize(num_bins);
+    fft_data->spectrum_data.frequencies.resize(num_bins);
+    
+    // Calculate frequency bins (logarithmic scale from 20Hz to 20kHz)
+    for (size_t i = 0; i < num_bins; ++i) {
+        float freq = (float)i * (float)(sample_rate / 2) / (float)num_bins;
+        fft_data->spectrum_data.frequencies[i] = freq;
+        fft_data->spectrum_data.magnitudes[i] = 0.0f;
+    }
+    
+    fft_data->spectrum_data.data_ready.store(false);
+    fft_data->spectrum_data.draw_style = SPECTRUM_STYLE_LINES;
+    fft_data->spectrum_data.enabled = true;
+}
+
+static void cleanup_fft_data(fft_data_t* fft_data) {
+    std::lock_guard<std::mutex> lock(fft_data->spectrum_data.data_mutex);
+    fft_data->fft_buffer.clear();
+    fft_data->input_buffer.clear();
+    fft_data->window_function.clear();
+    fft_data->spectrum_data.magnitudes.clear();
+    fft_data->spectrum_data.frequencies.clear();
+}
+
+static void generate_hann_window(std::vector<float>& window, size_t size) {
+    for (size_t i = 0; i < size; ++i) {
+        window[i] = 0.5f * (1.0f - cosf(2.0f * M_PI * i / (size - 1)));
+    }
+}
+
+// Simple Cooley-Tukey FFT implementation
+static void perform_fft(std::vector<std::complex<float>>& data) {
+    const size_t N = data.size();
+    if (N <= 1) return;
+    
+    // Bit-reversal permutation
+    for (size_t i = 1, j = 0; i < N; ++i) {
+        size_t bit = N >> 1;
+        for (; j & bit; bit >>= 1) {
+            j ^= bit;
+        }
+        j ^= bit;
+        if (i < j) {
+            std::swap(data[i], data[j]);
+        }
+    }
+    
+    // Cooley-Tukey FFT
+    for (size_t len = 2; len <= N; len <<= 1) {
+        float angle = 2.0f * M_PI / len;
+        std::complex<float> wlen(cosf(angle), sinf(angle));
+        
+        for (size_t i = 0; i < N; i += len) {
+            std::complex<float> w(1.0f, 0.0f);
+            for (size_t j = 0; j < len / 2; ++j) {
+                std::complex<float> u = data[i + j];
+                std::complex<float> v = data[i + j + len / 2] * w;
+                data[i + j] = u + v;
+                data[i + j + len / 2] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+}
+
+static void process_spectrum_analysis(my_plugin_t* self, const float* audio_data, uint32_t frame_count) {
+    if (!self->fft_data.spectrum_data.enabled) {
+        return;
+    }
+    
+    for (uint32_t i = 0; i < frame_count; ++i) {
+        // Fill input buffer
+        self->fft_data.input_buffer[self->fft_data.buffer_index] = audio_data[i];
+        self->fft_data.buffer_index = (self->fft_data.buffer_index + 1) % SPECTRUM_FFT_SIZE;
+        
+        // Check if it's time to update spectrum
+        self->fft_data.frames_since_last_update++;
+        const size_t update_interval = (size_t)(self->fft_data.sample_rate / SPECTRUM_UPDATE_RATE);
+        
+        if (self->fft_data.frames_since_last_update >= update_interval && self->fft_data.buffer_index == 0) {
+            update_spectrum_data(&self->fft_data);
+            self->fft_data.frames_since_last_update = 0;
+        }
+    }
+}
+
+static void update_spectrum_data(fft_data_t* fft_data) {
+    // Copy input buffer and apply window function
+    for (size_t i = 0; i < SPECTRUM_FFT_SIZE; ++i) {
+        size_t idx = (fft_data->buffer_index + i) % SPECTRUM_FFT_SIZE;
+        fft_data->fft_buffer[i] = std::complex<float>(
+            fft_data->input_buffer[idx] * fft_data->window_function[i], 0.0f);
+    }
+    
+    // Perform FFT
+    perform_fft(fft_data->fft_buffer);
+    
+    // Update spectrum data with thread safety
+    {
+        std::lock_guard<std::mutex> lock(fft_data->spectrum_data.data_mutex);
+        
+        const size_t num_bins = SPECTRUM_FFT_SIZE / 2;
+        for (size_t i = 0; i < num_bins; ++i) {
+            float magnitude = std::abs(fft_data->fft_buffer[i]);
+            // Convert to dB scale and normalize
+            float db = 20.0f * log10f(std::max(magnitude, 1e-6f));
+            // Normalize to 0-1 range (assuming -60dB to 0dB range)
+            fft_data->spectrum_data.magnitudes[i] = std::max(0.0f, std::min(1.0f, (db + 60.0f) / 60.0f));
+        }
+        
+        fft_data->spectrum_data.data_ready.store(true);
+    }
+}
+
+//=============================================================================
+// Plugin Implementation
+//=============================================================================
+
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
@@ -51,6 +199,8 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->params.output = 0.0;
     self->params.mix = 1.0;
     self->params.bypass = false;
+    self->params.spectrum_enabled = true;
+    self->params.spectrum_style = SPECTRUM_STYLE_LINES;
     
     for (int i = 0; i < 3; ++i) {
         self->params.eq_gain[i] = 0.0;
@@ -65,6 +215,9 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     if (self) {
+        // Cleanup FFT data
+        cleanup_fft_data(&self->fft_data);
+        
 #if VSTGUI_ENABLED
         if (self->gui_editor) {
             delete self->gui_editor;
@@ -77,7 +230,13 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    // Allocate and prepare resources needed for processing (e.g., buffers)
+    
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Initialize FFT data for spectrum analysis
+    init_fft_data(&self->fft_data, sample_rate);
+    
+    printf("MyPlugin: FFT data initialized for spectrum analysis\n");
     return true;
 }
 
@@ -101,45 +260,26 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
-
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Example: Process audio from input to output (stereo) with spectrum analysis
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
+        
+        if (out_buf->channel_count >= 2 && in_buf->channel_count >= 2 && out_buf->data32 && in_buf->data32) {
+            // Process audio and perform spectrum analysis on left channel
+            for (uint32_t i = 0; i < process->frames_count; ++i) {
+                out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
+                out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
+            }
+            
+            // Perform spectrum analysis on the left channel
+            if (self->params.spectrum_enabled) {
+                process_spectrum_analysis(self, in_buf->data32[0], process->frames_count);
+            }
+        }
+    }
     return CLAP_PROCESS_CONTINUE;
 }
 

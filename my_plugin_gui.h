@@ -15,6 +15,8 @@
 #include <vstgui/lib/cgraphicspath.h>
 #include <memory>
 #include <vector>
+#include <mutex>
+#include "my_plugin.h"
 
 using namespace VSTGUI;
 
@@ -30,6 +32,7 @@ struct EQNode {
 
 // Forward declarations (to avoid circular dependencies)
 class MyPluginEditor;
+class SpectrumAnalyzerView;
 
 // Custom EQ visualization view
 class EQVisualizationView : public CView {
@@ -56,6 +59,36 @@ private:
     CPoint frequencyToPosition(double freq, double gain);
     void positionToFrequency(const CPoint& pos, double& freq, double& gain);
     int getNodeAtPosition(const CPoint& pos);
+};
+
+// Custom spectrum analyzer visualization view
+class SpectrumAnalyzerView : public CView {
+public:
+    SpectrumAnalyzerView(const CRect& size);
+    ~SpectrumAnalyzerView();
+    
+    void draw(CDrawContext* context) override;
+    CMouseEventResult onMouseDown(CPoint& where, const CButtonState& buttons) override;
+    
+    void updateSpectrumData(const std::vector<float>& magnitudes, const std::vector<float>& frequencies);
+    void setDrawStyle(SpectrumDrawStyle style);
+    void setEnabled(bool enabled);
+    
+private:
+    std::vector<float> spectrumMagnitudes;
+    std::vector<float> spectrumFrequencies;
+    SpectrumDrawStyle drawStyle;
+    bool enabled;
+    std::mutex dataMutex;
+    
+    void drawGrid(CDrawContext* context);
+    void drawSpectrum(CDrawContext* context);
+    void drawLines(CDrawContext* context);
+    void drawDots(CDrawContext* context);
+    void drawBins(CDrawContext* context);
+    void drawFills(CDrawContext* context);
+    CPoint frequencyToPosition(float freq, float magnitude);
+    bool isFrequencyInRange(float freq);
 };
 
 class MyPluginEditor {
@@ -101,7 +134,10 @@ private:
     // GUI components
     CViewContainer* leftPanel;
     CViewContainer* rightPanel;
+    CViewContainer* eqPanel;
+    CViewContainer* spectrumPanel;
     EQVisualizationView* eqView;
+    SpectrumAnalyzerView* spectrumView;
     
     // Control references
     CKnob* cutoffKnob;
@@ -113,14 +149,19 @@ private:
     COptionMenu* presetMenu;
     CTextLabel* brandLabel;
     CTextLabel* statusLabel;
+    COptionMenu* spectrumStyleMenu;
+    CTextButton* spectrumToggleButton;
     
     // Parameter storage
-    double currentParams[16]; // Simple parameter array
+    double currentParams[PARAM_COUNT]; // Parameter array
     
     void createControls();
     void createLeftPanel();
     void createRightPanel();
+    void createEQPanel();
+    void createSpectrumPanel();
     void createBrandHeader();
     void styleControl(CView* control);
     void onParameterChanged(int paramId, double value);
+    void updateSpectrumDisplay();
 };

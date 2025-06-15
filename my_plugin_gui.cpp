@@ -286,6 +286,244 @@ void EQVisualizationView::setNodeSelected(int nodeIndex, bool selected) {
 }
 
 //=============================================================================
+// SpectrumAnalyzerView Implementation
+//=============================================================================
+
+SpectrumAnalyzerView::SpectrumAnalyzerView(const CRect& size) 
+    : CView(size), drawStyle(SPECTRUM_STYLE_LINES), enabled(true) {
+    // Initialize with empty data
+    spectrumMagnitudes.resize(SPECTRUM_FFT_SIZE / 2, 0.0f);
+    spectrumFrequencies.resize(SPECTRUM_FFT_SIZE / 2, 0.0f);
+    
+    // Initialize frequency bins for display
+    for (size_t i = 0; i < spectrumFrequencies.size(); ++i) {
+        float freq = 20.0f * powf(20000.0f / 20.0f, (float)i / (float)(spectrumFrequencies.size() - 1));
+        spectrumFrequencies[i] = freq;
+    }
+}
+
+SpectrumAnalyzerView::~SpectrumAnalyzerView() {
+}
+
+void SpectrumAnalyzerView::draw(CDrawContext* context) {
+    if (!enabled) {
+        // Draw disabled state
+        context->setFillColor(CColor(20, 20, 25, 255));
+        context->drawRect(getViewSize(), kDrawFilled);
+        
+        context->setFontColor(CColor(100, 100, 110, 255));
+        context->setFont(kSystemFont);
+        CRect textRect = getViewSize();
+        context->drawString("Spectrum Analyzer Disabled", textRect, kCenterText);
+        return;
+    }
+    
+    // Clear background
+    context->setFillColor(MyPluginEditor::kBackgroundColor);
+    context->drawRect(getViewSize(), kDrawFilled);
+    
+    drawGrid(context);
+    drawSpectrum(context);
+}
+
+void SpectrumAnalyzerView::drawGrid(CDrawContext* context) {
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(1.0);
+    context->setFrameColor(MyPluginEditor::kGridColor);
+    
+    CRect bounds = getViewSize();
+    bounds.makeIntegral();
+    
+    // Vertical grid lines (frequency divisions) - logarithmic scale
+    const float freqs[] = {50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000};
+    for (float freq : freqs) {
+        if (freq >= 20.0f && freq <= 20000.0f) {
+            float normalizedX = log10f(freq / 20.0f) / log10f(20000.0f / 20.0f);
+            float x = bounds.left + normalizedX * bounds.getWidth();
+            if (x >= bounds.left && x <= bounds.right) {
+                context->drawLine(CPoint(x, bounds.top), CPoint(x, bounds.bottom));
+            }
+        }
+    }
+    
+    // Horizontal grid lines (magnitude divisions) - dB scale
+    const float dbs[] = {-60, -40, -20, -10, -6, -3, 0};
+    for (float db : dbs) {
+        float normalizedY = (db + 60.0f) / 60.0f; // Normalize -60dB to 0dB range
+        float y = bounds.bottom - normalizedY * bounds.getHeight();
+        if (y >= bounds.top && y <= bounds.bottom) {
+            context->drawLine(CPoint(bounds.left, y), CPoint(bounds.right, y));
+            
+            // Highlight 0dB line
+            if (db == 0.0f) {
+                context->setLineWidth(2.0);
+                context->drawLine(CPoint(bounds.left, y), CPoint(bounds.right, y));
+                context->setLineWidth(1.0);
+            }
+        }
+    }
+}
+
+void SpectrumAnalyzerView::drawSpectrum(CDrawContext* context) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    
+    switch (drawStyle) {
+        case SPECTRUM_STYLE_LINES:
+            drawLines(context);
+            break;
+        case SPECTRUM_STYLE_DOTS:
+            drawDots(context);
+            break;
+        case SPECTRUM_STYLE_BINS:
+            drawBins(context);
+            break;
+        case SPECTRUM_STYLE_FILLS:
+            drawFills(context);
+            break;
+        default:
+            drawLines(context);
+            break;
+    }
+}
+
+void SpectrumAnalyzerView::drawLines(CDrawContext* context) {
+    if (spectrumMagnitudes.empty()) return;
+    
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(2.0);
+    context->setFrameColor(MyPluginEditor::kAccentColor);
+    
+    auto path = context->createGraphicsPath();
+    if (!path) return;
+    
+    bool firstPoint = true;
+    
+    for (size_t i = 0; i < spectrumMagnitudes.size(); ++i) {
+        if (!isFrequencyInRange(spectrumFrequencies[i])) continue;
+        
+        CPoint point = frequencyToPosition(spectrumFrequencies[i], spectrumMagnitudes[i]);
+        
+        if (firstPoint) {
+            path->beginSubpath(point);
+            firstPoint = false;
+        } else {
+            path->addLine(point);
+        }
+    }
+    
+    context->drawGraphicsPath(path, CDrawContext::kPathStroked);
+    path->forget();
+}
+
+void SpectrumAnalyzerView::drawDots(CDrawContext* context) {
+    context->setFillColor(MyPluginEditor::kAccentColor);
+    
+    for (size_t i = 0; i < spectrumMagnitudes.size(); i += 4) { // Sample every 4th point for performance
+        if (!isFrequencyInRange(spectrumFrequencies[i])) continue;
+        
+        CPoint point = frequencyToPosition(spectrumFrequencies[i], spectrumMagnitudes[i]);
+        CRect dotRect(point.x - 1, point.y - 1, point.x + 1, point.y + 1);
+        context->drawEllipse(dotRect, kDrawFilled);
+    }
+}
+
+void SpectrumAnalyzerView::drawBins(CDrawContext* context) {
+    context->setFillColor(CColor(120, 180, 255, 100)); // Semi-transparent accent color
+    context->setFrameColor(MyPluginEditor::kAccentColor);
+    context->setLineWidth(1.0);
+    
+    CRect bounds = getViewSize();
+    
+    for (size_t i = 0; i < spectrumMagnitudes.size(); i += 2) { // Sample every 2nd point
+        if (!isFrequencyInRange(spectrumFrequencies[i])) continue;
+        
+        CPoint point = frequencyToPosition(spectrumFrequencies[i], spectrumMagnitudes[i]);
+        
+        // Calculate bin width
+        float binWidth = bounds.getWidth() / (float)(spectrumMagnitudes.size() / 2);
+        CRect binRect(point.x - binWidth/2, point.y, point.x + binWidth/2, bounds.bottom);
+        
+        context->drawRect(binRect, kDrawFilledAndStroked);
+    }
+}
+
+void SpectrumAnalyzerView::drawFills(CDrawContext* context) {
+    if (spectrumMagnitudes.empty()) return;
+    
+    context->setFillColor(CColor(120, 180, 255, 80)); // Semi-transparent accent color
+    
+    auto path = context->createGraphicsPath();
+    if (!path) return;
+    
+    CRect bounds = getViewSize();
+    bool firstPoint = true;
+    
+    // Start from bottom-left
+    path->beginSubpath(CPoint(bounds.left, bounds.bottom));
+    
+    for (size_t i = 0; i < spectrumMagnitudes.size(); ++i) {
+        if (!isFrequencyInRange(spectrumFrequencies[i])) continue;
+        
+        CPoint point = frequencyToPosition(spectrumFrequencies[i], spectrumMagnitudes[i]);
+        path->addLine(point);
+    }
+    
+    // Close to bottom-right
+    path->addLine(CPoint(bounds.right, bounds.bottom));
+    path->closeSubpath();
+    
+    context->drawGraphicsPath(path, CDrawContext::kPathFilled);
+    path->forget();
+}
+
+CPoint SpectrumAnalyzerView::frequencyToPosition(float freq, float magnitude) {
+    CRect bounds = getViewSize();
+    
+    // Logarithmic frequency scale (20Hz to 20kHz)
+    float normalizedX = log10f(freq / 20.0f) / log10f(20000.0f / 20.0f);
+    float x = bounds.left + normalizedX * bounds.getWidth();
+    
+    // Linear magnitude scale (0 to 1, representing -60dB to 0dB)
+    float y = bounds.bottom - magnitude * bounds.getHeight();
+    
+    return CPoint(x, y);
+}
+
+bool SpectrumAnalyzerView::isFrequencyInRange(float freq) {
+    return freq >= 20.0f && freq <= 20000.0f;
+}
+
+CMouseEventResult SpectrumAnalyzerView::onMouseDown(CPoint& where, const CButtonState& buttons) {
+    // Could implement interaction here (e.g., style switching)
+    return kMouseEventNotHandled;
+}
+
+void SpectrumAnalyzerView::updateSpectrumData(const std::vector<float>& magnitudes, const std::vector<float>& frequencies) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    
+    if (magnitudes.size() == spectrumMagnitudes.size() && 
+        frequencies.size() == spectrumFrequencies.size()) {
+        spectrumMagnitudes = magnitudes;
+        spectrumFrequencies = frequencies;
+        invalid(); // Trigger redraw
+    }
+}
+
+void SpectrumAnalyzerView::setDrawStyle(SpectrumDrawStyle style) {
+    if (drawStyle != style) {
+        drawStyle = style;
+        invalid(); // Trigger redraw
+    }
+}
+
+void SpectrumAnalyzerView::setEnabled(bool enable) {
+    if (enabled != enable) {
+        enabled = enable;
+        invalid(); // Trigger redraw
+    }
+}
+
+//=============================================================================
 // MyPluginEditor Implementation
 //=============================================================================
 
@@ -298,7 +536,10 @@ MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     , host(host)
     , leftPanel(nullptr)
     , rightPanel(nullptr)
+    , eqPanel(nullptr)
+    , spectrumPanel(nullptr)
     , eqView(nullptr)
+    , spectrumView(nullptr)
     , cutoffKnob(nullptr)
     , resonanceKnob(nullptr)
     , driveKnob(nullptr)
@@ -308,14 +549,18 @@ MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     , presetMenu(nullptr)
     , brandLabel(nullptr)
     , statusLabel(nullptr)
+    , spectrumStyleMenu(nullptr)
+    , spectrumToggleButton(nullptr)
 {
     // Initialize parameters with default values
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < PARAM_COUNT; ++i) {
         currentParams[i] = 0.0;
     }
     currentParams[PARAM_CUTOFF] = 0.5;     // 1000Hz default
     currentParams[PARAM_RESONANCE] = 0.1;  // Low resonance
     currentParams[PARAM_MIX] = 1.0;        // Full wet
+    currentParams[PARAM_SPECTRUM_ENABLED] = 1.0;  // Spectrum enabled
+    currentParams[PARAM_SPECTRUM_STYLE] = 0.0;    // Lines style
 }
 
 MyPluginEditor::~MyPluginEditor() {
@@ -584,7 +829,7 @@ void MyPluginEditor::createControls() {
     createLeftPanel();
     createRightPanel();
     
-    std::cout << "MyPlugin GUI: Professional control layout created" << std::endl;
+    std::cout << "MyPlugin GUI: Professional control layout with spectrum analyzer created" << std::endl;
 }
 
 void MyPluginEditor::createBrandHeader() {
@@ -778,32 +1023,89 @@ void MyPluginEditor::createLeftPanel() {
 void MyPluginEditor::createRightPanel() {
     if (!frame) return;
     
-    // Right panel for EQ visualization
+    // Right panel for both EQ and spectrum visualization
     CRect rightRect(250, 0, currentWidth, currentHeight);
     rightPanel = new CViewContainer(rightRect);
     rightPanel->setBackgroundColor(kBackgroundColor);
     frame->addView(rightPanel);
     
+    // Create EQ and spectrum sub-panels
+    createEQPanel();
+    createSpectrumPanel();
+}
+
+void MyPluginEditor::createEQPanel() {
+    if (!rightPanel) return;
+    
+    // EQ panel takes the top half of the right panel
+    CRect eqPanelRect(0, 0, rightPanel->getViewSize().getWidth(), rightPanel->getViewSize().getHeight() / 2);
+    eqPanel = new CViewContainer(eqPanelRect);
+    eqPanel->setBackgroundColor(kBackgroundColor);
+    rightPanel->addView(eqPanel);
+    
     // EQ section header
-    CRect eqHeaderRect(20, 20, rightRect.getWidth() - 20, 50);
+    CRect eqHeaderRect(20, 10, eqPanelRect.getWidth() - 20, 35);
     auto eqHeaderLabel = new CTextLabel(eqHeaderRect, "DYNAMIC EQ VISUALIZATION");
     eqHeaderLabel->setFontColor(kAccentColor);
     eqHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
-    eqHeaderLabel->setFont(new CFontDesc("Arial", 14, kBoldFace));
+    eqHeaderLabel->setFont(new CFontDesc("Arial", 12, kBoldFace));
     eqHeaderLabel->setHoriAlign(kLeftText);
     eqHeaderLabel->setStyle(eqHeaderLabel->getStyle() | CTextLabel::kNoFrame);
-    rightPanel->addView(eqHeaderLabel);
+    eqPanel->addView(eqHeaderLabel);
     
     // Main EQ visualization area
-    CRect eqRect(20, 60, rightRect.getWidth() - 20, rightRect.getHeight() - 60);
+    CRect eqRect(20, 40, eqPanelRect.getWidth() - 20, eqPanelRect.getHeight() - 10);
     eqView = new EQVisualizationView(eqRect);
-    rightPanel->addView(eqView);
+    eqPanel->addView(eqView);
     
     // Update EQ view with current parameters
     double eq_freq[3] = {200.0, 1000.0, 5000.0};
     double eq_gain[3] = {0.0, 0.0, 0.0};
     double eq_q[3] = {1.0, 1.0, 1.0};
     eqView->updateEQData(eq_freq, eq_gain, eq_q);
+}
+
+void MyPluginEditor::createSpectrumPanel() {
+    if (!rightPanel) return;
+    
+    // Spectrum panel takes the bottom half of the right panel
+    CRect spectrumPanelRect(0, rightPanel->getViewSize().getHeight() / 2, 
+                           rightPanel->getViewSize().getWidth(), rightPanel->getViewSize().getHeight());
+    spectrumPanel = new CViewContainer(spectrumPanelRect);
+    spectrumPanel->setBackgroundColor(kBackgroundColor);
+    rightPanel->addView(spectrumPanel);
+    
+    // Spectrum analyzer header with controls
+    CRect headerRect(20, 10, spectrumPanelRect.getWidth() - 20, 35);
+    auto spectrumHeaderLabel = new CTextLabel(headerRect, "SPECTRUM ANALYZER");
+    spectrumHeaderLabel->setFontColor(kAccentColor);
+    spectrumHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
+    spectrumHeaderLabel->setFont(new CFontDesc("Arial", 12, kBoldFace));
+    spectrumHeaderLabel->setHoriAlign(kLeftText);  
+    spectrumHeaderLabel->setStyle(spectrumHeaderLabel->getStyle() | CTextLabel::kNoFrame);
+    spectrumPanel->addView(spectrumHeaderLabel);
+    
+    // Style selector
+    CRect styleMenuRect(spectrumPanelRect.getWidth() - 150, 12, spectrumPanelRect.getWidth() - 80, 32);
+    spectrumStyleMenu = new COptionMenu(styleMenuRect, nullptr, PARAM_SPECTRUM_STYLE);
+    spectrumStyleMenu->addEntry("Lines");
+    spectrumStyleMenu->addEntry("Dots");
+    spectrumStyleMenu->addEntry("Bins");
+    spectrumStyleMenu->addEntry("Fills");
+    spectrumStyleMenu->setCurrent(0);
+    styleControl(spectrumStyleMenu);
+    spectrumPanel->addView(spectrumStyleMenu);
+    
+    // Toggle button
+    CRect toggleRect(spectrumPanelRect.getWidth() - 70, 12, spectrumPanelRect.getWidth() - 20, 32);
+    spectrumToggleButton = new CTextButton(toggleRect, nullptr, PARAM_SPECTRUM_ENABLED, "ON");
+    styleControl(spectrumToggleButton);
+    spectrumPanel->addView(spectrumToggleButton);
+    
+    // Main spectrum visualization area
+    CRect spectrumRect(20, 40, spectrumPanelRect.getWidth() - 20, spectrumPanelRect.getHeight() - 10);
+    spectrumView = new SpectrumAnalyzerView(spectrumRect);
+    spectrumPanel->addView(spectrumView);
 }
 
 void MyPluginEditor::styleControl(CView* control) {
@@ -830,30 +1132,47 @@ void MyPluginEditor::styleControl(CView* control) {
 
 void MyPluginEditor::updateParameter(int paramId, double value) {
     // Update internal parameter storage
-    if (paramId >= 0 && paramId < 16) {
+    if (paramId >= 0 && paramId < PARAM_COUNT) {
         currentParams[paramId] = value;
     }
     
     // Update GUI controls
     switch (paramId) {
-        case 0: // PARAM_CUTOFF
+        case PARAM_CUTOFF:
             if (cutoffKnob) cutoffKnob->setValue(value);
             break;
-        case 1: // PARAM_RESONANCE
+        case PARAM_RESONANCE:
             if (resonanceKnob) resonanceKnob->setValue(value);
             break;
-        case 2: // PARAM_DRIVE
+        case PARAM_DRIVE:
             if (driveKnob) driveKnob->setValue(value);
             break;
-        case 3: // PARAM_OUTPUT
+        case PARAM_OUTPUT:
             if (outputKnob) outputKnob->setValue(value);
             break;
-        case 4: // PARAM_MIX
+        case PARAM_MIX:
             if (mixSlider) mixSlider->setValue(value * 100.0);
             break;
-        case 5: // PARAM_BYPASS
+        case PARAM_BYPASS:
             if (bypassButton) {
                 bypassButton->setValue(value > 0.5 ? 1.0 : 0.0);
+            }
+            break;
+        case PARAM_SPECTRUM_ENABLED:
+            if (spectrumToggleButton) {
+                spectrumToggleButton->setValue(value > 0.5 ? 1.0 : 0.0);
+                spectrumToggleButton->setTitle(value > 0.5 ? "ON" : "OFF");
+            }
+            if (spectrumView) {
+                spectrumView->setEnabled(value > 0.5);
+            }
+            break;
+        case PARAM_SPECTRUM_STYLE:
+            if (spectrumStyleMenu) {
+                spectrumStyleMenu->setCurrent((int)value);
+            }
+            if (spectrumView) {
+                spectrumView->setDrawStyle((SpectrumDrawStyle)(int)value);
             }
             break;
     }
@@ -861,9 +1180,19 @@ void MyPluginEditor::updateParameter(int paramId, double value) {
     // Update EQ visualization
     if (eqView) {
         double eq_freq[3] = {200.0, 1000.0, 5000.0};
-        double eq_gain[3] = {currentParams[6], currentParams[9], currentParams[12]};
-        double eq_q[3] = {1.0, 1.0, 1.0};
+        double eq_gain[3] = {currentParams[PARAM_EQ_GAIN1], currentParams[PARAM_EQ_GAIN2], currentParams[PARAM_EQ_GAIN3]};
+        double eq_q[3] = {currentParams[PARAM_EQ_Q1], currentParams[PARAM_EQ_Q2], currentParams[PARAM_EQ_Q3]};
         eqView->updateEQData(eq_freq, eq_gain, eq_q);
+    }
+}
+
+void MyPluginEditor::updateSpectrumDisplay() {
+    // This method will be called to update the spectrum display with new data
+    // Implementation will depend on how we get spectrum data from the plugin
+    if (spectrumView && host) {
+        // TODO: Get spectrum data from plugin and update display
+        // This would require implementing a mechanism to share data between
+        // the audio thread (where FFT analysis happens) and the GUI thread
     }
 }
 
