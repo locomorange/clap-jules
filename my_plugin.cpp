@@ -1,30 +1,37 @@
-// Define math constants for Windows compatibility - must be before all includes
+// Windows compatibility - must be first
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
 #define NOMINMAX
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #endif
 
-#include <cmath>    // Must be included after _USE_MATH_DEFINES on Windows
-
-#include "my_plugin.h"
-#if VSTGUI_ENABLED
-#include "my_plugin_gui.h"
-#include <clap/ext/gui.h>
-#if defined(__linux__)
-#include "my_plugin_linux_extensions.h"
-#endif
-#endif
-#include <clap/plugin-features.h>
+// Standard C++ includes
+#include <cmath>
+#include <algorithm>
+#include <complex>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
+// Ensure math constants are available on all platforms
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-#include <algorithm>
-#include <complex>
+// Plugin includes
+#include "my_plugin.h"
+#include <clap/plugin-features.h>
+
+// GUI includes (platform-specific)
+#if VSTGUI_ENABLED
+#include "my_plugin_gui.h"
+#include <clap/ext/gui.h>
+#if defined(__linux__) && !defined(_WIN32)
+#include "my_plugin_linux_extensions.h"
+#endif
+#endif
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -107,8 +114,16 @@ void cleanup_fft_data(fft_data_t* fft_data) {
 }
 
 void generate_hann_window(std::vector<float>& window, size_t size) {
+    if (size <= 1) {
+        if (size == 1) {
+            window[0] = 1.0f;
+        }
+        return;
+    }
+    
     for (size_t i = 0; i < size; ++i) {
-        window[i] = 0.5f * (1.0f - std::cos(2.0f * M_PI * i / (size - 1)));
+        double angle = 2.0 * M_PI * static_cast<double>(i) / static_cast<double>(size - 1);
+        window[i] = static_cast<float>(0.5 * (1.0 - std::cos(angle)));
     }
 }
 
@@ -131,8 +146,8 @@ static void perform_fft(std::vector<std::complex<float>>& data) {
     
     // Cooley-Tukey FFT
     for (size_t len = 2; len <= N; len <<= 1) {
-        float angle = 2.0f * M_PI / len;
-        std::complex<float> wlen(std::cos(angle), std::sin(angle));
+        double angle = 2.0 * M_PI / static_cast<double>(len);
+        std::complex<float> wlen(static_cast<float>(std::cos(angle)), static_cast<float>(std::sin(angle)));
         
         for (size_t i = 0; i < N; i += len) {
             std::complex<float> w(1.0f, 0.0f);
