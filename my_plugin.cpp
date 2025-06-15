@@ -55,6 +55,7 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+    (void)sample_rate; (void)min_frames_count; (void)max_frames_count; // Suppress unused parameter warnings
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
     // Demonstrate graphics rendering when plugin is activated
@@ -65,21 +66,26 @@ static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_r
 }
 
 static void my_plugin_deactivate(const struct clap_plugin *plugin) {
+    (void)plugin; // Suppress unused parameter warning
     // Free resources allocated in activate
 }
 
 static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
+    (void)plugin; // Suppress unused parameter warning
     return true;
 }
 
 static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
+    (void)plugin; // Suppress unused parameter warning
 }
 
 static void my_plugin_reset(const struct clap_plugin *plugin) {
+    (void)plugin; // Suppress unused parameter warning
     // Reset plugin state (e.g., clear buffers, reset parameters)
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
+    (void)plugin; (void)process; // Suppress unused parameter warnings
     // This is where the main audio processing happens.
     // For this example, we'll just print a message once.
     // static bool first_process = true;
@@ -122,12 +128,14 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 }
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
+    (void)plugin; (void)id; // Suppress unused parameter warnings
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     return NULL; // No extensions supported in this basic example
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
+    (void)plugin; // Suppress unused parameter warning
     // Called by the host to perform tasks that must run on the main thread.
 }
 
@@ -139,10 +147,12 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
 // This structure is responsible for creating plugin instances.
 
 static uint32_t my_factory_get_plugin_count(const struct clap_plugin_factory *factory) {
+    (void)factory; // Suppress unused parameter warning
     return 1; // We have one plugin in this factory
 }
 
 static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const struct clap_plugin_factory *factory, uint32_t index) {
+    (void)factory; // Suppress unused parameter warning
     if (index == 0) {
         return &my_plugin_descriptor;
     }
@@ -150,6 +160,7 @@ static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const st
 }
 
 static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_factory *factory, const clap_host_t *host, const char *plugin_id) {
+    (void)factory; (void)host; // Suppress unused parameter warnings
     if (strcmp(plugin_id, my_plugin_descriptor.id) != 0) {
         return NULL;
     }
@@ -175,36 +186,46 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     return &self->plugin;
 }
 
+extern "C" {
+
 const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
     my_factory_get_plugin_count,
     my_factory_get_plugin_descriptor,
     my_factory_create_plugin,
 };
 
+// --- CLAP Entry Point Functions ---
+// Static functions with C linkage for better Windows compatibility
+static bool plugin_entry_init(const char *plugin_path) {
+    (void)plugin_path; // Suppress unused parameter warning
+    // Perform any global library initialization here if needed
+    return true;
+}
+
+static void plugin_entry_deinit(void) {
+    // Perform any global library cleanup here if needed
+}
+
+static const void *plugin_entry_get_factory(const char *factory_id) {
+    if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
+        return &my_plugin_factory;
+    }
+    // To support other factory types, check their specific IDs here.
+    // For example, CLAP_PLUGIN_VOICE_INFO_FACTORY_ID for voice info.
+    // Or CLAP_PLUGIN_REMOTABLE_CONTROLS_FACTORY_ID for remotable controls.
+    return NULL;
+}
+
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
 CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
-    // init: Called once when the library is loaded.
-    [](const char *plugin_path) -> bool {
-        // Perform any global library initialization here if needed
-        return true;
-    },
-    // deinit: Called once when the library is unloaded.
-    []() -> void {
-        // Perform any global library cleanup here if needed
-    },
-    // get_factory: Returns a factory based on its ID.
-    [](const char *factory_id) -> const void * {
-        if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
-            return &my_plugin_factory;
-        }
-        // To support other factory types, check their specific IDs here.
-        // For example, CLAP_PLUGIN_VOICE_INFO_FACTORY_ID for voice info.
-        // Or CLAP_PLUGIN_REMOTABLE_CONTROLS_FACTORY_ID for remotable controls.
-        return NULL;
-    }
+    plugin_entry_init,
+    plugin_entry_deinit,
+    plugin_entry_get_factory
 };
+
+} // extern "C"
 
 // --- C++ Graphics Implementation ---
 namespace clap_jules {
