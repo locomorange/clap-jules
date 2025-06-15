@@ -27,24 +27,37 @@ static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, 
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
-    "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
-    "My Company",           // vendor
-    "https://example.com",  // url
-    "https://example.com/bugtracker", // manual_url
-    "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "com.example.soothe-pro", // id
+    "Soothe Pro - Dynamic EQ", // name
+    "Audio Innovations",       // vendor
+    "https://example.com",     // url
+    "https://example.com/manual", // manual_url
+    "https://example.com/support", // support_url
+    "1.0.0",                   // version
+    "Professional dynamic EQ and resonance control plugin with Soothe2-style interface.", // description
     plugin_features, // features
-    // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
 
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize parameters with default values
+    self->params.cutoff = 1000.0;
+    self->params.resonance = 1.0;
+    self->params.drive = 0.0;
+    self->params.output = 0.0;
+    self->params.mix = 1.0;
+    self->params.bypass = false;
+    
+    for (int i = 0; i < 3; ++i) {
+        self->params.eq_gain[i] = 0.0;
+        self->params.eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
+        self->params.eq_q[i] = 1.0;
+    }
+    
     return true;
 }
 
