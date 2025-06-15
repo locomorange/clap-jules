@@ -2,8 +2,7 @@
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
-#include <clap/ext/timer-support.h>
-#include <clap/ext/posix-fd-support.h>
+#include "my_plugin_linux_extensions.h"
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
@@ -270,70 +269,7 @@ static const clap_plugin_gui_t my_gui_extension = {
 };
 #endif // VSTGUI_ENABLED
 
-// --- Timer Support Extension ---
-#if VSTGUI_ENABLED && defined(__linux__)
-static void my_plugin_timer_support_on_timer(const clap_plugin_t *plugin, clap_id timer_id) {
-    printf("MyPlugin: Timer callback called (id: %u)\n", timer_id);
-    // Forward to VSTGUI - this would need proper VSTGUI integration
-    // For now, just a placeholder
-}
 
-static const clap_plugin_timer_support_t my_timer_support_extension = {
-    my_plugin_timer_support_on_timer
-};
-
-// --- POSIX FD Support Extension ---
-static void my_plugin_posix_fd_support_on_fd(const clap_plugin_t *plugin, int fd, clap_posix_fd_flags_t flags) {
-    printf("MyPlugin: FD callback called (fd: %d, flags: %u)\n", fd, flags);
-    // Forward to VSTGUI - this would need proper VSTGUI integration
-    // For now, just a placeholder
-}
-
-static const clap_plugin_posix_fd_support_t my_posix_fd_support_extension = {
-    my_plugin_posix_fd_support_on_fd
-};
-
-// Helper functions to register/unregister with host
-static bool register_timer_with_host(my_plugin_t *self, uint32_t period_ms, clap_id *timer_id) {
-    if (self->host) {
-        auto timer_support = (const clap_host_timer_support_t*)self->host->get_extension(self->host, CLAP_EXT_TIMER_SUPPORT);
-        if (timer_support) {
-            return timer_support->register_timer(self->host, period_ms, timer_id);
-        }
-    }
-    return false;
-}
-
-static bool unregister_timer_with_host(my_plugin_t *self, clap_id timer_id) {
-    if (self->host) {
-        auto timer_support = (const clap_host_timer_support_t*)self->host->get_extension(self->host, CLAP_EXT_TIMER_SUPPORT);
-        if (timer_support) {
-            return timer_support->unregister_timer(self->host, timer_id);
-        }
-    }
-    return false;
-}
-
-static bool register_fd_with_host(my_plugin_t *self, int fd, clap_posix_fd_flags_t flags) {
-    if (self->host) {
-        auto fd_support = (const clap_host_posix_fd_support_t*)self->host->get_extension(self->host, CLAP_EXT_POSIX_FD_SUPPORT);
-        if (fd_support) {
-            return fd_support->register_fd(self->host, fd, flags);
-        }
-    }
-    return false;
-}
-
-static bool unregister_fd_with_host(my_plugin_t *self, int fd) {
-    if (self->host) {
-        auto fd_support = (const clap_host_posix_fd_support_t*)self->host->get_extension(self->host, CLAP_EXT_POSIX_FD_SUPPORT);
-        if (fd_support) {
-            return fd_support->unregister_fd(self->host, fd);
-        }
-    }
-    return false;
-}
-#endif // VSTGUI_ENABLED && defined(__linux__)
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;

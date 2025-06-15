@@ -101,6 +101,10 @@ set(PLUGIN_SOURCES my_plugin.cpp)
 # Add GUI sources only if VSTGUI is enabled
 if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
     list(APPEND PLUGIN_SOURCES my_plugin_gui.cpp)
+    # Add Linux-specific extensions on Linux
+    if(UNIX AND NOT APPLE)
+        list(APPEND PLUGIN_SOURCES my_plugin_linux_extensions.cpp)
+    endif()
 endif()
 
 add_library(my_clap_plugin SHARED ${PLUGIN_SOURCES})
