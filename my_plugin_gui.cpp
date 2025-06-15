@@ -31,8 +31,8 @@ MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     : frame(nullptr)
     , isCreated(false) 
     , isVisible(false)
-    , currentWidth(600)
-    , currentHeight(500)
+    , currentWidth(900)  // より大きなウィンドウサイズ (Larger window size)
+    , currentHeight(600) // より大きなウィンドウサイズ (Larger window size)
     , host(host)
 {
 }
@@ -298,327 +298,243 @@ void MyPluginEditor::createControls() {
         return;
     }
     
-    // Create a title label
-    CRect titleRect(10, 10, 590, 35);
-    auto titleLabel = new CTextLabel(titleRect, "CLAP Plugin - VSTGUI Controls Test Interface");
-    titleLabel->setFontColor(CColor(20, 20, 20, 255)); // Dark gray text for better readability
-    titleLabel->setBackColor(CColor(220, 235, 255, 255)); // Light blue background
+    // プロフェッショナルなsoothe2風のレイアウトを作成 (Create professional soothe2-style layout)
+    // 背景色をダークテーマに設定 (Set background to dark theme)
+    frame->setBackgroundColor(CColor(28, 30, 34, 255)); // ダークグレー背景 (Dark gray background)
+    
+    // === ヘッダータイトル (Header title) ===
+    CRect titleRect(20, 15, 880, 45);
+    auto titleLabel = new CTextLabel(titleRect, "CLAP Audio Plugin - Professional EQ Interface");
+    titleLabel->setFontColor(CColor(220, 220, 220, 255)); // 明るいグレーテキスト (Light gray text)
+    titleLabel->setBackColor(CColor(0, 0, 0, 0)); // 透明背景 (Transparent background)
     titleLabel->setHoriAlign(kCenterText);
+    CFontRef font = kSystemFont;
+    titleLabel->setFont(font);
     frame->addView(titleLabel);
     
-    // === Row 1: Knobs ===
-    // Volume knob
-    CRect volumeKnobRect(30, 60, 80, 110);
-    auto volumeKnob = new CKnob(volumeKnobRect, nullptr, 0, nullptr, nullptr);
-    volumeKnob->setDefaultValue(0.5f);
-    volumeKnob->setValue(0.5f);
-    volumeKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    volumeKnob->setColorHandle(CColor(200, 50, 50, 255)); // Red handle for visibility
-    frame->addView(volumeKnob);
+    // === 左側制御パネル (Left control panel) ===
     
-    CRect volumeLabelRect(20, 115, 90, 135);
-    auto volumeLabel = new CTextLabel(volumeLabelRect, "Volume");
-    volumeLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    volumeLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    volumeLabel->setHoriAlign(kCenterText);
-    frame->addView(volumeLabel);
+    // メインDepthノブ（大きなノブ） (Main Depth knob - large knob)
+    CRect depthKnobRect(40, 70, 120, 150);
+    auto depthKnob = new CKnob(depthKnobRect, nullptr, PARAM_DEPTH, nullptr, nullptr);
+    depthKnob->setDefaultValue(0.5f);
+    depthKnob->setValue(0.5f);
+    depthKnob->setColorShadowHandle(CColor(50, 50, 50, 255));
+    depthKnob->setColorHandle(CColor(100, 180, 255, 255)); // 青色ハンドル (Blue handle)
+    frame->addView(depthKnob);
     
-    // Filter knob
-    CRect filterKnobRect(110, 60, 160, 110);
-    auto filterKnob = new CKnob(filterKnobRect, nullptr, 0, nullptr, nullptr);
-    filterKnob->setDefaultValue(0.7f);
-    filterKnob->setValue(0.7f);
-    filterKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    filterKnob->setColorHandle(CColor(50, 150, 50, 255)); // Green handle for visibility
-    frame->addView(filterKnob);
+    CRect depthLabelRect(25, 155, 135, 175);
+    auto depthLabel = new CTextLabel(depthLabelRect, "DEPTH");
+    depthLabel->setFontColor(CColor(200, 200, 200, 255));
+    depthLabel->setBackColor(CColor(0, 0, 0, 0));
+    depthLabel->setHoriAlign(kCenterText);
+    frame->addView(depthLabel);
     
-    CRect filterLabelRect(100, 115, 170, 135);
-    auto filterLabel = new CTextLabel(filterLabelRect, "Filter");
-    filterLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    filterLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    filterLabel->setHoriAlign(kCenterText);
-    frame->addView(filterLabel);
+    // Sharpnessノブ (Sharpness knob)
+    CRect sharpnessKnobRect(40, 200, 100, 260);
+    auto sharpnessKnob = new CKnob(sharpnessKnobRect, nullptr, PARAM_SHARPNESS, nullptr, nullptr);
+    sharpnessKnob->setDefaultValue(0.7f);
+    sharpnessKnob->setValue(0.7f);
+    sharpnessKnob->setColorShadowHandle(CColor(50, 50, 50, 255));
+    sharpnessKnob->setColorHandle(CColor(255, 150, 80, 255)); // オレンジハンドル (Orange handle)
+    frame->addView(sharpnessKnob);
     
-    // Resonance knob
-    CRect resKnobRect(190, 60, 240, 110);
-    auto resKnob = new CKnob(resKnobRect, nullptr, 0, nullptr, nullptr);
-    resKnob->setDefaultValue(0.3f);
-    resKnob->setValue(0.3f);
-    resKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    resKnob->setColorHandle(CColor(50, 50, 200, 255)); // Blue handle for visibility
-    frame->addView(resKnob);
+    CRect sharpnessLabelRect(25, 265, 115, 285);
+    auto sharpnessLabel = new CTextLabel(sharpnessLabelRect, "SHARPNESS");
+    sharpnessLabel->setFontColor(CColor(200, 200, 200, 255));
+    sharpnessLabel->setBackColor(CColor(0, 0, 0, 0));
+    sharpnessLabel->setHoriAlign(kCenterText);
+    frame->addView(sharpnessLabel);
     
-    CRect resLabelRect(180, 115, 250, 135);
-    auto resLabel = new CTextLabel(resLabelRect, "Resonance");
-    resLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    resLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    resLabel->setHoriAlign(kCenterText);
-    frame->addView(resLabel);
+    // Selectivityノブ (Selectivity knob)
+    CRect selectivityKnobRect(140, 200, 200, 260);
+    auto selectivityKnob = new CKnob(selectivityKnobRect, nullptr, PARAM_SELECTIVITY, nullptr, nullptr);
+    selectivityKnob->setDefaultValue(0.6f);
+    selectivityKnob->setValue(0.6f);
+    selectivityKnob->setColorShadowHandle(CColor(50, 50, 50, 255));
+    selectivityKnob->setColorHandle(CColor(150, 255, 150, 255)); // 緑ハンドル (Green handle)
+    frame->addView(selectivityKnob);
     
-    // === Row 2: Sliders ===
-    // Horizontal slider
-    CRect hSliderRect(30, 160, 240, 180);
-    auto hSlider = new CHorizontalSlider(hSliderRect, nullptr, 0, 0, 100, nullptr, nullptr);
-    hSlider->setValue(60.0f);
-    hSlider->setFrameColor(CColor(80, 80, 80, 255)); // Dark frame for visibility
-    hSlider->setBackColor(CColor(220, 220, 220, 255)); // Light background
-    hSlider->setValueColor(CColor(0, 120, 200, 255)); // Blue slider handle
-    frame->addView(hSlider);
+    CRect selectivityLabelRect(125, 265, 215, 285);
+    auto selectivityLabel = new CTextLabel(selectivityLabelRect, "SELECTIVITY");
+    selectivityLabel->setFontColor(CColor(200, 200, 200, 255));
+    selectivityLabel->setBackColor(CColor(0, 0, 0, 0));
+    selectivityLabel->setHoriAlign(kCenterText);
+    frame->addView(selectivityLabel);
     
-    CRect hSliderLabelRect(30, 185, 240, 205);
-    auto hSliderLabel = new CTextLabel(hSliderLabelRect, "Horizontal Slider (Cutoff)");
-    hSliderLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    hSliderLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(hSliderLabel);
+    // Attack/Releaseノブ (Attack/Release knobs)
+    CRect attackKnobRect(40, 310, 90, 360);
+    auto attackKnob = new CKnob(attackKnobRect, nullptr, PARAM_ATTACK, nullptr, nullptr);
+    attackKnob->setDefaultValue(0.01f);
+    attackKnob->setValue(0.01f);
+    attackKnob->setColorShadowHandle(CColor(50, 50, 50, 255));
+    attackKnob->setColorHandle(CColor(255, 120, 120, 255)); // 赤ハンドル (Red handle)
+    frame->addView(attackKnob);
     
-    // Vertical slider
-    CRect vSliderRect(270, 60, 290, 180);
-    auto vSlider = new CVerticalSlider(vSliderRect, nullptr, 0, 0, 100, nullptr, nullptr);
-    vSlider->setValue(40.0f);
-    vSlider->setFrameColor(CColor(80, 80, 80, 255)); // Dark frame for visibility
-    vSlider->setBackColor(CColor(220, 220, 220, 255)); // Light background
-    vSlider->setValueColor(CColor(200, 100, 0, 255)); // Orange slider handle
-    frame->addView(vSlider);
+    CRect attackLabelRect(25, 365, 105, 385);
+    auto attackLabel = new CTextLabel(attackLabelRect, "ATTACK");
+    attackLabel->setFontColor(CColor(200, 200, 200, 255));
+    attackLabel->setBackColor(CColor(0, 0, 0, 0));
+    attackLabel->setHoriAlign(kCenterText);
+    frame->addView(attackLabel);
     
-    CRect vSliderLabelRect(260, 185, 300, 205);
-    auto vSliderLabel = new CTextLabel(vSliderLabelRect, "Vertical");
-    vSliderLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    vSliderLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    vSliderLabel->setHoriAlign(kCenterText);
-    frame->addView(vSliderLabel);
+    CRect releaseKnobRect(110, 310, 160, 360);
+    auto releaseKnob = new CKnob(releaseKnobRect, nullptr, PARAM_RELEASE, nullptr, nullptr);
+    releaseKnob->setDefaultValue(0.1f);
+    releaseKnob->setValue(0.1f);
+    releaseKnob->setColorShadowHandle(CColor(50, 50, 50, 255));
+    releaseKnob->setColorHandle(CColor(255, 255, 120, 255)); // 黄ハンドル (Yellow handle)
+    frame->addView(releaseKnob);
     
-    // === Row 3: Buttons ===
-    // Text buttons
-    CRect button1Rect(30, 230, 120, 255);
-    auto button1 = new CTextButton(button1Rect, nullptr, 0, "Play");
-    frame->addView(button1);
+    CRect releaseLabelRect(95, 365, 175, 385);
+    auto releaseLabel = new CTextLabel(releaseLabelRect, "RELEASE");
+    releaseLabel->setFontColor(CColor(200, 200, 200, 255));
+    releaseLabel->setBackColor(CColor(0, 0, 0, 0));
+    releaseLabel->setHoriAlign(kCenterText);
+    frame->addView(releaseLabel);
     
-    CRect button2Rect(130, 230, 220, 255);
-    auto button2 = new CTextButton(button2Rect, nullptr, 0, "Stop");
-    frame->addView(button2);
+    // === モード選択とスイッチ (Mode selection and switches) ===
     
-    // Kick button (momentary)
-    CRect kickButtonRect(230, 230, 320, 255);
-    auto kickButton = new CKickButton(kickButtonRect, nullptr, 0, nullptr);
-    frame->addView(kickButton);
+    // Modeラジオボタン (Mode radio buttons)
+    CRect modeSegmentRect(40, 410, 200, 440);
+    auto modeSegment = new CSegmentButton(modeSegmentRect, nullptr, PARAM_MODE);
+    CSegmentButton::Segment mode1;
+    mode1.name = "Soft";
+    modeSegment->addSegment(mode1);
+    CSegmentButton::Segment mode2;
+    mode2.name = "Medium";
+    modeSegment->addSegment(mode2);
+    CSegmentButton::Segment mode3;
+    mode3.name = "Hard";
+    modeSegment->addSegment(mode3);
+    modeSegment->setSelectedSegment(0);
+    frame->addView(modeSegment);
     
-    CRect kickLabelRect(230, 260, 320, 280);
-    auto kickLabel = new CTextLabel(kickLabelRect, "Kick Button");
-    kickLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    kickLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    kickLabel->setHoriAlign(kCenterText);
-    frame->addView(kickLabel);
+    CRect modeLabelRect(40, 445, 200, 465);
+    auto modeLabel = new CTextLabel(modeLabelRect, "MODE");
+    modeLabel->setFontColor(CColor(200, 200, 200, 255));
+    modeLabel->setBackColor(CColor(0, 0, 0, 0));
+    frame->addView(modeLabel);
     
-    // === Row 4: Option Menu and Segment Button ===
-    // Option menu (dropdown)
-    CRect menuRect(30, 300, 150, 325);
-    auto optionMenu = new COptionMenu(menuRect, nullptr, 0);
-    optionMenu->addEntry("Low Pass");
-    optionMenu->addEntry("High Pass");
-    optionMenu->addEntry("Band Pass");
-    optionMenu->addEntry("Notch");
-    optionMenu->setCurrent(0);
-    frame->addView(optionMenu);
+    // Stereo Linkトグル (Stereo Link toggle)
+    CRect stereoToggleRect(40, 480, 120, 505);
+    auto stereoToggle = new COnOffButton(stereoToggleRect, nullptr, PARAM_STEREO_LINK, nullptr, 0);
+    stereoToggle->setValue(1.0f);
+    frame->addView(stereoToggle);
     
-    CRect menuLabelRect(30, 330, 150, 350);
-    auto menuLabel = new CTextLabel(menuLabelRect, "Filter Type");
-    menuLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    menuLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(menuLabel);
+    CRect stereoLabelRect(40, 510, 120, 530);
+    auto stereoLabel = new CTextLabel(stereoLabelRect, "STEREO LINK");
+    stereoLabel->setFontColor(CColor(200, 200, 200, 255));
+    stereoLabel->setBackColor(CColor(0, 0, 0, 0));
+    frame->addView(stereoLabel);
     
-    // Segment button
-    CRect segmentRect(170, 300, 320, 325);
-    auto segmentButton = new CSegmentButton(segmentRect, nullptr, 0);
-    CSegmentButton::Segment segment1;
-    segment1.name = "Saw";
-    segmentButton->addSegment(segment1);
-    CSegmentButton::Segment segment2;
-    segment2.name = "Square";
-    segmentButton->addSegment(segment2);
-    CSegmentButton::Segment segment3;
-    segment3.name = "Sine";
-    segmentButton->addSegment(segment3);
-    segmentButton->setSelectedSegment(0);
-    frame->addView(segmentButton);
+    // Qualityスイッチ (Quality switch)
+    CRect qualityToggleRect(140, 480, 200, 505);
+    auto qualityToggle = new COnOffButton(qualityToggleRect, nullptr, PARAM_QUALITY, nullptr, 0);
+    qualityToggle->setValue(1.0f);
+    frame->addView(qualityToggle);
     
-    CRect segmentLabelRect(170, 330, 320, 350);
-    auto segmentLabel = new CTextLabel(segmentLabelRect, "Waveform");
-    segmentLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    segmentLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(segmentLabel);
+    CRect qualityLabelRect(140, 510, 200, 530);
+    auto qualityLabel = new CTextLabel(qualityLabelRect, "QUALITY");
+    qualityLabel->setFontColor(CColor(200, 200, 200, 255));
+    qualityLabel->setBackColor(CColor(0, 0, 0, 0));
+    frame->addView(qualityLabel);
     
-    // === Row 5: Text Edit and Switches ===
-    // Text edit field
-    CRect textEditRect(30, 370, 200, 395);
-    auto textEdit = new CTextEdit(textEditRect, nullptr, 0);
-    textEdit->setText("Edit me!");
-    textEdit->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    textEdit->setBackColor(CColor(255, 255, 255, 255)); // White background
-    textEdit->setFontColor(CColor(20, 20, 20, 255)); // Dark text
-    frame->addView(textEdit);
+    // Balanceスライダー (Balance slider)
+    CRect balanceSliderRect(40, 550, 200, 570);
+    auto balanceSlider = new CHorizontalSlider(balanceSliderRect, nullptr, PARAM_BALANCE, -1.0, 1.0, nullptr, nullptr);
+    balanceSlider->setValue(0.0f);
+    balanceSlider->setFrameColor(CColor(100, 100, 100, 255));
+    balanceSlider->setBackColor(CColor(50, 50, 50, 255));
+    balanceSlider->setValueColor(CColor(100, 180, 255, 255));
+    frame->addView(balanceSlider);
     
-    CRect textEditLabelRect(30, 400, 200, 420);
-    auto textEditLabel = new CTextLabel(textEditLabelRect, "Text Input");
-    textEditLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    textEditLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(textEditLabel);
+    CRect balanceLabelRect(40, 575, 200, 595);
+    auto balanceLabel = new CTextLabel(balanceLabelRect, "BALANCE");
+    balanceLabel->setFontColor(CColor(200, 200, 200, 255));
+    balanceLabel->setBackColor(CColor(0, 0, 0, 0));
+    frame->addView(balanceLabel);
     
-    // On/Off switch
-    CRect switch1Rect(220, 375, 260, 390);
-    auto switch1 = new COnOffButton(switch1Rect, nullptr, 0, nullptr, 0);
-    switch1->setValue(1.0f); // On
-    frame->addView(switch1);
+    // === 右側EQカーブエリア (Right side EQ curve area) ===
     
-    CRect switch1LabelRect(220, 400, 280, 420);
-    auto switch1Label = new CTextLabel(switch1LabelRect, "On/Off");
-    switch1Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    switch1Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(switch1Label);
+    // EQカーブビューを作成 (Create EQ curve view)
+    CRect eqCurveRect(280, 70, 860, 420);
+    // TODO: カスタムEQCurveViewクラスを使用 (TODO: Use custom EQCurveView class)
+    // auto eqCurveView = new EQCurveView(eqCurveRect);
+    // frame->addView(eqCurveView);
     
-    // === Additional Controls on the Right Side ===
-    // More knobs
-    CRect knob4Rect(350, 60, 400, 110);
-    auto knob4 = new CKnob(knob4Rect, nullptr, 0, nullptr, nullptr);
-    knob4->setDefaultValue(0.8f);
-    knob4->setValue(0.8f);
-    knob4->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    knob4->setColorHandle(CColor(200, 150, 0, 255)); // Orange handle for visibility
-    frame->addView(knob4);
+    // 現在は簡易的な表示エリアを作成 (Create simplified display area for now)
+    auto eqBackground = new CView(eqCurveRect);
+    // CViewではsetBackgroundColorではなくdraw()をオーバーライドして背景を描画 (For CView, override draw() instead of setBackgroundColor)
+    frame->addView(eqBackground);
     
-    CRect knob4LabelRect(340, 115, 410, 135);
-    auto knob4Label = new CTextLabel(knob4LabelRect, "Attack");
-    knob4Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    knob4Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    knob4Label->setHoriAlign(kCenterText);
-    frame->addView(knob4Label);
+    CRect eqTitleRect(280, 45, 860, 70);
+    auto eqTitle = new CTextLabel(eqTitleRect, "EQ CURVE - Auto Dynamic EQ (Double-click to add points, Right-click to remove)");
+    eqTitle->setFontColor(CColor(180, 180, 180, 255));
+    eqTitle->setBackColor(CColor(0, 0, 0, 0));
+    eqTitle->setHoriAlign(kCenterText);
+    frame->addView(eqTitle);
     
-    CRect knob5Rect(430, 60, 480, 110);
-    auto knob5 = new CKnob(knob5Rect, nullptr, 0, nullptr, nullptr);
-    knob5->setDefaultValue(0.4f);
-    knob5->setValue(0.4f);
-    knob5->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    knob5->setColorHandle(CColor(150, 0, 150, 255)); // Purple handle for visibility
-    frame->addView(knob5);
+    // === 下部制御エリア (Bottom control area) ===
     
-    CRect knob5LabelRect(420, 115, 490, 135);
-    auto knob5Label = new CTextLabel(knob5LabelRect, "Decay");
-    knob5Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    knob5Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    knob5Label->setHoriAlign(kCenterText);
-    frame->addView(knob5Label);
+    // Output Gainノブ (Output Gain knob)
+    CRect outputGainRect(280, 450, 340, 510);
+    auto outputGainKnob = new CKnob(outputGainRect, nullptr, PARAM_OUTPUT_GAIN, nullptr, nullptr);
+    outputGainKnob->setDefaultValue(1.0f);
+    outputGainKnob->setValue(1.0f);
+    outputGainKnob->setColorShadowHandle(CColor(50, 50, 50, 255));
+    outputGainKnob->setColorHandle(CColor(255, 200, 100, 255)); // オレンジハンドル (Orange handle)
+    frame->addView(outputGainKnob);
     
-    CRect knob6Rect(510, 60, 560, 110);
-    auto knob6 = new CKnob(knob6Rect, nullptr, 0, nullptr, nullptr);
-    knob6->setDefaultValue(0.6f);
-    knob6->setValue(0.6f);
-    knob6->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    knob6->setColorHandle(CColor(0, 150, 150, 255)); // Cyan handle for visibility
-    frame->addView(knob6);
+    CRect outputGainLabelRect(265, 515, 355, 535);
+    auto outputGainLabel = new CTextLabel(outputGainLabelRect, "OUTPUT GAIN");
+    outputGainLabel->setFontColor(CColor(200, 200, 200, 255));
+    outputGainLabel->setBackColor(CColor(0, 0, 0, 0));
+    outputGainLabel->setHoriAlign(kCenterText);
+    frame->addView(outputGainLabel);
     
-    CRect knob6LabelRect(500, 115, 570, 135);
-    auto knob6Label = new CTextLabel(knob6LabelRect, "Release");
-    knob6Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    knob6Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    knob6Label->setHoriAlign(kCenterText);
-    frame->addView(knob6Label);
+    // Bypassボタン (Bypass button)
+    CRect bypassButtonRect(380, 465, 460, 495);
+    auto bypassButton = new CTextButton(bypassButtonRect, nullptr, PARAM_BYPASS, "BYPASS");
+    bypassButton->setGradient(CGradient::create(0.0, 1.0, CColor(70, 70, 70, 255), CColor(50, 50, 50, 255)));
+    bypassButton->setFrameColor(CColor(100, 100, 100, 255));
+    bypassButton->setTextColor(CColor(220, 220, 220, 255));
+    frame->addView(bypassButton);
     
-    // More sliders on the right
-    CRect hSlider2Rect(350, 160, 560, 180);
-    auto hSlider2 = new CHorizontalSlider(hSlider2Rect, nullptr, 0, 0, 100, nullptr, nullptr);
-    hSlider2->setValue(75.0f);
-    hSlider2->setFrameColor(CColor(80, 80, 80, 255)); // Dark frame for visibility
-    hSlider2->setBackColor(CColor(220, 220, 220, 255)); // Light background
-    hSlider2->setValueColor(CColor(150, 0, 100, 255)); // Magenta slider handle
-    frame->addView(hSlider2);
+    // EQ制御ボタン (EQ control buttons)
+    CRect resetButtonRect(500, 450, 580, 480);
+    auto resetButton = new CTextButton(resetButtonRect, nullptr, -1, "RESET");
+    resetButton->setGradient(CGradient::create(0.0, 1.0, CColor(70, 70, 70, 255), CColor(50, 50, 50, 255)));
+    resetButton->setFrameColor(CColor(100, 100, 100, 255));
+    resetButton->setTextColor(CColor(220, 220, 220, 255));
+    frame->addView(resetButton);
     
-    CRect hSlider2LabelRect(350, 185, 560, 205);
-    auto hSlider2Label = new CTextLabel(hSlider2LabelRect, "Envelope Amount");
-    hSlider2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    hSlider2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(hSlider2Label);
+    CRect undoButtonRect(590, 450, 650, 480);
+    auto undoButton = new CTextButton(undoButtonRect, nullptr, -1, "UNDO");
+    undoButton->setGradient(CGradient::create(0.0, 1.0, CColor(70, 70, 70, 255), CColor(50, 50, 50, 255)));
+    undoButton->setFrameColor(CColor(100, 100, 100, 255));
+    undoButton->setTextColor(CColor(220, 220, 220, 255));
+    frame->addView(undoButton);
     
-    // More buttons on the right
-    CRect button3Rect(350, 230, 440, 255);
-    auto button3 = new CTextButton(button3Rect, nullptr, 0, "Record");
-    frame->addView(button3);
+    CRect redoButtonRect(660, 450, 720, 480);
+    auto redoButton = new CTextButton(redoButtonRect, nullptr, -1, "REDO");
+    redoButton->setGradient(CGradient::create(0.0, 1.0, CColor(70, 70, 70, 255), CColor(50, 50, 50, 255)));
+    redoButton->setFrameColor(CColor(100, 100, 100, 255));
+    redoButton->setTextColor(CColor(220, 220, 220, 255));
+    frame->addView(redoButton);
     
-    CRect button4Rect(450, 230, 540, 255);
-    auto button4 = new CTextButton(button4Rect, nullptr, 0, "Bypass");
-    frame->addView(button4);
-    
-    // VU Meter
-    CRect vuMeterRect(350, 275, 430, 295);
-    auto vuMeter = new CVuMeter(vuMeterRect, nullptr, nullptr, 10, CVuMeter::kHorizontal);
-    vuMeter->setValue(0.6f);
-    frame->addView(vuMeter);
-    
-    CRect vuMeterLabelRect(350, 300, 430, 320);
-    auto vuMeterLabel = new CTextLabel(vuMeterLabelRect, "VU Meter");
-    vuMeterLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    vuMeterLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(vuMeterLabel);
-    
-    // More switches
-    CRect switch2Rect(450, 275, 490, 290);
-    auto switch2 = new COnOffButton(switch2Rect, nullptr, 0, nullptr, 0);
-    switch2->setValue(0.0f); // Off
-    frame->addView(switch2);
-    
-    CRect switch3Rect(500, 275, 540, 290);
-    auto switch3 = new COnOffButton(switch3Rect, nullptr, 0, nullptr, 0);
-    switch3->setValue(1.0f); // On
-    frame->addView(switch3);
-    
-    CRect switchGroupLabelRect(450, 300, 540, 320);
-    auto switchGroupLabel = new CTextLabel(switchGroupLabelRect, "Switches");
-    switchGroupLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    switchGroupLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(switchGroupLabel);
-    
-    // Additional option menu
-    CRect menu2Rect(350, 340, 470, 365);
-    auto optionMenu2 = new COptionMenu(menu2Rect, nullptr, 0);
-    optionMenu2->addEntry("Mono");
-    optionMenu2->addEntry("Stereo");
-    optionMenu2->addEntry("Mid/Side");
-    optionMenu2->setCurrent(1);
-    optionMenu2->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    optionMenu2->setBackColor(CColor(255, 255, 255, 255)); // White background
-    optionMenu2->setFontColor(CColor(20, 20, 20, 255)); // Dark text
-    frame->addView(optionMenu2);
-    
-    CRect menu2LabelRect(350, 370, 470, 390);
-    auto menu2Label = new CTextLabel(menu2LabelRect, "Output Mode");
-    menu2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    menu2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(menu2Label);
-    
-    // Additional segment button
-    CRect segment2Rect(480, 340, 570, 365);
-    auto segmentButton2 = new CSegmentButton(segment2Rect, nullptr, 0);
-    CSegmentButton::Segment segmentA;
-    segmentA.name = "A";
-    segmentButton2->addSegment(segmentA);
-    CSegmentButton::Segment segmentB;
-    segmentB.name = "B";
-    segmentButton2->addSegment(segmentB);
-    CSegmentButton::Segment segmentC;
-    segmentC.name = "C";
-    segmentButton2->addSegment(segmentC);
-    segmentButton2->setSelectedSegment(1);
-    frame->addView(segmentButton2);
-    
-    CRect segment2LabelRect(480, 370, 570, 390);
-    auto segment2Label = new CTextLabel(segment2LabelRect, "Mode");
-    segment2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    segment2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(segment2Label);
-    
-    // Status label at the bottom
-    CRect statusRect(10, 450, 590, 470);
-    auto statusLabel = new CTextLabel(statusRect, "VSTGUI Test Interface - All controls functional for testing purposes");
-    statusLabel->setFontColor(CColor(0, 80, 160, 255)); // Dark blue text
-    statusLabel->setBackColor(CColor(230, 245, 255, 220)); // Light blue background
+    // ステータス表示 (Status display)
+    CRect statusRect(500, 485, 720, 515);
+    auto statusLabel = new CTextLabel(statusRect, "Professional Audio Plugin Ready");
+    statusLabel->setFontColor(CColor(120, 180, 120, 255)); // 緑色のステータス (Green status)
+    statusLabel->setBackColor(CColor(0, 0, 0, 0));
     statusLabel->setHoriAlign(kCenterText);
     frame->addView(statusLabel);
+    
+    // 版権表示 (Copyright notice)
+    CRect copyrightRect(20, 550, 250, 580);
+    auto copyrightLabel = new CTextLabel(copyrightRect, "© 2025 CLAP Audio Plugin");
+    copyrightLabel->setFontColor(CColor(100, 100, 100, 255));
+    copyrightLabel->setBackColor(CColor(0, 0, 0, 0));
+    frame->addView(copyrightLabel);
 }

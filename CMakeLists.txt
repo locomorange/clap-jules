@@ -96,11 +96,11 @@ else()
 endif()
 
 # Add your plugin target here
-set(PLUGIN_SOURCES my_plugin.cpp)
+set(PLUGIN_SOURCES my_plugin.cpp my_plugin_parameters.cpp)
 
 # Add GUI sources only if VSTGUI is enabled
 if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
-    list(APPEND PLUGIN_SOURCES my_plugin_gui.cpp)
+    list(APPEND PLUGIN_SOURCES my_plugin_gui.cpp eq_curve_view.cpp)
     # Add Linux-specific extensions on Linux
     if(UNIX AND NOT APPLE)
         list(APPEND PLUGIN_SOURCES my_plugin_linux_extensions.cpp)

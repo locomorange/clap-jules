@@ -4,6 +4,8 @@
 #include <clap/ext/gui.h>
 #include "my_plugin_linux_extensions.h"
 #endif
+#include "my_plugin_parameters.h"
+#include <clap/ext/params.h>
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
@@ -58,6 +60,11 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
             self->gui_editor = nullptr;
         }
 #endif
+        // パラメータマネージャーのクリーンアップ (Clean up parameter manager)
+        if (self->parameter_manager) {
+            delete self->parameter_manager;
+            self->parameter_manager = nullptr;
+        }
         free(self);
     }
 }
@@ -267,7 +274,82 @@ static const clap_plugin_gui_t my_gui_extension = {
     my_plugin_gui_show,
     my_plugin_gui_hide
 };
-#endif // VSTGUI_ENABLED
+#endif
+
+// === パラメータ拡張実装 (Parameter Extension Implementation) ===
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->parameter_manager) {
+        return self->parameter_manager->getParameterCount();
+    }
+    return 0;
+}
+
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->parameter_manager) {
+        return self->parameter_manager->getParameterInfo(param_index, param_info);
+    }
+    return false;
+}
+
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->parameter_manager) {
+        return self->parameter_manager->getParameterValue(param_id, value);
+    }
+    return false;
+}
+
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *out_buffer, uint32_t out_buffer_capacity) {
+    // 簡単なテキスト変換実装 (Simple text conversion implementation)
+    snprintf(out_buffer, out_buffer_capacity, "%.2f", value);
+    return true;
+}
+
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *param_value_text, double *value) {
+    // 簡単なテキスト→値変換実装 (Simple text to value conversion implementation)
+    char *endptr;
+    double parsed_value = strtod(param_value_text, &endptr);
+    if (endptr != param_value_text) {
+        *value = parsed_value;
+        return true;
+    }
+    return false;
+}
+
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // 入力イベントの処理 (Process input events)
+    if (in && self && self->parameter_manager) {
+        const uint32_t num_events = in->size(in);
+        for (uint32_t i = 0; i < num_events; ++i) {
+            const clap_event_header_t* hdr = in->get(in, i);
+            if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
+                switch (hdr->type) {
+                    case CLAP_EVENT_PARAM_VALUE: {
+                        const clap_event_param_value_t* param_event = (const clap_event_param_value_t*)hdr;
+                        self->parameter_manager->setParameterValue(param_event->param_id, param_event->value);
+                        break;
+                    }
+                    // 他のイベントタイプをここで処理 (Handle other event types here)
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+}
+
+static const clap_plugin_params_t my_params_extension = {
+    my_plugin_params_count,
+    my_plugin_params_get_info,
+    my_plugin_params_get_value,
+    my_plugin_params_value_to_text,
+    my_plugin_params_text_to_value,
+    my_plugin_params_flush
+}; // VSTGUI_ENABLED
 
 
 
@@ -275,6 +357,11 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
+    
+    // パラメータ拡張をサポート (Support parameter extension)
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        return &my_params_extension;
+    }
     
 #if VSTGUI_ENABLED
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
@@ -331,11 +418,20 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     // Store host pointer for extension access
     self->host = host;
 
+    // パラメータマネージャーの初期化 (Initialize parameter manager)
+    self->parameter_manager = new MyPluginParameterManager();
+    if (!self->parameter_manager) {
+        fprintf(stderr, "MyPlugin: Error - failed to create parameter manager\n");
+        free(self);
+        return NULL;
+    }
+
     // Initialize GUI editor
 #if VSTGUI_ENABLED
     self->gui_editor = new MyPluginEditor(host);
     if (!self->gui_editor) {
         fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
+        delete self->parameter_manager;
         free(self);
         return NULL;
     }

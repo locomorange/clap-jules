@@ -6,6 +6,7 @@
 #if VSTGUI_ENABLED
 class MyPluginEditor;
 #endif
+class MyPluginParameterManager;
 
 // Basic plugin structure
 typedef struct {
@@ -14,6 +15,7 @@ typedef struct {
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif
+    MyPluginParameterManager* parameter_manager;
     // Add any other plugin-specific data here
 } my_plugin_t;
 
