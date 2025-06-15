@@ -9,6 +9,7 @@
 
 // Forward declarations
 struct SpectrumAnalyzer;
+class SpectrumGUI;
 
 // Parameter IDs
 enum {
@@ -39,8 +40,8 @@ typedef struct {
     // Parameters
     float spectrum_drawing_style;
     
-    // GUI (will be implemented later)
-    void* gui_context;
+    // GUI
+    std::unique_ptr<SpectrumGUI> gui;
 } my_plugin_t;
 
 // Plugin factory ID

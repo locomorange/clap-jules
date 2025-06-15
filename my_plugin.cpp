@@ -1,9 +1,11 @@
 #include "my_plugin.h"
 #include "spectrum_analyzer.h"
+#include "spectrum_gui.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 #include <clap/ext/params.h>
+#include <clap/ext/gui.h>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -24,6 +26,19 @@ static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id para
 static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size);
 static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value);
 static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out);
+
+// --- GUI extension functions ---
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin);
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale);
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin);
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height);
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window);
+static bool my_plugin_gui_show(const clap_plugin_t *plugin);
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -53,10 +68,12 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->sample_rate = 44100.0;
     self->max_frames_count = 512;
     self->spectrum_drawing_style = 0.0f; // STYLE_LINES
-    self->gui_context = nullptr;
     
     // Initialize spectrum analyzer
     self->spectrum_analyzer = std::make_unique<SpectrumAnalyzer>();
+    
+    // Initialize GUI
+    self->gui = std::make_unique<SpectrumGUI>(self);
     
     return true;
 }
@@ -142,6 +159,11 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
                 self->spectrum_analyzer->process_samples(mono_samples.data(), process->frames_count);
             }
         }
+    }
+    
+    // Update GUI with new spectrum data
+    if (self->gui) {
+        self->gui->update_spectrum_data();
     }
     
     return CLAP_PROCESS_CONTINUE;
@@ -238,9 +260,92 @@ static const clap_plugin_params_t my_plugin_params_extension = {
     my_plugin_params_flush,
 };
 
+// --- GUI Extension Implementation ---
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->is_api_supported(api, is_floating) : false;
+}
+
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->get_preferred_api(api, is_floating) : false;
+}
+
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->create(api, is_floating) : false;
+}
+
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self->gui) {
+        self->gui->destroy();
+    }
+}
+
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->set_scale(scale) : false;
+}
+
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->get_size(width, height) : false;
+}
+
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->can_resize() : false;
+}
+
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->set_size(width, height) : false;
+}
+
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->set_parent(window) : false;
+}
+
+static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    bool result = (self->gui ? self->gui->show() : false);
+    if (result) {
+        printf("MyPlugin: GUI shown\n");
+    }
+    return result;
+}
+
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    return self->gui ? self->gui->hide() : false;
+}
+
+static const clap_plugin_gui_t my_plugin_gui_extension = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    nullptr, // get_resize_hints - not implemented
+    nullptr, // adjust_size - not implemented
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    nullptr, // set_transient - not implemented for floating windows
+    nullptr, // suggest_title - not implemented for floating windows
+    my_plugin_gui_show,
+    my_plugin_gui_hide,
+};
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
         return &my_plugin_params_extension;
+    }
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &my_plugin_gui_extension;
     }
     printf("MyPlugin: Host requesting extension: %s\n", id);
     return NULL; // No other extensions supported yet
