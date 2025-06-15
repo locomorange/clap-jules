@@ -30,7 +30,6 @@ public:
     bool hide();
     
 private:
-    CFrame* frame;
     bool isCreated;
     bool isVisible;
     uint32_t currentWidth;

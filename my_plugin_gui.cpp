@@ -8,13 +8,13 @@
 #include <iostream>
 
 MyPluginEditor::MyPluginEditor()
-    : frame(nullptr)
-    , isCreated(false) 
+    : isCreated(false) 
     , isVisible(false)
     , currentWidth(400)
     , currentHeight(300)
     , parentWindowHandle(nullptr)
 {
+    // frame is initialized by the base class VSTGUIEditorInterface
 }
 
 MyPluginEditor::~MyPluginEditor() {
@@ -152,9 +152,12 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
     }
     
     try {
-        // Handle X11 window embedding
+        std::cout << "MyPlugin GUI: setParent called with API: " << (window->api ? window->api : "null") << std::endl;
+        
+        // Handle platform-specific window embedding
+#ifdef __linux__
         if (window->api && strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
-            // Store the parent window handle
+            // Linux X11 embedding
             parentWindowHandle = (void*)(uintptr_t)window->x11;
             
             std::cout << "MyPlugin GUI: Embedding into X11 window ID: " << window->x11 << std::endl;
@@ -166,7 +169,6 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
             }
             
             // Open the frame with the X11 parent window
-            // Note: This may fail if the window ID is not valid, but should not crash
             try {
                 if (frame->open(parentWindowHandle, PlatformType::kX11EmbedWindowID)) {
                     std::cout << "MyPlugin GUI: Successfully embedded into X11 window" << std::endl;
@@ -176,13 +178,76 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
                     return false;
                 }
             } catch (const std::exception& e) {
-                std::cout << "MyPlugin GUI: Exception during frame open: " << e.what() << std::endl;
+                std::cout << "MyPlugin GUI: Exception during X11 frame open: " << e.what() << std::endl;
                 return false;
             } catch (...) {
-                std::cout << "MyPlugin GUI: Unknown exception during frame open" << std::endl;
+                std::cout << "MyPlugin GUI: Unknown exception during X11 frame open" << std::endl;
                 return false;
             }
         }
+#elif defined(__APPLE__)
+        if (window->api && strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
+            // macOS Cocoa embedding
+            parentWindowHandle = window->cocoa;
+            
+            std::cout << "MyPlugin GUI: Embedding into Cocoa NSView" << std::endl;
+            
+            // Validate that we have a valid NSView pointer
+            if (!window->cocoa) {
+                std::cout << "MyPlugin GUI: Invalid Cocoa NSView (null)" << std::endl;
+                return false;
+            }
+            
+            // Open the frame with the Cocoa parent view
+            try {
+                if (frame->open(parentWindowHandle, PlatformType::kNSView)) {
+                    std::cout << "MyPlugin GUI: Successfully embedded into Cocoa NSView" << std::endl;
+                    return true;
+                } else {
+                    std::cout << "MyPlugin GUI: Failed to open frame with Cocoa parent" << std::endl;
+                    return false;
+                }
+            } catch (const std::exception& e) {
+                std::cout << "MyPlugin GUI: Exception during Cocoa frame open: " << e.what() << std::endl;
+                return false;
+            } catch (...) {
+                std::cout << "MyPlugin GUI: Unknown exception during Cocoa frame open" << std::endl;
+                return false;
+            }
+        }
+#elif defined(_WIN32)
+        if (window->api && strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
+            // Windows Win32 embedding
+            parentWindowHandle = (void*)window->win32;
+            
+            std::cout << "MyPlugin GUI: Embedding into Win32 HWND" << std::endl;
+            
+            // Validate that we have a valid HWND
+            if (!window->win32) {
+                std::cout << "MyPlugin GUI: Invalid Win32 HWND (null)" << std::endl;
+                return false;
+            }
+            
+            // Open the frame with the Win32 parent window
+            try {
+                if (frame->open(parentWindowHandle, PlatformType::kHWNDTopLevel)) {
+                    std::cout << "MyPlugin GUI: Successfully embedded into Win32 HWND" << std::endl;
+                    return true;
+                } else {
+                    std::cout << "MyPlugin GUI: Failed to open frame with Win32 parent" << std::endl;
+                    return false;
+                }
+            } catch (const std::exception& e) {
+                std::cout << "MyPlugin GUI: Exception during Win32 frame open: " << e.what() << std::endl;
+                return false;
+            } catch (...) {
+                std::cout << "MyPlugin GUI: Unknown exception during Win32 frame open" << std::endl;
+                return false;
+            }
+        }
+#endif
+        
+        std::cout << "MyPlugin GUI: Unsupported window API: " << (window->api ? window->api : "null") << std::endl;
     }
     catch (const std::exception& e) {
         std::cout << "MyPlugin GUI: Error setting parent: " << e.what() << std::endl;

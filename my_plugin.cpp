@@ -3,7 +3,13 @@
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
 #include <vstgui/lib/vstguiinit.h>
+#if IS_LINUX
 #include <dlfcn.h>
+#elif IS_WIN
+#include <windows.h>
+#elif IS_MAC
+#include <dlfcn.h>
+#endif
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
@@ -361,17 +367,29 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
         
 #if VSTGUI_ENABLED
-        // Initialize VSTGUI with the library handle
-        // Get the library handle for Linux
-        void* handle = dlopen(plugin_path, RTLD_NOLOAD);
-        if (handle) {
-            printf("MyPlugin: Initializing VSTGUI...\n");
-            VSTGUI::init(handle);
-        } else {
-            printf("MyPlugin: Warning - could not get library handle for VSTGUI init\n");
-            // Try to initialize without handle
-            VSTGUI::init(nullptr);
+        // Initialize VSTGUI with platform-specific library handle
+        printf("MyPlugin: Initializing VSTGUI...\n");
+        void* handle = nullptr;
+        
+#if IS_LINUX || IS_MAC
+        // Unix/Linux/macOS: Use dlopen to get library handle
+        handle = dlopen(plugin_path, RTLD_NOLOAD);
+        if (!handle) {
+            printf("MyPlugin: Warning - could not get library handle with dlopen\n");
         }
+#elif IS_WIN
+        // Windows: Use GetModuleHandle to get library handle
+        // Convert plugin_path to wide string if necessary, or use GetModuleHandle(nullptr) for current module
+        handle = GetModuleHandleA(plugin_path);
+        if (!handle) {
+            printf("MyPlugin: Warning - could not get library handle with GetModuleHandle\n");
+            // Try getting handle of current module
+            handle = GetModuleHandleA(nullptr);
+        }
+#endif
+        
+        // Initialize VSTGUI with the obtained handle (or nullptr if failed)
+        VSTGUI::init(handle);
 #endif
         
         // Perform any global library initialization here if needed
