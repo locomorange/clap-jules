@@ -6,6 +6,7 @@
 #include <vstgui/vstgui.h>
 #include <vstgui/lib/cframe.h>
 #include <vstgui/lib/controls/ccontrol.h>
+#include "my_plugin.h"
 
 using namespace VSTGUI;
 

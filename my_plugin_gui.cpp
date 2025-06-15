@@ -308,7 +308,6 @@ void MyPluginEditor::createControls() {
     CRect undoButtonRect(20, 15, 80, 35);
     auto undoButton = new CTextButton(undoButtonRect, nullptr, 0, "Undo");
     undoButton->setFrameColor(CColor(80, 80, 80, 255));
-    undoButton->setBackColor(CColor(60, 60, 65, 255));
     undoButton->setTextColor(CColor(220, 220, 220, 255));
     frame->addView(undoButton);
     
@@ -316,7 +315,6 @@ void MyPluginEditor::createControls() {
     CRect redoButtonRect(90, 15, 150, 35);
     auto redoButton = new CTextButton(redoButtonRect, nullptr, 0, "Redo");
     redoButton->setFrameColor(CColor(80, 80, 80, 255));
-    redoButton->setBackColor(CColor(60, 60, 65, 255));
     redoButton->setTextColor(CColor(220, 220, 220, 255));
     frame->addView(redoButton);
     
@@ -324,14 +322,12 @@ void MyPluginEditor::createControls() {
     CRect aButtonRect(currentWidth - 150, 15, currentWidth - 110, 35);
     auto aButton = new CTextButton(aButtonRect, nullptr, 0, "A");
     aButton->setFrameColor(CColor(80, 80, 80, 255));
-    aButton->setBackColor(CColor(120, 60, 60, 255)); // Red tint for A
     aButton->setTextColor(CColor(255, 255, 255, 255));
     frame->addView(aButton);
     
     CRect bButtonRect(currentWidth - 100, 15, currentWidth - 60, 35);
     auto bButton = new CTextButton(bButtonRect, nullptr, 0, "B");
     bButton->setFrameColor(CColor(80, 80, 80, 255));
-    bButton->setBackColor(CColor(60, 60, 65, 255));
     bButton->setTextColor(CColor(220, 220, 220, 255));
     frame->addView(bButton);
     
@@ -449,7 +445,6 @@ void MyPluginEditor::createControls() {
     // Spectrum analyzer background
     CRect spectrumRect(rightX, spectrumY, rightX + rightWidth, spectrumY + spectrumHeight);
     auto spectrumView = new CView(spectrumRect);
-    spectrumView->setBackgroundColor(CColor(15, 15, 20, 255)); // Very dark background
     frame->addView(spectrumView);
     
     // Grid lines for spectrum (placeholder - would be drawn with custom view)
@@ -457,7 +452,6 @@ void MyPluginEditor::createControls() {
         int gridY = spectrumY + (spectrumHeight * i / 10);
         CRect gridLineRect(rightX, gridY, rightX + rightWidth, gridY + 1);
         auto gridLine = new CView(gridLineRect);
-        gridLine->setBackgroundColor(CColor(40, 40, 45, 100)); // Semi-transparent grid
         frame->addView(gridLine);
     }
     
@@ -465,7 +459,6 @@ void MyPluginEditor::createControls() {
         int gridX = rightX + (rightWidth * i / 8);
         CRect gridLineRect(gridX, spectrumY, gridX + 1, spectrumY + spectrumHeight);
         auto gridLine = new CView(gridLineRect);
-        gridLine->setBackgroundColor(CColor(40, 40, 45, 100)); // Semi-transparent grid
         frame->addView(gridLine);
     }
     
@@ -477,7 +470,6 @@ void MyPluginEditor::createControls() {
         
         CRect pointRect(pointX - 6, pointY - 6, pointX + 6, pointY + 6);
         auto eqPoint = new CView(pointRect);
-        eqPoint->setBackgroundColor(CColor(255, 120, 60, 255)); // Orange EQ points
         frame->addView(eqPoint);
     }
     
@@ -529,7 +521,7 @@ void MyPluginEditor::valueChanged(CControl* pControl) {
             break;
         case PARAM_MODE:
             // Mode is 0-3, but COptionMenu returns current selection index
-            value = static_cast<double>(static_cast<COptionMenu*>(pControl)->getCurrent());
+            value = static_cast<double>(static_cast<COptionMenu*>(pControl)->getCurrentIndex());
             break;
         case PARAM_BALANCE:
             // Balance is -1 to +1, slider value is already in this range
