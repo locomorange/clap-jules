@@ -4,6 +4,7 @@
 #include <clap/ext/gui.h>
 #include <vstgui/vstgui.h>
 #include <vstgui/lib/cframe.h>
+#include <cstring>
 
 using namespace VSTGUI;
 

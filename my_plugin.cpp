@@ -2,11 +2,18 @@
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#include <vstgui/lib/vstguiinit.h>
+#include <dlfcn.h>
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <exception> // For std::exception
+
+#if VSTGUI_ENABLED
+static void* vstgui_lib_handle = nullptr;
+#endif
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -357,13 +364,48 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     // init: Called once when the library is loaded.
     [](const char *plugin_path) -> bool {
         printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
-        // Perform any global library initialization here if needed
+        
+#if VSTGUI_ENABLED
+        // Get the handle to the current shared library for VSTGUI initialization
+        vstgui_lib_handle = dlopen(plugin_path, RTLD_LAZY | RTLD_NOLOAD);
+        if (vstgui_lib_handle) {
+            try {
+                VSTGUI::init(vstgui_lib_handle);
+                printf("MyPlugin: VSTGUI initialized successfully\n");
+            } catch (const std::exception& e) {
+                printf("MyPlugin: Failed to initialize VSTGUI: %s\n", e.what());
+                dlclose(vstgui_lib_handle);
+                vstgui_lib_handle = nullptr;
+                return false;
+            } catch (...) {
+                printf("MyPlugin: Failed to initialize VSTGUI: unknown error\n");
+                dlclose(vstgui_lib_handle);
+                vstgui_lib_handle = nullptr;
+                return false;
+            }
+        } else {
+            printf("MyPlugin: Warning - Could not get library handle for VSTGUI initialization\n");
+        }
+#endif
+        
         return true;
     },
     // deinit: Called once when the library is unloaded.
     []() -> void {
         printf("MyPlugin: clap_entry.deinit called\n");
-        // Perform any global library cleanup here if needed
+        
+#if VSTGUI_ENABLED
+        if (vstgui_lib_handle) {
+            try {
+                VSTGUI::exit();
+                printf("MyPlugin: VSTGUI cleanup completed\n");
+            } catch (...) {
+                printf("MyPlugin: Warning - Exception during VSTGUI cleanup\n");
+            }
+            dlclose(vstgui_lib_handle);
+            vstgui_lib_handle = nullptr;
+        }
+#endif
     },
     // get_factory: Returns a factory based on its ID.
     [](const char *factory_id) -> const void * {
