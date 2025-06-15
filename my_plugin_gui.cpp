@@ -1,4 +1,5 @@
 #include "my_plugin_gui.h"
+#include "my_plugin.h"
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
@@ -9,7 +10,10 @@
 #include <vstgui/lib/controls/cswitch.h>
 #include <vstgui/lib/controls/cvumeter.h>
 #include <vstgui/lib/vstguiinit.h>
+#include <vstgui/lib/cbitmap.h>
+#include <vstgui/lib/cgraphicspath.h>
 #include <iostream>
+#include <cmath>
 
 #ifdef __linux__
 #include <vstgui/lib/platform/platform_x11.h>
@@ -27,14 +31,291 @@
 // Static initialization flag
 static bool vstgui_initialized = false;
 
+// Professional color scheme inspired by Soothe2
+const CColor MyPluginEditor::kBackgroundColor(25, 25, 30, 255);      // Dark background
+const CColor MyPluginEditor::kPanelColor(35, 35, 42, 255);           // Panel background
+const CColor MyPluginEditor::kAccentColor(120, 180, 255, 255);       // Blue accent
+const CColor MyPluginEditor::kTextColor(220, 220, 225, 255);         // Light text
+const CColor MyPluginEditor::kGridColor(60, 60, 70, 255);            // Grid lines
+
+//=============================================================================
+// EQVisualizationView Implementation
+//=============================================================================
+
+EQVisualizationView::EQVisualizationView(const CRect& size) 
+    : CView(size), selectedNode(-1) {
+    // Initialize default EQ nodes
+    eqNodes.resize(3);
+    eqNodes[0] = {200.0, 0.0, 1.0, CPoint(0, 0), false, false};
+    eqNodes[1] = {1000.0, 0.0, 1.0, CPoint(0, 0), false, false};
+    eqNodes[2] = {5000.0, 0.0, 1.0, CPoint(0, 0), false, false};
+}
+
+EQVisualizationView::~EQVisualizationView() {
+}
+
+void EQVisualizationView::draw(CDrawContext* context) {
+    // Clear background
+    context->setFillColor(MyPluginEditor::kBackgroundColor);
+    context->drawRect(getViewSize(), kDrawFilled);
+    
+    drawGrid(context);
+    drawFrequencyResponse(context);
+    drawNodes(context);
+}
+
+void EQVisualizationView::drawGrid(CDrawContext* context) {
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(1.0);
+    context->setFrameColor(MyPluginEditor::kGridColor);
+    
+    CRect bounds = getViewSize();
+    bounds.makeIntegral();
+    
+    // Vertical grid lines (frequency divisions)
+    const double freqs[] = {50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000};
+    for (double freq : freqs) {
+        double x = bounds.left + (std::log10(freq / 20.0) / std::log10(20000.0 / 20.0)) * bounds.getWidth();
+        if (x >= bounds.left && x <= bounds.right) {
+            context->drawLine(CPoint(x, bounds.top), CPoint(x, bounds.bottom));
+        }
+    }
+    
+    // Horizontal grid lines (gain divisions)
+    const double gains[] = {-12, -6, 0, 6, 12};
+    for (double gain : gains) {
+        double y = bounds.top + bounds.getHeight() * (1.0 - (gain + 12.0) / 24.0);
+        if (y >= bounds.top && y <= bounds.bottom) {
+            context->drawLine(CPoint(bounds.left, y), CPoint(bounds.right, y));
+            
+            // Draw gain labels
+            if (gain == 0) {
+                context->setLineWidth(2.0);
+                context->drawLine(CPoint(bounds.left, y), CPoint(bounds.right, y));
+                context->setLineWidth(1.0);
+            }
+        }
+    }
+}
+
+void EQVisualizationView::drawFrequencyResponse(CDrawContext* context) {
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(2.0);
+    context->setFrameColor(MyPluginEditor::kAccentColor);
+    
+    CRect bounds = getViewSize();
+    auto path = context->createGraphicsPath();
+    if (!path) return;
+    
+    bool firstPoint = true;
+    
+    // Draw smooth frequency response curve
+    for (int x = 0; x < bounds.getWidth(); x += 2) {
+        double freq = 20.0 * std::pow(20000.0 / 20.0, (double)x / bounds.getWidth());
+        double totalGain = 0.0;
+        
+        // Calculate combined response from all EQ bands
+        for (const auto& node : eqNodes) {
+            if (node.gain != 0.0) {
+                double ratio = freq / node.freq;
+                double q = node.q;
+                
+                // Simple bell filter approximation
+                double gain = node.gain / (1.0 + q * q * (ratio - 1.0/ratio) * (ratio - 1.0/ratio));
+                totalGain += gain;
+            }
+        }
+        
+        // Clamp gain to reasonable range
+        totalGain = std::max(-12.0, std::min(12.0, totalGain));
+        
+        double y = bounds.top + bounds.getHeight() * (1.0 - (totalGain + 12.0) / 24.0);
+        CPoint point(bounds.left + x, y);
+        
+        if (firstPoint) {
+            path->beginSubpath(point);
+            firstPoint = false;
+        } else {
+            path->addLine(point);
+        }
+    }
+    
+    context->drawGraphicsPath(path, CDrawContext::kPathStroked);
+    path->forget();
+}
+
+void EQVisualizationView::drawNodes(CDrawContext* context) {
+    for (size_t i = 0; i < eqNodes.size(); ++i) {
+        const auto& node = eqNodes[i];
+        CPoint pos = frequencyToPosition(node.freq, node.gain);
+        
+        // Draw node circle
+        CRect nodeRect(pos.x - 6, pos.y - 6, pos.x + 6, pos.y + 6);
+        
+        if (node.selected || selectedNode == (int)i) {
+            context->setFillColor(MyPluginEditor::kAccentColor);
+            context->setFrameColor(CColor(255, 255, 255, 255));
+            context->setLineWidth(2.0);
+        } else {
+            context->setFillColor(CColor(80, 80, 90, 200));
+            context->setFrameColor(MyPluginEditor::kAccentColor);
+            context->setLineWidth(1.0);
+        }
+        
+        context->drawEllipse(nodeRect, kDrawFilledAndStroked);
+        
+        // Draw frequency and gain labels
+        if (node.selected || selectedNode == (int)i) {
+            char freqText[32];
+            char gainText[32];
+            
+            if (node.freq >= 1000) {
+                snprintf(freqText, sizeof(freqText), "%.1fkHz", node.freq / 1000.0);
+            } else {
+                snprintf(freqText, sizeof(freqText), "%.0fHz", node.freq);
+            }
+            snprintf(gainText, sizeof(gainText), "%+.1fdB", node.gain);
+            
+            context->setFontColor(MyPluginEditor::kTextColor);
+            context->setFont(kSystemFont);
+            
+            CRect textRect(pos.x - 30, pos.y - 25, pos.x + 30, pos.y - 10);
+            context->drawString(freqText, textRect, kCenterText);
+            textRect.offset(0, 15);
+            context->drawString(gainText, textRect, kCenterText);
+        }
+    }
+}
+
+CPoint EQVisualizationView::frequencyToPosition(double freq, double gain) {
+    CRect bounds = getViewSize();
+    
+    double x = bounds.left + (std::log10(freq / 20.0) / std::log10(20000.0 / 20.0)) * bounds.getWidth();
+    double y = bounds.top + bounds.getHeight() * (1.0 - (gain + 12.0) / 24.0);
+    
+    return CPoint(x, y);
+}
+
+void EQVisualizationView::positionToFrequency(const CPoint& pos, double& freq, double& gain) {
+    CRect bounds = getViewSize();
+    
+    double normalizedX = (pos.x - bounds.left) / bounds.getWidth();
+    freq = 20.0 * std::pow(20000.0 / 20.0, normalizedX);
+    freq = std::max(20.0, std::min(20000.0, freq));
+    
+    double normalizedY = (pos.y - bounds.top) / bounds.getHeight();
+    gain = 12.0 - (normalizedY * 24.0);
+    gain = std::max(-12.0, std::min(12.0, gain));
+}
+
+int EQVisualizationView::getNodeAtPosition(const CPoint& pos) {
+    for (size_t i = 0; i < eqNodes.size(); ++i) {
+        CPoint nodePos = frequencyToPosition(eqNodes[i].freq, eqNodes[i].gain);
+        double distance = std::sqrt(std::pow(pos.x - nodePos.x, 2) + std::pow(pos.y - nodePos.y, 2));
+        if (distance <= 10.0) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+CMouseEventResult EQVisualizationView::onMouseDown(CPoint& where, const CButtonState& buttons) {
+    if (buttons & kLButton) {
+        selectedNode = getNodeAtPosition(where);
+        if (selectedNode >= 0) {
+            eqNodes[selectedNode].selected = true;
+            eqNodes[selectedNode].dragging = true;
+            lastMousePos = where;
+            invalid();
+            return kMouseEventHandled;
+        }
+    }
+    return kMouseEventNotHandled;
+}
+
+CMouseEventResult EQVisualizationView::onMouseMoved(CPoint& where, const CButtonState& buttons) {
+    if (selectedNode >= 0 && eqNodes[selectedNode].dragging) {
+        double freq, gain;
+        positionToFrequency(where, freq, gain);
+        
+        eqNodes[selectedNode].freq = freq;
+        eqNodes[selectedNode].gain = gain;
+        
+        invalid();
+        return kMouseEventHandled;
+    }
+    return kMouseEventNotHandled;
+}
+
+CMouseEventResult EQVisualizationView::onMouseUp(CPoint& where, const CButtonState& buttons) {
+    if (selectedNode >= 0) {
+        eqNodes[selectedNode].dragging = false;
+        // Keep selected for visual feedback
+        invalid();
+        return kMouseEventHandled;
+    }
+    return kMouseEventNotHandled;
+}
+
+void EQVisualizationView::updateEQData(double eq_freq[3], double eq_gain[3], double eq_q[3]) {
+    if (eqNodes.size() >= 3) {
+        for (int i = 0; i < 3; ++i) {
+            eqNodes[i].freq = eq_freq[i];
+            eqNodes[i].gain = eq_gain[i];
+            eqNodes[i].q = eq_q[i];
+        }
+        invalid();
+    }
+}
+
+void EQVisualizationView::setNodeSelected(int nodeIndex, bool selected) {
+    if (nodeIndex >= 0 && nodeIndex < (int)eqNodes.size()) {
+        // Deselect all first
+        for (auto& node : eqNodes) {
+            node.selected = false;
+        }
+        
+        if (selected) {
+            eqNodes[nodeIndex].selected = true;
+            selectedNode = nodeIndex;
+        } else {
+            selectedNode = -1;
+        }
+        invalid();
+    }
+}
+
+//=============================================================================
+// MyPluginEditor Implementation
+//=============================================================================
+
 MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     : frame(nullptr)
     , isCreated(false) 
     , isVisible(false)
-    , currentWidth(600)
-    , currentHeight(500)
+    , currentWidth(900)  // Wider for professional layout
+    , currentHeight(600) // Taller for better proportions
     , host(host)
+    , leftPanel(nullptr)
+    , rightPanel(nullptr)
+    , eqView(nullptr)
+    , cutoffKnob(nullptr)
+    , resonanceKnob(nullptr)
+    , driveKnob(nullptr)
+    , outputKnob(nullptr)
+    , mixSlider(nullptr)
+    , bypassButton(nullptr)
+    , presetMenu(nullptr)
+    , brandLabel(nullptr)
+    , statusLabel(nullptr)
 {
+    // Initialize parameters with default values
+    for (int i = 0; i < 16; ++i) {
+        currentParams[i] = 0.0;
+    }
+    currentParams[PARAM_CUTOFF] = 0.5;     // 1000Hz default
+    currentParams[PARAM_RESONANCE] = 0.1;  // Low resonance
+    currentParams[PARAM_MIX] = 1.0;        // Full wet
 }
 
 MyPluginEditor::~MyPluginEditor() {
@@ -106,16 +387,17 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
     }
     
     try {
-        // Create VSTGUI frame
+        // Create VSTGUI frame with professional size
         CRect rect(0, 0, currentWidth, currentHeight);
         frame = new CFrame(rect, nullptr);
         
         if (frame) {
-            // Set a light gray background for better contrast
-            frame->setBackgroundColor(CColor(240, 240, 240, 255)); // Light gray background
+            // Set professional dark background
+            frame->setBackgroundColor(kBackgroundColor);
             createControls();
             isCreated = true;
-            std::cout << "MyPlugin GUI: Created successfully" << std::endl;
+            std::cout << "MyPlugin GUI: Professional GUI created successfully (" 
+                      << currentWidth << "x" << currentHeight << ")" << std::endl;
             return true;
         }
     }
@@ -298,327 +580,297 @@ void MyPluginEditor::createControls() {
         return;
     }
     
-    // Create a title label
-    CRect titleRect(10, 10, 590, 35);
-    auto titleLabel = new CTextLabel(titleRect, "CLAP Plugin - VSTGUI Controls Test Interface");
-    titleLabel->setFontColor(CColor(20, 20, 20, 255)); // Dark gray text for better readability
-    titleLabel->setBackColor(CColor(220, 235, 255, 255)); // Light blue background
-    titleLabel->setHoriAlign(kCenterText);
-    frame->addView(titleLabel);
+    // Create main layout containers
+    createLeftPanel();
+    createRightPanel();
     
-    // === Row 1: Knobs ===
-    // Volume knob
-    CRect volumeKnobRect(30, 60, 80, 110);
-    auto volumeKnob = new CKnob(volumeKnobRect, nullptr, 0, nullptr, nullptr);
-    volumeKnob->setDefaultValue(0.5f);
-    volumeKnob->setValue(0.5f);
-    volumeKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    volumeKnob->setColorHandle(CColor(200, 50, 50, 255)); // Red handle for visibility
-    frame->addView(volumeKnob);
+    std::cout << "MyPlugin GUI: Professional control layout created" << std::endl;
+}
+
+void MyPluginEditor::createBrandHeader() {
+    if (!leftPanel) return;
     
-    CRect volumeLabelRect(20, 115, 90, 135);
-    auto volumeLabel = new CTextLabel(volumeLabelRect, "Volume");
-    volumeLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    volumeLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    volumeLabel->setHoriAlign(kCenterText);
-    frame->addView(volumeLabel);
+    // Brand/logo area
+    CRect brandRect(10, 10, 240, 50);
+    brandLabel = new CTextLabel(brandRect, "Soothe Pro");
+    brandLabel->setFontColor(kTextColor);
+    brandLabel->setBackColor(CColor(0, 0, 0, 0)); // Transparent
+    brandLabel->setFont(new CFontDesc("Arial", 18, kNormalFace));
+    brandLabel->setHoriAlign(kCenterText);
+    brandLabel->setStyle(brandLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(brandLabel);
     
-    // Filter knob
-    CRect filterKnobRect(110, 60, 160, 110);
-    auto filterKnob = new CKnob(filterKnobRect, nullptr, 0, nullptr, nullptr);
-    filterKnob->setDefaultValue(0.7f);
-    filterKnob->setValue(0.7f);
-    filterKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    filterKnob->setColorHandle(CColor(50, 150, 50, 255)); // Green handle for visibility
-    frame->addView(filterKnob);
+    // Version/subtitle
+    CRect subtitleRect(10, 45, 240, 65);
+    auto subtitleLabel = new CTextLabel(subtitleRect, "Dynamic EQ & Resonance Control");
+    subtitleLabel->setFontColor(CColor(160, 160, 170, 255));
+    subtitleLabel->setBackColor(CColor(0, 0, 0, 0));
+    subtitleLabel->setFont(new CFontDesc("Arial", 10, kNormalFace));
+    subtitleLabel->setHoriAlign(kCenterText);
+    subtitleLabel->setStyle(subtitleLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(subtitleLabel);
+}
+
+void MyPluginEditor::createLeftPanel() {
+    if (!frame) return;
     
-    CRect filterLabelRect(100, 115, 170, 135);
-    auto filterLabel = new CTextLabel(filterLabelRect, "Filter");
-    filterLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    filterLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    filterLabel->setHoriAlign(kCenterText);
-    frame->addView(filterLabel);
+    // Left control panel (similar to Soothe2's left sidebar)
+    CRect leftRect(0, 0, 250, currentHeight);
+    leftPanel = new CViewContainer(leftRect);
+    leftPanel->setBackgroundColor(kPanelColor);
+    frame->addView(leftPanel);
+    
+    createBrandHeader();
+    
+    int yPos = 80;
+    const int spacing = 20;
+    const int controlHeight = 15;
+    const int knobSize = 60;
+    
+    // Preset selection
+    CRect presetRect(15, yPos, 235, yPos + 25);
+    presetMenu = new COptionMenu(presetRect, nullptr, 0);
+    presetMenu->addEntry("Default");
+    presetMenu->addEntry("Warm Analog");
+    presetMenu->addEntry("Modern Digital");
+    presetMenu->addEntry("Vintage Character");
+    presetMenu->addEntry("Custom Settings");
+    presetMenu->setCurrent(0);
+    styleControl(presetMenu);
+    leftPanel->addView(presetMenu);
+    yPos += 40;
+    
+    // Main controls section
+    CRect sectionRect(10, yPos, 240, yPos + 20);
+    auto sectionLabel = new CTextLabel(sectionRect, "MAIN CONTROLS");
+    sectionLabel->setFontColor(kAccentColor);
+    sectionLabel->setBackColor(CColor(0, 0, 0, 0));
+    sectionLabel->setFont(new CFontDesc("Arial", 12, kBoldFace));
+    sectionLabel->setHoriAlign(kLeftText);
+    sectionLabel->setStyle(sectionLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(sectionLabel);
+    yPos += 35;
+    
+    // Large main knob (Cutoff)
+    CRect cutoffKnobRect(95, yPos, 95 + 80, yPos + 80);
+    cutoffKnob = new CKnob(cutoffKnobRect, nullptr, 0 /* PARAM_CUTOFF */, nullptr, nullptr);
+    cutoffKnob->setDefaultValue(0.5);
+    cutoffKnob->setValue(0.5);
+    styleControl(cutoffKnob);
+    leftPanel->addView(cutoffKnob);
+    
+    CRect cutoffLabelRect(80, yPos + 85, 160, yPos + 100);
+    auto cutoffLabel = new CTextLabel(cutoffLabelRect, "CUTOFF");
+    cutoffLabel->setFontColor(kTextColor);
+    cutoffLabel->setBackColor(CColor(0, 0, 0, 0));
+    cutoffLabel->setFont(new CFontDesc("Arial", 11, kBoldFace));
+    cutoffLabel->setHoriAlign(kCenterText);
+    cutoffLabel->setStyle(cutoffLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(cutoffLabel);
+    yPos += 120;
+    
+    // Secondary knobs row
+    int knobX = 30;
+    const int knobSpacing = 70;
     
     // Resonance knob
-    CRect resKnobRect(190, 60, 240, 110);
-    auto resKnob = new CKnob(resKnobRect, nullptr, 0, nullptr, nullptr);
-    resKnob->setDefaultValue(0.3f);
-    resKnob->setValue(0.3f);
-    resKnob->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    resKnob->setColorHandle(CColor(50, 50, 200, 255)); // Blue handle for visibility
-    frame->addView(resKnob);
+    CRect resKnobRect(knobX, yPos, knobX + knobSize, yPos + knobSize);
+    resonanceKnob = new CKnob(resKnobRect, nullptr, 1 /* PARAM_RESONANCE */, nullptr, nullptr);
+    resonanceKnob->setDefaultValue(0.3);
+    resonanceKnob->setValue(0.3);
+    styleControl(resonanceKnob);
+    leftPanel->addView(resonanceKnob);
     
-    CRect resLabelRect(180, 115, 250, 135);
-    auto resLabel = new CTextLabel(resLabelRect, "Resonance");
-    resLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    resLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
+    CRect resLabelRect(knobX - 10, yPos + knobSize + 5, knobX + knobSize + 10, yPos + knobSize + 20);
+    auto resLabel = new CTextLabel(resLabelRect, "RESO");
+    resLabel->setFontColor(kTextColor);
+    resLabel->setBackColor(CColor(0, 0, 0, 0));
+    resLabel->setFont(new CFontDesc("Arial", 9, kNormalFace));
     resLabel->setHoriAlign(kCenterText);
-    frame->addView(resLabel);
+    resLabel->setStyle(resLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(resLabel);
     
-    // === Row 2: Sliders ===
-    // Horizontal slider
-    CRect hSliderRect(30, 160, 240, 180);
-    auto hSlider = new CHorizontalSlider(hSliderRect, nullptr, 0, 0, 100, nullptr, nullptr);
-    hSlider->setValue(60.0f);
-    hSlider->setFrameColor(CColor(80, 80, 80, 255)); // Dark frame for visibility
-    hSlider->setBackColor(CColor(220, 220, 220, 255)); // Light background
-    hSlider->setValueColor(CColor(0, 120, 200, 255)); // Blue slider handle
-    frame->addView(hSlider);
+    // Drive knob
+    knobX += knobSpacing;
+    CRect driveKnobRect(knobX, yPos, knobX + knobSize, yPos + knobSize);
+    driveKnob = new CKnob(driveKnobRect, nullptr, 2 /* PARAM_DRIVE */, nullptr, nullptr);
+    driveKnob->setDefaultValue(0.0);
+    driveKnob->setValue(0.0);
+    styleControl(driveKnob);
+    leftPanel->addView(driveKnob);
     
-    CRect hSliderLabelRect(30, 185, 240, 205);
-    auto hSliderLabel = new CTextLabel(hSliderLabelRect, "Horizontal Slider (Cutoff)");
-    hSliderLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    hSliderLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(hSliderLabel);
+    CRect driveLabelRect(knobX - 10, yPos + knobSize + 5, knobX + knobSize + 10, yPos + knobSize + 20);
+    auto driveLabel = new CTextLabel(driveLabelRect, "DRIVE");
+    driveLabel->setFontColor(kTextColor);
+    driveLabel->setBackColor(CColor(0, 0, 0, 0));
+    driveLabel->setFont(new CFontDesc("Arial", 9, kNormalFace));
+    driveLabel->setHoriAlign(kCenterText);
+    driveLabel->setStyle(driveLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(driveLabel);
     
-    // Vertical slider
-    CRect vSliderRect(270, 60, 290, 180);
-    auto vSlider = new CVerticalSlider(vSliderRect, nullptr, 0, 0, 100, nullptr, nullptr);
-    vSlider->setValue(40.0f);
-    vSlider->setFrameColor(CColor(80, 80, 80, 255)); // Dark frame for visibility
-    vSlider->setBackColor(CColor(220, 220, 220, 255)); // Light background
-    vSlider->setValueColor(CColor(200, 100, 0, 255)); // Orange slider handle
-    frame->addView(vSlider);
+    yPos += knobSize + 40;
     
-    CRect vSliderLabelRect(260, 185, 300, 205);
-    auto vSliderLabel = new CTextLabel(vSliderLabelRect, "Vertical");
-    vSliderLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    vSliderLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    vSliderLabel->setHoriAlign(kCenterText);
-    frame->addView(vSliderLabel);
+    // Output section
+    CRect outputSectionRect(10, yPos, 240, yPos + 20);
+    auto outputSectionLabel = new CTextLabel(outputSectionRect, "OUTPUT");
+    outputSectionLabel->setFontColor(kAccentColor);
+    outputSectionLabel->setBackColor(CColor(0, 0, 0, 0));
+    outputSectionLabel->setFont(new CFontDesc("Arial", 12, kBoldFace));
+    outputSectionLabel->setHoriAlign(kLeftText);
+    outputSectionLabel->setStyle(outputSectionLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(outputSectionLabel);
+    yPos += 30;
     
-    // === Row 3: Buttons ===
-    // Text buttons
-    CRect button1Rect(30, 230, 120, 255);
-    auto button1 = new CTextButton(button1Rect, nullptr, 0, "Play");
-    frame->addView(button1);
+    // Mix slider (vertical)
+    CRect mixSliderRect(50, yPos, 70, yPos + 80);
+    mixSlider = new CVerticalSlider(mixSliderRect, nullptr, 4 /* PARAM_MIX */, 0, 100, nullptr, nullptr);
+    mixSlider->setValue(100.0);
+    styleControl(mixSlider);
+    leftPanel->addView(mixSlider);
     
-    CRect button2Rect(130, 230, 220, 255);
-    auto button2 = new CTextButton(button2Rect, nullptr, 0, "Stop");
-    frame->addView(button2);
+    CRect mixLabelRect(40, yPos + 85, 80, yPos + 100);
+    auto mixLabel = new CTextLabel(mixLabelRect, "MIX");
+    mixLabel->setFontColor(kTextColor);
+    mixLabel->setBackColor(CColor(0, 0, 0, 0));
+    mixLabel->setFont(new CFontDesc("Arial", 9, kNormalFace));
+    mixLabel->setHoriAlign(kCenterText);
+    mixLabel->setStyle(mixLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(mixLabel);
     
-    // Kick button (momentary)
-    CRect kickButtonRect(230, 230, 320, 255);
-    auto kickButton = new CKickButton(kickButtonRect, nullptr, 0, nullptr);
-    frame->addView(kickButton);
+    // Output gain knob
+    CRect outputKnobRect(120, yPos + 10, 120 + knobSize, yPos + 10 + knobSize);
+    outputKnob = new CKnob(outputKnobRect, nullptr, 3 /* PARAM_OUTPUT */, nullptr, nullptr);
+    outputKnob->setDefaultValue(0.5);
+    outputKnob->setValue(0.5);
+    styleControl(outputKnob);
+    leftPanel->addView(outputKnob);
     
-    CRect kickLabelRect(230, 260, 320, 280);
-    auto kickLabel = new CTextLabel(kickLabelRect, "Kick Button");
-    kickLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    kickLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    kickLabel->setHoriAlign(kCenterText);
-    frame->addView(kickLabel);
+    CRect outputLabelRect(110, yPos + knobSize + 15, 190, yPos + knobSize + 30);
+    auto outputLabel = new CTextLabel(outputLabelRect, "OUTPUT");
+    outputLabel->setFontColor(kTextColor);
+    outputLabel->setBackColor(CColor(0, 0, 0, 0));
+    outputLabel->setFont(new CFontDesc("Arial", 9, kNormalFace));
+    outputLabel->setHoriAlign(kCenterText);
+    outputLabel->setStyle(outputLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(outputLabel);
     
-    // === Row 4: Option Menu and Segment Button ===
-    // Option menu (dropdown)
-    CRect menuRect(30, 300, 150, 325);
-    auto optionMenu = new COptionMenu(menuRect, nullptr, 0);
-    optionMenu->addEntry("Low Pass");
-    optionMenu->addEntry("High Pass");
-    optionMenu->addEntry("Band Pass");
-    optionMenu->addEntry("Notch");
-    optionMenu->setCurrent(0);
-    frame->addView(optionMenu);
+    yPos += 120;
     
-    CRect menuLabelRect(30, 330, 150, 350);
-    auto menuLabel = new CTextLabel(menuLabelRect, "Filter Type");
-    menuLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    menuLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(menuLabel);
+    // Bypass button
+    CRect bypassRect(75, yPos, 175, yPos + 30);
+    bypassButton = new CTextButton(bypassRect, nullptr, 5 /* PARAM_BYPASS */, "BYPASS");
+    styleControl(bypassButton);
+    leftPanel->addView(bypassButton);
     
-    // Segment button
-    CRect segmentRect(170, 300, 320, 325);
-    auto segmentButton = new CSegmentButton(segmentRect, nullptr, 0);
-    CSegmentButton::Segment segment1;
-    segment1.name = "Saw";
-    segmentButton->addSegment(segment1);
-    CSegmentButton::Segment segment2;
-    segment2.name = "Square";
-    segmentButton->addSegment(segment2);
-    CSegmentButton::Segment segment3;
-    segment3.name = "Sine";
-    segmentButton->addSegment(segment3);
-    segmentButton->setSelectedSegment(0);
-    frame->addView(segmentButton);
+    yPos += 50;
     
-    CRect segmentLabelRect(170, 330, 320, 350);
-    auto segmentLabel = new CTextLabel(segmentLabelRect, "Waveform");
-    segmentLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    segmentLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(segmentLabel);
-    
-    // === Row 5: Text Edit and Switches ===
-    // Text edit field
-    CRect textEditRect(30, 370, 200, 395);
-    auto textEdit = new CTextEdit(textEditRect, nullptr, 0);
-    textEdit->setText("Edit me!");
-    textEdit->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    textEdit->setBackColor(CColor(255, 255, 255, 255)); // White background
-    textEdit->setFontColor(CColor(20, 20, 20, 255)); // Dark text
-    frame->addView(textEdit);
-    
-    CRect textEditLabelRect(30, 400, 200, 420);
-    auto textEditLabel = new CTextLabel(textEditLabelRect, "Text Input");
-    textEditLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    textEditLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(textEditLabel);
-    
-    // On/Off switch
-    CRect switch1Rect(220, 375, 260, 390);
-    auto switch1 = new COnOffButton(switch1Rect, nullptr, 0, nullptr, 0);
-    switch1->setValue(1.0f); // On
-    frame->addView(switch1);
-    
-    CRect switch1LabelRect(220, 400, 280, 420);
-    auto switch1Label = new CTextLabel(switch1LabelRect, "On/Off");
-    switch1Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    switch1Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(switch1Label);
-    
-    // === Additional Controls on the Right Side ===
-    // More knobs
-    CRect knob4Rect(350, 60, 400, 110);
-    auto knob4 = new CKnob(knob4Rect, nullptr, 0, nullptr, nullptr);
-    knob4->setDefaultValue(0.8f);
-    knob4->setValue(0.8f);
-    knob4->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    knob4->setColorHandle(CColor(200, 150, 0, 255)); // Orange handle for visibility
-    frame->addView(knob4);
-    
-    CRect knob4LabelRect(340, 115, 410, 135);
-    auto knob4Label = new CTextLabel(knob4LabelRect, "Attack");
-    knob4Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    knob4Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    knob4Label->setHoriAlign(kCenterText);
-    frame->addView(knob4Label);
-    
-    CRect knob5Rect(430, 60, 480, 110);
-    auto knob5 = new CKnob(knob5Rect, nullptr, 0, nullptr, nullptr);
-    knob5->setDefaultValue(0.4f);
-    knob5->setValue(0.4f);
-    knob5->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    knob5->setColorHandle(CColor(150, 0, 150, 255)); // Purple handle for visibility
-    frame->addView(knob5);
-    
-    CRect knob5LabelRect(420, 115, 490, 135);
-    auto knob5Label = new CTextLabel(knob5LabelRect, "Decay");
-    knob5Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    knob5Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    knob5Label->setHoriAlign(kCenterText);
-    frame->addView(knob5Label);
-    
-    CRect knob6Rect(510, 60, 560, 110);
-    auto knob6 = new CKnob(knob6Rect, nullptr, 0, nullptr, nullptr);
-    knob6->setDefaultValue(0.6f);
-    knob6->setValue(0.6f);
-    knob6->setColorShadowHandle(CColor(120, 120, 120, 255)); // Visible handle shadow
-    knob6->setColorHandle(CColor(0, 150, 150, 255)); // Cyan handle for visibility
-    frame->addView(knob6);
-    
-    CRect knob6LabelRect(500, 115, 570, 135);
-    auto knob6Label = new CTextLabel(knob6LabelRect, "Release");
-    knob6Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    knob6Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    knob6Label->setHoriAlign(kCenterText);
-    frame->addView(knob6Label);
-    
-    // More sliders on the right
-    CRect hSlider2Rect(350, 160, 560, 180);
-    auto hSlider2 = new CHorizontalSlider(hSlider2Rect, nullptr, 0, 0, 100, nullptr, nullptr);
-    hSlider2->setValue(75.0f);
-    hSlider2->setFrameColor(CColor(80, 80, 80, 255)); // Dark frame for visibility
-    hSlider2->setBackColor(CColor(220, 220, 220, 255)); // Light background
-    hSlider2->setValueColor(CColor(150, 0, 100, 255)); // Magenta slider handle
-    frame->addView(hSlider2);
-    
-    CRect hSlider2LabelRect(350, 185, 560, 205);
-    auto hSlider2Label = new CTextLabel(hSlider2LabelRect, "Envelope Amount");
-    hSlider2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    hSlider2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(hSlider2Label);
-    
-    // More buttons on the right
-    CRect button3Rect(350, 230, 440, 255);
-    auto button3 = new CTextButton(button3Rect, nullptr, 0, "Record");
-    frame->addView(button3);
-    
-    CRect button4Rect(450, 230, 540, 255);
-    auto button4 = new CTextButton(button4Rect, nullptr, 0, "Bypass");
-    frame->addView(button4);
-    
-    // VU Meter
-    CRect vuMeterRect(350, 275, 430, 295);
-    auto vuMeter = new CVuMeter(vuMeterRect, nullptr, nullptr, 10, CVuMeter::kHorizontal);
-    vuMeter->setValue(0.6f);
-    frame->addView(vuMeter);
-    
-    CRect vuMeterLabelRect(350, 300, 430, 320);
-    auto vuMeterLabel = new CTextLabel(vuMeterLabelRect, "VU Meter");
-    vuMeterLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    vuMeterLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(vuMeterLabel);
-    
-    // More switches
-    CRect switch2Rect(450, 275, 490, 290);
-    auto switch2 = new COnOffButton(switch2Rect, nullptr, 0, nullptr, 0);
-    switch2->setValue(0.0f); // Off
-    frame->addView(switch2);
-    
-    CRect switch3Rect(500, 275, 540, 290);
-    auto switch3 = new COnOffButton(switch3Rect, nullptr, 0, nullptr, 0);
-    switch3->setValue(1.0f); // On
-    frame->addView(switch3);
-    
-    CRect switchGroupLabelRect(450, 300, 540, 320);
-    auto switchGroupLabel = new CTextLabel(switchGroupLabelRect, "Switches");
-    switchGroupLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    switchGroupLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(switchGroupLabel);
-    
-    // Additional option menu
-    CRect menu2Rect(350, 340, 470, 365);
-    auto optionMenu2 = new COptionMenu(menu2Rect, nullptr, 0);
-    optionMenu2->addEntry("Mono");
-    optionMenu2->addEntry("Stereo");
-    optionMenu2->addEntry("Mid/Side");
-    optionMenu2->setCurrent(1);
-    optionMenu2->setFrameColor(CColor(60, 60, 60, 255)); // Dark border
-    optionMenu2->setBackColor(CColor(255, 255, 255, 255)); // White background
-    optionMenu2->setFontColor(CColor(20, 20, 20, 255)); // Dark text
-    frame->addView(optionMenu2);
-    
-    CRect menu2LabelRect(350, 370, 470, 390);
-    auto menu2Label = new CTextLabel(menu2LabelRect, "Output Mode");
-    menu2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    menu2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(menu2Label);
-    
-    // Additional segment button
-    CRect segment2Rect(480, 340, 570, 365);
-    auto segmentButton2 = new CSegmentButton(segment2Rect, nullptr, 0);
-    CSegmentButton::Segment segmentA;
-    segmentA.name = "A";
-    segmentButton2->addSegment(segmentA);
-    CSegmentButton::Segment segmentB;
-    segmentB.name = "B";
-    segmentButton2->addSegment(segmentB);
-    CSegmentButton::Segment segmentC;
-    segmentC.name = "C";
-    segmentButton2->addSegment(segmentC);
-    segmentButton2->setSelectedSegment(1);
-    frame->addView(segmentButton2);
-    
-    CRect segment2LabelRect(480, 370, 570, 390);
-    auto segment2Label = new CTextLabel(segment2LabelRect, "Mode");
-    segment2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
-    segment2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
-    frame->addView(segment2Label);
-    
-    // Status label at the bottom
-    CRect statusRect(10, 450, 590, 470);
-    auto statusLabel = new CTextLabel(statusRect, "VSTGUI Test Interface - All controls functional for testing purposes");
-    statusLabel->setFontColor(CColor(0, 80, 160, 255)); // Dark blue text
-    statusLabel->setBackColor(CColor(230, 245, 255, 220)); // Light blue background
+    // Status display
+    CRect statusRect(15, currentHeight - 60, 235, currentHeight - 20);
+    statusLabel = new CTextLabel(statusRect, "Status: Active\\nCPU: 12% | Latency: 0ms");
+    statusLabel->setFontColor(CColor(140, 140, 150, 255));
+    statusLabel->setBackColor(CColor(0, 0, 0, 0));
+    statusLabel->setFont(new CFontDesc("Arial", 8, kNormalFace));
     statusLabel->setHoriAlign(kCenterText);
-    frame->addView(statusLabel);
+    statusLabel->setStyle(statusLabel->getStyle() | CTextLabel::kNoFrame);
+    leftPanel->addView(statusLabel);
+}
+
+void MyPluginEditor::createRightPanel() {
+    if (!frame) return;
+    
+    // Right panel for EQ visualization
+    CRect rightRect(250, 0, currentWidth, currentHeight);
+    rightPanel = new CViewContainer(rightRect);
+    rightPanel->setBackgroundColor(kBackgroundColor);
+    frame->addView(rightPanel);
+    
+    // EQ section header
+    CRect eqHeaderRect(20, 20, rightRect.getWidth() - 20, 50);
+    auto eqHeaderLabel = new CTextLabel(eqHeaderRect, "DYNAMIC EQ VISUALIZATION");
+    eqHeaderLabel->setFontColor(kAccentColor);
+    eqHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
+    eqHeaderLabel->setFont(new CFontDesc("Arial", 14, kBoldFace));
+    eqHeaderLabel->setHoriAlign(kLeftText);
+    eqHeaderLabel->setStyle(eqHeaderLabel->getStyle() | CTextLabel::kNoFrame);
+    rightPanel->addView(eqHeaderLabel);
+    
+    // Main EQ visualization area
+    CRect eqRect(20, 60, rightRect.getWidth() - 20, rightRect.getHeight() - 60);
+    eqView = new EQVisualizationView(eqRect);
+    rightPanel->addView(eqView);
+    
+    // Update EQ view with current parameters
+    double eq_freq[3] = {200.0, 1000.0, 5000.0};
+    double eq_gain[3] = {0.0, 0.0, 0.0};
+    double eq_q[3] = {1.0, 1.0, 1.0};
+    eqView->updateEQData(eq_freq, eq_gain, eq_q);
+}
+
+void MyPluginEditor::styleControl(CView* control) {
+    if (!control) return;
+    
+    // Apply professional styling to controls
+    if (auto knob = dynamic_cast<CKnob*>(control)) {
+        knob->setColorShadowHandle(CColor(40, 40, 50, 255));
+        knob->setColorHandle(kAccentColor);
+    } else if (auto slider = dynamic_cast<CSlider*>(control)) {
+        slider->setFrameColor(CColor(80, 80, 90, 255));
+        slider->setBackColor(CColor(40, 40, 50, 255));
+        slider->setValueColor(kAccentColor);
+    } else if (auto button = dynamic_cast<CTextButton*>(control)) {
+        button->setFrameColor(CColor(80, 80, 90, 255));
+        // button->setBackColor(kPanelColor);  // CTextButton may not have setBackColor
+        button->setTextColor(kTextColor);
+    } else if (auto menu = dynamic_cast<COptionMenu*>(control)) {
+        menu->setFrameColor(CColor(80, 80, 90, 255));
+        menu->setBackColor(kPanelColor);
+        menu->setFontColor(kTextColor);
+    }
+}
+
+void MyPluginEditor::updateParameter(int paramId, double value) {
+    // Update internal parameter storage
+    if (paramId >= 0 && paramId < 16) {
+        currentParams[paramId] = value;
+    }
+    
+    // Update GUI controls
+    switch (paramId) {
+        case 0: // PARAM_CUTOFF
+            if (cutoffKnob) cutoffKnob->setValue(value);
+            break;
+        case 1: // PARAM_RESONANCE
+            if (resonanceKnob) resonanceKnob->setValue(value);
+            break;
+        case 2: // PARAM_DRIVE
+            if (driveKnob) driveKnob->setValue(value);
+            break;
+        case 3: // PARAM_OUTPUT
+            if (outputKnob) outputKnob->setValue(value);
+            break;
+        case 4: // PARAM_MIX
+            if (mixSlider) mixSlider->setValue(value * 100.0);
+            break;
+        case 5: // PARAM_BYPASS
+            if (bypassButton) {
+                bypassButton->setValue(value > 0.5 ? 1.0 : 0.0);
+            }
+            break;
+    }
+    
+    // Update EQ visualization
+    if (eqView) {
+        double eq_freq[3] = {200.0, 1000.0, 5000.0};
+        double eq_gain[3] = {currentParams[6], currentParams[9], currentParams[12]};
+        double eq_q[3] = {1.0, 1.0, 1.0};
+        eqView->updateEQData(eq_freq, eq_gain, eq_q);
+    }
+}
+
+void MyPluginEditor::onParameterChanged(int paramId, double value) {
+    updateParameter(paramId, value);
+    
+    // Here you would typically notify the host about parameter changes
+    // This would require implementing the CLAP parameter extension
+    std::cout << "Parameter " << paramId << " changed to " << value << std::endl;
 }
