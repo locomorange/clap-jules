@@ -164,5 +164,7 @@ private:
     void createBrandHeader();
     void styleControl(CView* control);
     void onParameterChanged(int paramId, double value);
+    
+public:
     void updateSpectrumDisplay();
 };
