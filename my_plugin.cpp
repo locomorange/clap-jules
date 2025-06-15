@@ -2,7 +2,9 @@
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#ifdef __linux__
 #include "my_plugin_linux_extensions.h"
+#endif
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
@@ -508,31 +510,35 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
     my_factory_create_plugin,
 };
 
+// --- CLAP Entry Point Functions ---
+static bool clap_entry_init(const char *plugin_path) {
+    printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
+    // Perform any global library initialization here if needed
+    return true;
+}
+
+static void clap_entry_deinit() {
+    printf("MyPlugin: clap_entry.deinit called\n");
+    // Perform any global library cleanup here if needed
+}
+
+static const void* clap_entry_get_factory(const char *factory_id) {
+    printf("MyPlugin: clap_entry.get_factory called (ID: %s)\n", factory_id);
+    if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
+        return &my_plugin_factory;
+    }
+    // To support other factory types, check their specific IDs here.
+    // For example, CLAP_PLUGIN_VOICE_INFO_FACTORY_ID for voice info.
+    // Or CLAP_PLUGIN_REMOTABLE_CONTROLS_FACTORY_ID for remotable controls.
+    fprintf(stderr, "MyPlugin: Unknown factory ID requested: %s\n", factory_id);
+    return NULL;
+}
+
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
 CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
-    // init: Called once when the library is loaded.
-    [](const char *plugin_path) -> bool {
-        printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
-        // Perform any global library initialization here if needed
-        return true;
-    },
-    // deinit: Called once when the library is unloaded.
-    []() -> void {
-        printf("MyPlugin: clap_entry.deinit called\n");
-        // Perform any global library cleanup here if needed
-    },
-    // get_factory: Returns a factory based on its ID.
-    [](const char *factory_id) -> const void * {
-        printf("MyPlugin: clap_entry.get_factory called (ID: %s)\n", factory_id);
-        if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
-            return &my_plugin_factory;
-        }
-        // To support other factory types, check their specific IDs here.
-        // For example, CLAP_PLUGIN_VOICE_INFO_FACTORY_ID for voice info.
-        // Or CLAP_PLUGIN_REMOTABLE_CONTROLS_FACTORY_ID for remotable controls.
-        fprintf(stderr, "MyPlugin: Unknown factory ID requested: %s\n", factory_id);
-        return NULL;
-    }
+    clap_entry_init,
+    clap_entry_deinit,
+    clap_entry_get_factory
 };
