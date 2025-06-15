@@ -3,6 +3,11 @@
 #include "../my_plugin.h"
 #include "../spectrum_analyzer.h"
 
+// Define M_PI if not already defined (Windows compatibility)
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // Test fixture for plugin tests
 class MyPluginTest : public ::testing::Test {
 protected:

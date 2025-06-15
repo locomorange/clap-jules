@@ -2,6 +2,11 @@
 #include <cstring>
 #include <cmath>
 
+// Define M_PI if not already defined (Windows compatibility)
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 SpectrumAnalyzer::SpectrumAnalyzer()
     : sample_rate_(44100.0)
     , input_buffer_pos_(0)
