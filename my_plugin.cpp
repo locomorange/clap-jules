@@ -5,16 +5,16 @@
 #include <memory>    // For unique_ptr
 
 // --- Forward declarations of plugin functions ---
-static bool my_plugin_init(const struct clap_plugin *plugin);
-static void my_plugin_destroy(const struct clap_plugin *plugin);
-static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
-static void my_plugin_deactivate(const struct clap_plugin *plugin);
-static bool my_plugin_start_processing(const struct clap_plugin *plugin);
-static void my_plugin_stop_processing(const struct clap_plugin *plugin);
-static void my_plugin_reset(const struct clap_plugin *plugin);
-static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
-static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
-static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+bool CLAP_ABI my_plugin_init(const struct clap_plugin *plugin);
+void CLAP_ABI my_plugin_destroy(const struct clap_plugin *plugin);
+bool CLAP_ABI my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
+void CLAP_ABI my_plugin_deactivate(const struct clap_plugin *plugin);
+bool CLAP_ABI my_plugin_start_processing(const struct clap_plugin *plugin);
+void CLAP_ABI my_plugin_stop_processing(const struct clap_plugin *plugin);
+void CLAP_ABI my_plugin_reset(const struct clap_plugin *plugin);
+clap_process_status CLAP_ABI my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
+const void * CLAP_ABI my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
+void CLAP_ABI my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -36,7 +36,7 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 
 // --- Plugin Implementation ---
-static bool my_plugin_init(const struct clap_plugin *plugin) {
+bool CLAP_ABI my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
     // Initialize graphics renderer
@@ -45,7 +45,7 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     return true;
 }
 
-static void my_plugin_destroy(const struct clap_plugin *plugin) {
+void CLAP_ABI my_plugin_destroy(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
     // Cleanup graphics renderer
@@ -54,7 +54,7 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
     // Free any resources allocated in init
 }
 
-static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+bool CLAP_ABI my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
     (void)sample_rate; (void)min_frames_count; (void)max_frames_count; // Suppress unused parameter warnings
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
@@ -65,26 +65,26 @@ static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_r
     return true;
 }
 
-static void my_plugin_deactivate(const struct clap_plugin *plugin) {
+void CLAP_ABI my_plugin_deactivate(const struct clap_plugin *plugin) {
     (void)plugin; // Suppress unused parameter warning
     // Free resources allocated in activate
 }
 
-static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
+bool CLAP_ABI my_plugin_start_processing(const struct clap_plugin *plugin) {
     (void)plugin; // Suppress unused parameter warning
     return true;
 }
 
-static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
+void CLAP_ABI my_plugin_stop_processing(const struct clap_plugin *plugin) {
     (void)plugin; // Suppress unused parameter warning
 }
 
-static void my_plugin_reset(const struct clap_plugin *plugin) {
+void CLAP_ABI my_plugin_reset(const struct clap_plugin *plugin) {
     (void)plugin; // Suppress unused parameter warning
     // Reset plugin state (e.g., clear buffers, reset parameters)
 }
 
-static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
+clap_process_status CLAP_ABI my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
     (void)plugin; (void)process; // Suppress unused parameter warnings
     // This is where the main audio processing happens.
     // For this example, we'll just print a message once.
@@ -127,14 +127,14 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     return CLAP_PROCESS_CONTINUE;
 }
 
-static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
+const void * CLAP_ABI my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     (void)plugin; (void)id; // Suppress unused parameter warnings
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     return NULL; // No extensions supported in this basic example
 }
 
-static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
+void CLAP_ABI my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     (void)plugin; // Suppress unused parameter warning
     // Called by the host to perform tasks that must run on the main thread.
 }
@@ -146,12 +146,12 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
 // --- Plugin Factory ---
 // This structure is responsible for creating plugin instances.
 
-static uint32_t my_factory_get_plugin_count(const struct clap_plugin_factory *factory) {
+uint32_t CLAP_ABI my_factory_get_plugin_count(const struct clap_plugin_factory *factory) {
     (void)factory; // Suppress unused parameter warning
     return 1; // We have one plugin in this factory
 }
 
-static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const struct clap_plugin_factory *factory, uint32_t index) {
+const clap_plugin_descriptor_t * CLAP_ABI my_factory_get_plugin_descriptor(const struct clap_plugin_factory *factory, uint32_t index) {
     (void)factory; // Suppress unused parameter warning
     if (index == 0) {
         return &my_plugin_descriptor;
@@ -159,7 +159,7 @@ static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const st
     return NULL;
 }
 
-static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_factory *factory, const clap_host_t *host, const char *plugin_id) {
+const clap_plugin_t * CLAP_ABI my_factory_create_plugin(const struct clap_plugin_factory *factory, const clap_host_t *host, const char *plugin_id) {
     (void)factory; (void)host; // Suppress unused parameter warnings
     if (strcmp(plugin_id, my_plugin_descriptor.id) != 0) {
         return NULL;
@@ -188,25 +188,25 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
 
 extern "C" {
 
-const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
+const struct clap_plugin_factory my_plugin_factory = {
     my_factory_get_plugin_count,
     my_factory_get_plugin_descriptor,
     my_factory_create_plugin,
 };
 
 // --- CLAP Entry Point Functions ---
-// Static functions with C linkage for better Windows compatibility
-static bool plugin_entry_init(const char *plugin_path) {
+// Entry point functions with proper CLAP_ABI calling convention for Windows compatibility
+bool CLAP_ABI plugin_entry_init(const char *plugin_path) {
     (void)plugin_path; // Suppress unused parameter warning
     // Perform any global library initialization here if needed
     return true;
 }
 
-static void plugin_entry_deinit(void) {
+void CLAP_ABI plugin_entry_deinit(void) {
     // Perform any global library cleanup here if needed
 }
 
-static const void *plugin_entry_get_factory(const char *factory_id) {
+const void * CLAP_ABI plugin_entry_get_factory(const char *factory_id) {
     if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
         return &my_plugin_factory;
     }
