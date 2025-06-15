@@ -2,6 +2,12 @@
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
+#include <vstgui/lib/controls/cbuttons.h>
+#include <vstgui/lib/controls/coptionmenu.h>
+#include <vstgui/lib/controls/csegmentbutton.h>
+#include <vstgui/lib/controls/ctextedit.h>
+#include <vstgui/lib/controls/cswitch.h>
+#include <vstgui/lib/controls/cvumeter.h>
 #include <vstgui/lib/vstguiinit.h>
 #include <iostream>
 
@@ -25,8 +31,8 @@ MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     : frame(nullptr)
     , isCreated(false) 
     , isVisible(false)
-    , currentWidth(400)
-    , currentHeight(300)
+    , currentWidth(600)
+    , currentHeight(500)
     , host(host)
 {
 }
@@ -290,37 +296,300 @@ void MyPluginEditor::createControls() {
         return;
     }
     
-    // Create a simple title label
-    CRect titleRect(10, 10, 390, 30);
-    auto titleLabel = new CTextLabel(titleRect, "My First CLAP Plugin with VSTGUI");
+    // Create a title label
+    CRect titleRect(10, 10, 590, 35);
+    auto titleLabel = new CTextLabel(titleRect, "CLAP Plugin - VSTGUI Controls Test Interface");
     titleLabel->setFontColor(kBlackCColor);
     titleLabel->setBackColor(kTransparentCColor);
+    titleLabel->setHoriAlign(kCenterText);
     frame->addView(titleLabel);
     
-    // Create a simple knob control (using simplified constructor)
-    CRect knobRect(50, 50, 100, 100);
-    auto knob = new CKnob(knobRect, nullptr, 0, nullptr, nullptr);
-    knob->setDefaultValue(0.5f);
-    knob->setValue(0.5f);
-    frame->addView(knob);
+    // === Row 1: Knobs ===
+    // Volume knob
+    CRect volumeKnobRect(30, 60, 80, 110);
+    auto volumeKnob = new CKnob(volumeKnobRect, nullptr, 0, nullptr, nullptr);
+    volumeKnob->setDefaultValue(0.5f);
+    volumeKnob->setValue(0.5f);
+    frame->addView(volumeKnob);
     
-    // Create a label for the knob
-    CRect knobLabelRect(30, 110, 120, 130);
-    auto knobLabel = new CTextLabel(knobLabelRect, "Volume");
-    knobLabel->setFontColor(kBlackCColor);
-    knobLabel->setBackColor(kTransparentCColor);
-    frame->addView(knobLabel);
+    CRect volumeLabelRect(20, 115, 90, 135);
+    auto volumeLabel = new CTextLabel(volumeLabelRect, "Volume");
+    volumeLabel->setFontColor(kBlackCColor);
+    volumeLabel->setBackColor(kTransparentCColor);
+    volumeLabel->setHoriAlign(kCenterText);
+    frame->addView(volumeLabel);
     
-    // Create a horizontal slider control
-    CRect sliderRect(150, 50, 350, 70);
-    auto slider = new CHorizontalSlider(sliderRect, nullptr, 0, 0, 100, nullptr, nullptr);
-    slider->setValue(50.0f);
-    frame->addView(slider);
+    // Filter knob
+    CRect filterKnobRect(110, 60, 160, 110);
+    auto filterKnob = new CKnob(filterKnobRect, nullptr, 0, nullptr, nullptr);
+    filterKnob->setDefaultValue(0.7f);
+    filterKnob->setValue(0.7f);
+    frame->addView(filterKnob);
     
-    // Create a label for the slider
-    CRect sliderLabelRect(150, 80, 350, 100);
-    auto sliderLabel = new CTextLabel(sliderLabelRect, "Filter Cutoff");
-    sliderLabel->setFontColor(kBlackCColor);
-    sliderLabel->setBackColor(kTransparentCColor);
-    frame->addView(sliderLabel);
+    CRect filterLabelRect(100, 115, 170, 135);
+    auto filterLabel = new CTextLabel(filterLabelRect, "Filter");
+    filterLabel->setFontColor(kBlackCColor);
+    filterLabel->setBackColor(kTransparentCColor);
+    filterLabel->setHoriAlign(kCenterText);
+    frame->addView(filterLabel);
+    
+    // Resonance knob
+    CRect resKnobRect(190, 60, 240, 110);
+    auto resKnob = new CKnob(resKnobRect, nullptr, 0, nullptr, nullptr);
+    resKnob->setDefaultValue(0.3f);
+    resKnob->setValue(0.3f);
+    frame->addView(resKnob);
+    
+    CRect resLabelRect(180, 115, 250, 135);
+    auto resLabel = new CTextLabel(resLabelRect, "Resonance");
+    resLabel->setFontColor(kBlackCColor);
+    resLabel->setBackColor(kTransparentCColor);
+    resLabel->setHoriAlign(kCenterText);
+    frame->addView(resLabel);
+    
+    // === Row 2: Sliders ===
+    // Horizontal slider
+    CRect hSliderRect(30, 160, 240, 180);
+    auto hSlider = new CHorizontalSlider(hSliderRect, nullptr, 0, 0, 100, nullptr, nullptr);
+    hSlider->setValue(60.0f);
+    frame->addView(hSlider);
+    
+    CRect hSliderLabelRect(30, 185, 240, 205);
+    auto hSliderLabel = new CTextLabel(hSliderLabelRect, "Horizontal Slider (Cutoff)");
+    hSliderLabel->setFontColor(kBlackCColor);
+    hSliderLabel->setBackColor(kTransparentCColor);
+    frame->addView(hSliderLabel);
+    
+    // Vertical slider
+    CRect vSliderRect(270, 60, 290, 180);
+    auto vSlider = new CVerticalSlider(vSliderRect, nullptr, 0, 0, 100, nullptr, nullptr);
+    vSlider->setValue(40.0f);
+    frame->addView(vSlider);
+    
+    CRect vSliderLabelRect(260, 185, 300, 205);
+    auto vSliderLabel = new CTextLabel(vSliderLabelRect, "Vertical");
+    vSliderLabel->setFontColor(kBlackCColor);
+    vSliderLabel->setBackColor(kTransparentCColor);
+    vSliderLabel->setHoriAlign(kCenterText);
+    frame->addView(vSliderLabel);
+    
+    // === Row 3: Buttons ===
+    // Text buttons
+    CRect button1Rect(30, 230, 120, 255);
+    auto button1 = new CTextButton(button1Rect, nullptr, 0, "Play");
+    frame->addView(button1);
+    
+    CRect button2Rect(130, 230, 220, 255);
+    auto button2 = new CTextButton(button2Rect, nullptr, 0, "Stop");
+    frame->addView(button2);
+    
+    // Kick button (momentary)
+    CRect kickButtonRect(230, 230, 320, 255);
+    auto kickButton = new CKickButton(kickButtonRect, nullptr, 0, nullptr);
+    frame->addView(kickButton);
+    
+    CRect kickLabelRect(230, 260, 320, 280);
+    auto kickLabel = new CTextLabel(kickLabelRect, "Kick Button");
+    kickLabel->setFontColor(kBlackCColor);
+    kickLabel->setBackColor(kTransparentCColor);
+    kickLabel->setHoriAlign(kCenterText);
+    frame->addView(kickLabel);
+    
+    // === Row 4: Option Menu and Segment Button ===
+    // Option menu (dropdown)
+    CRect menuRect(30, 300, 150, 325);
+    auto optionMenu = new COptionMenu(menuRect, nullptr, 0);
+    optionMenu->addEntry("Low Pass");
+    optionMenu->addEntry("High Pass");
+    optionMenu->addEntry("Band Pass");
+    optionMenu->addEntry("Notch");
+    optionMenu->setCurrent(0);
+    frame->addView(optionMenu);
+    
+    CRect menuLabelRect(30, 330, 150, 350);
+    auto menuLabel = new CTextLabel(menuLabelRect, "Filter Type");
+    menuLabel->setFontColor(kBlackCColor);
+    menuLabel->setBackColor(kTransparentCColor);
+    frame->addView(menuLabel);
+    
+    // Segment button
+    CRect segmentRect(170, 300, 320, 325);
+    auto segmentButton = new CSegmentButton(segmentRect, nullptr, 0);
+    CSegmentButton::Segment segment1;
+    segment1.name = "Saw";
+    segmentButton->addSegment(segment1);
+    CSegmentButton::Segment segment2;
+    segment2.name = "Square";
+    segmentButton->addSegment(segment2);
+    CSegmentButton::Segment segment3;
+    segment3.name = "Sine";
+    segmentButton->addSegment(segment3);
+    segmentButton->setSelectedSegment(0);
+    frame->addView(segmentButton);
+    
+    CRect segmentLabelRect(170, 330, 320, 350);
+    auto segmentLabel = new CTextLabel(segmentLabelRect, "Waveform");
+    segmentLabel->setFontColor(kBlackCColor);
+    segmentLabel->setBackColor(kTransparentCColor);
+    frame->addView(segmentLabel);
+    
+    // === Row 5: Text Edit and Switches ===
+    // Text edit field
+    CRect textEditRect(30, 370, 200, 395);
+    auto textEdit = new CTextEdit(textEditRect, nullptr, 0);
+    textEdit->setText("Edit me!");
+    frame->addView(textEdit);
+    
+    CRect textEditLabelRect(30, 400, 200, 420);
+    auto textEditLabel = new CTextLabel(textEditLabelRect, "Text Input");
+    textEditLabel->setFontColor(kBlackCColor);
+    textEditLabel->setBackColor(kTransparentCColor);
+    frame->addView(textEditLabel);
+    
+    // On/Off switch
+    CRect switch1Rect(220, 375, 260, 390);
+    auto switch1 = new COnOffButton(switch1Rect, nullptr, 0, nullptr, 0);
+    switch1->setValue(1.0f); // On
+    frame->addView(switch1);
+    
+    CRect switch1LabelRect(220, 400, 280, 420);
+    auto switch1Label = new CTextLabel(switch1LabelRect, "On/Off");
+    switch1Label->setFontColor(kBlackCColor);
+    switch1Label->setBackColor(kTransparentCColor);
+    frame->addView(switch1Label);
+    
+    // === Additional Controls on the Right Side ===
+    // More knobs
+    CRect knob4Rect(350, 60, 400, 110);
+    auto knob4 = new CKnob(knob4Rect, nullptr, 0, nullptr, nullptr);
+    knob4->setDefaultValue(0.8f);
+    knob4->setValue(0.8f);
+    frame->addView(knob4);
+    
+    CRect knob4LabelRect(340, 115, 410, 135);
+    auto knob4Label = new CTextLabel(knob4LabelRect, "Attack");
+    knob4Label->setFontColor(kBlackCColor);
+    knob4Label->setBackColor(kTransparentCColor);
+    knob4Label->setHoriAlign(kCenterText);
+    frame->addView(knob4Label);
+    
+    CRect knob5Rect(430, 60, 480, 110);
+    auto knob5 = new CKnob(knob5Rect, nullptr, 0, nullptr, nullptr);
+    knob5->setDefaultValue(0.4f);
+    knob5->setValue(0.4f);
+    frame->addView(knob5);
+    
+    CRect knob5LabelRect(420, 115, 490, 135);
+    auto knob5Label = new CTextLabel(knob5LabelRect, "Decay");
+    knob5Label->setFontColor(kBlackCColor);
+    knob5Label->setBackColor(kTransparentCColor);
+    knob5Label->setHoriAlign(kCenterText);
+    frame->addView(knob5Label);
+    
+    CRect knob6Rect(510, 60, 560, 110);
+    auto knob6 = new CKnob(knob6Rect, nullptr, 0, nullptr, nullptr);
+    knob6->setDefaultValue(0.6f);
+    knob6->setValue(0.6f);
+    frame->addView(knob6);
+    
+    CRect knob6LabelRect(500, 115, 570, 135);
+    auto knob6Label = new CTextLabel(knob6LabelRect, "Release");
+    knob6Label->setFontColor(kBlackCColor);
+    knob6Label->setBackColor(kTransparentCColor);
+    knob6Label->setHoriAlign(kCenterText);
+    frame->addView(knob6Label);
+    
+    // More sliders on the right
+    CRect hSlider2Rect(350, 160, 560, 180);
+    auto hSlider2 = new CHorizontalSlider(hSlider2Rect, nullptr, 0, 0, 100, nullptr, nullptr);
+    hSlider2->setValue(75.0f);
+    frame->addView(hSlider2);
+    
+    CRect hSlider2LabelRect(350, 185, 560, 205);
+    auto hSlider2Label = new CTextLabel(hSlider2LabelRect, "Envelope Amount");
+    hSlider2Label->setFontColor(kBlackCColor);
+    hSlider2Label->setBackColor(kTransparentCColor);
+    frame->addView(hSlider2Label);
+    
+    // More buttons on the right
+    CRect button3Rect(350, 230, 440, 255);
+    auto button3 = new CTextButton(button3Rect, nullptr, 0, "Record");
+    frame->addView(button3);
+    
+    CRect button4Rect(450, 230, 540, 255);
+    auto button4 = new CTextButton(button4Rect, nullptr, 0, "Bypass");
+    frame->addView(button4);
+    
+    // VU Meter
+    CRect vuMeterRect(350, 275, 430, 295);
+    auto vuMeter = new CVuMeter(vuMeterRect, nullptr, nullptr, 10, CVuMeter::kHorizontal);
+    vuMeter->setValue(0.6f);
+    frame->addView(vuMeter);
+    
+    CRect vuMeterLabelRect(350, 300, 430, 320);
+    auto vuMeterLabel = new CTextLabel(vuMeterLabelRect, "VU Meter");
+    vuMeterLabel->setFontColor(kBlackCColor);
+    vuMeterLabel->setBackColor(kTransparentCColor);
+    frame->addView(vuMeterLabel);
+    
+    // More switches
+    CRect switch2Rect(450, 275, 490, 290);
+    auto switch2 = new COnOffButton(switch2Rect, nullptr, 0, nullptr, 0);
+    switch2->setValue(0.0f); // Off
+    frame->addView(switch2);
+    
+    CRect switch3Rect(500, 275, 540, 290);
+    auto switch3 = new COnOffButton(switch3Rect, nullptr, 0, nullptr, 0);
+    switch3->setValue(1.0f); // On
+    frame->addView(switch3);
+    
+    CRect switchGroupLabelRect(450, 300, 540, 320);
+    auto switchGroupLabel = new CTextLabel(switchGroupLabelRect, "Switches");
+    switchGroupLabel->setFontColor(kBlackCColor);
+    switchGroupLabel->setBackColor(kTransparentCColor);
+    frame->addView(switchGroupLabel);
+    
+    // Additional option menu
+    CRect menu2Rect(350, 340, 470, 365);
+    auto optionMenu2 = new COptionMenu(menu2Rect, nullptr, 0);
+    optionMenu2->addEntry("Mono");
+    optionMenu2->addEntry("Stereo");
+    optionMenu2->addEntry("Mid/Side");
+    optionMenu2->setCurrent(1);
+    frame->addView(optionMenu2);
+    
+    CRect menu2LabelRect(350, 370, 470, 390);
+    auto menu2Label = new CTextLabel(menu2LabelRect, "Output Mode");
+    menu2Label->setFontColor(kBlackCColor);
+    menu2Label->setBackColor(kTransparentCColor);
+    frame->addView(menu2Label);
+    
+    // Additional segment button
+    CRect segment2Rect(480, 340, 570, 365);
+    auto segmentButton2 = new CSegmentButton(segment2Rect, nullptr, 0);
+    CSegmentButton::Segment segmentA;
+    segmentA.name = "A";
+    segmentButton2->addSegment(segmentA);
+    CSegmentButton::Segment segmentB;
+    segmentB.name = "B";
+    segmentButton2->addSegment(segmentB);
+    CSegmentButton::Segment segmentC;
+    segmentC.name = "C";
+    segmentButton2->addSegment(segmentC);
+    segmentButton2->setSelectedSegment(1);
+    frame->addView(segmentButton2);
+    
+    CRect segment2LabelRect(480, 370, 570, 390);
+    auto segment2Label = new CTextLabel(segment2LabelRect, "Mode");
+    segment2Label->setFontColor(kBlackCColor);
+    segment2Label->setBackColor(kTransparentCColor);
+    frame->addView(segment2Label);
+    
+    // Status label at the bottom
+    CRect statusRect(10, 450, 590, 470);
+    auto statusLabel = new CTextLabel(statusRect, "VSTGUI Test Interface - All controls functional for testing purposes");
+    statusLabel->setFontColor(kBlueCColor);
+    statusLabel->setBackColor(kTransparentCColor);
+    statusLabel->setHoriAlign(kCenterText);
+    frame->addView(statusLabel);
 }
