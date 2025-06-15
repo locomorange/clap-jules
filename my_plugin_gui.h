@@ -9,7 +9,7 @@ using namespace VSTGUI;
 
 class MyPluginEditor {
 public:
-    MyPluginEditor();
+    MyPluginEditor(const clap_host_t* host = nullptr);
     ~MyPluginEditor();
     
     // CLAP GUI interface implementation
@@ -35,6 +35,7 @@ private:
     bool isVisible;
     uint32_t currentWidth;
     uint32_t currentHeight;
+    const clap_host_t* host;
     
     void createControls();
 };

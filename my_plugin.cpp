@@ -2,6 +2,7 @@
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#include "my_plugin_linux_extensions.h"
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
@@ -268,6 +269,8 @@ static const clap_plugin_gui_t my_gui_extension = {
 };
 #endif // VSTGUI_ENABLED
 
+
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
@@ -277,6 +280,14 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
         return &my_gui_extension;
     }
+#if defined(__linux__)
+    if (strcmp(id, CLAP_EXT_TIMER_SUPPORT) == 0) {
+        return &my_timer_support_extension;
+    }
+    if (strcmp(id, CLAP_EXT_POSIX_FD_SUPPORT) == 0) {
+        return &my_posix_fd_support_extension;
+    }
+#endif
 #endif
     
     return NULL; // No other extensions supported in this basic example
@@ -317,9 +328,12 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         return NULL;
     }
 
+    // Store host pointer for extension access
+    self->host = host;
+
     // Initialize GUI editor
 #if VSTGUI_ENABLED
-    self->gui_editor = new MyPluginEditor();
+    self->gui_editor = new MyPluginEditor(host);
     if (!self->gui_editor) {
         fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
         free(self);

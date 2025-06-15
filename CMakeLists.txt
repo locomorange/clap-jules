@@ -72,6 +72,9 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt" AND ${CLAP_I
     endif()
     
     if(VSTGUI_CAN_BUILD)
+        # Disable standalone components that require additional dependencies
+        set(VSTGUI_STANDALONE OFF CACHE BOOL "Disable VSTGUI standalone components")
+        set(VSTGUI_TOOLS OFF CACHE BOOL "Disable VSTGUI tools")
         add_subdirectory(libs/vstgui EXCLUDE_FROM_ALL)
         set(VSTGUI_BUILD_ENABLED TRUE)
         
@@ -98,6 +101,10 @@ set(PLUGIN_SOURCES my_plugin.cpp)
 # Add GUI sources only if VSTGUI is enabled
 if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
     list(APPEND PLUGIN_SOURCES my_plugin_gui.cpp)
+    # Add Linux-specific extensions on Linux
+    if(UNIX AND NOT APPLE)
+        list(APPEND PLUGIN_SOURCES my_plugin_linux_extensions.cpp)
+    endif()
 endif()
 
 add_library(my_clap_plugin SHARED ${PLUGIN_SOURCES})
