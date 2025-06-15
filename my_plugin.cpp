@@ -5,7 +5,9 @@
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#if defined(__linux__)
 #include "my_plugin_linux_extensions.h"
+#endif
 #endif
 #include <clap/plugin-features.h>
 #include <clap/ext/params.h>
