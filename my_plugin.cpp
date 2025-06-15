@@ -3,12 +3,10 @@
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
 #include <vstgui/lib/vstguiinit.h>
-#if IS_LINUX
-#include <dlfcn.h>
-#elif IS_WIN
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#elif defined(_WIN32)
 #include <windows.h>
-#elif IS_MAC
-#include <dlfcn.h>
 #endif
 #endif
 #include <clap/plugin-features.h>
@@ -157,7 +155,24 @@ static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const c
 
 static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    if (self && self->gui_editor) {
+    if (!self) {
+        return false;
+    }
+    
+    // Initialize VSTGUI once per process, as per reference implementation
+    static bool everInit{false};
+    if (!everInit) {
+#ifdef __APPLE__
+        VSTGUI::init(CFBundleGetMainBundle());
+#elif defined(_WIN32)
+        VSTGUI::init(GetModuleHandle(nullptr));
+#elif defined(__linux__)
+        VSTGUI::init(nullptr); // Linux initialization is handled differently
+#endif
+        everInit = true;
+    }
+    
+    if (self->gui_editor) {
         return self->gui_editor->create(api, is_floating);
     }
     return false;
@@ -367,29 +382,7 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
         
 #if VSTGUI_ENABLED
-        // Initialize VSTGUI with platform-specific library handle
-        printf("MyPlugin: Initializing VSTGUI...\n");
-        void* handle = nullptr;
-        
-#if IS_LINUX || IS_MAC
-        // Unix/Linux/macOS: Use dlopen to get library handle
-        handle = dlopen(plugin_path, RTLD_NOLOAD);
-        if (!handle) {
-            printf("MyPlugin: Warning - could not get library handle with dlopen\n");
-        }
-#elif IS_WIN
-        // Windows: Use GetModuleHandle to get library handle
-        // Convert plugin_path to wide string if necessary, or use GetModuleHandle(nullptr) for current module
-        handle = GetModuleHandleA(plugin_path);
-        if (!handle) {
-            printf("MyPlugin: Warning - could not get library handle with GetModuleHandle\n");
-            // Try getting handle of current module
-            handle = GetModuleHandleA(nullptr);
-        }
-#endif
-        
-        // Initialize VSTGUI with the obtained handle (or nullptr if failed)
-        VSTGUI::init(handle);
+        // VSTGUI initialization is now handled in GUI create method per reference implementation
 #endif
         
         // Perform any global library initialization here if needed
@@ -400,8 +393,7 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         printf("MyPlugin: clap_entry.deinit called\n");
         
 #if VSTGUI_ENABLED
-        // Cleanup VSTGUI
-        VSTGUI::exit();
+        // VSTGUI cleanup is now handled in GUI destroy method per reference implementation
 #endif
         
         // Perform any global library cleanup here if needed
