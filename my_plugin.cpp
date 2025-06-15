@@ -5,9 +5,11 @@
 #include "my_plugin_linux_extensions.h"
 #endif
 #include <clap/plugin-features.h>
+#include <clap/ext/params.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <cmath>    // For math functions
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -27,24 +29,64 @@ static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, 
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
-    "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
+    "com.example.eqplugin", // id
+    "Professional EQ Plugin", // name
     "My Company",           // vendor
     "https://example.com",  // url
     "https://example.com/bugtracker", // manual_url
     "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "1.0.0",                // version
+    "A professional EQ plugin with interactive curve display.", // description
     plugin_features, // features
     // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
+};
+
+// EQ Parameter Info
+const clap_param_info_t param_info[PARAM_COUNT] = {
+    // Low Band
+    {PARAM_LOW_FREQ, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "Low Freq", "", 20.0, 2000.0, 80.0},
+    {PARAM_LOW_GAIN, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "Low Gain", "dB", -15.0, 15.0, 0.0},
+    {PARAM_LOW_Q, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "Low Q", "", 0.1, 10.0, 0.7},
+    {PARAM_LOW_TYPE, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "Low Type", "", 0.0, 3.0, 0.0},
+    {PARAM_LOW_BYPASS, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "Low Bypass", "", 0.0, 1.0, 0.0},
+    
+    // Low-Mid Band  
+    {PARAM_LOW_MID_FREQ, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "Low-Mid Freq", "", 200.0, 2000.0, 500.0},
+    {PARAM_LOW_MID_GAIN, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "Low-Mid Gain", "dB", -15.0, 15.0, 0.0},
+    {PARAM_LOW_MID_Q, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "Low-Mid Q", "", 0.1, 10.0, 0.7},
+    {PARAM_LOW_MID_TYPE, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "Low-Mid Type", "", 0.0, 3.0, 2.0},
+    {PARAM_LOW_MID_BYPASS, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "Low-Mid Bypass", "", 0.0, 1.0, 0.0},
+    
+    // High-Mid Band
+    {PARAM_HIGH_MID_FREQ, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "High-Mid Freq", "", 1000.0, 8000.0, 2000.0},
+    {PARAM_HIGH_MID_GAIN, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "High-Mid Gain", "dB", -15.0, 15.0, 0.0},
+    {PARAM_HIGH_MID_Q, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "High-Mid Q", "", 0.1, 10.0, 0.7},
+    {PARAM_HIGH_MID_TYPE, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "High-Mid Type", "", 0.0, 3.0, 2.0},
+    {PARAM_HIGH_MID_BYPASS, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "High-Mid Bypass", "", 0.0, 1.0, 0.0},
+    
+    // High Band
+    {PARAM_HIGH_FREQ, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "High Freq", "", 2000.0, 20000.0, 8000.0},
+    {PARAM_HIGH_GAIN, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "High Gain", "dB", -15.0, 15.0, 0.0},
+    {PARAM_HIGH_Q, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "High Q", "", 0.1, 10.0, 0.7},
+    {PARAM_HIGH_TYPE, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "High Type", "", 0.0, 3.0, 1.0},
+    {PARAM_HIGH_BYPASS, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "High Bypass", "", 0.0, 1.0, 0.0},
+    
+    // Master
+    {PARAM_MASTER_GAIN, CLAP_PARAM_IS_AUTOMATABLE, nullptr, "Master Gain", "dB", -20.0, 20.0, 0.0},
+    {PARAM_MASTER_BYPASS, CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED, nullptr, "Master Bypass", "", 0.0, 1.0, 0.0}
 };
 
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize parameter values to defaults
+    for (int i = 0; i < PARAM_COUNT; i++) {
+        self->param_values[i] = param_info[i].default_value;
+    }
+    
     return true;
 }
 
@@ -129,6 +171,111 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     // }
     return CLAP_PROCESS_CONTINUE;
 }
+
+// --- Parameter Extension Implementation ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
+    return PARAM_COUNT;
+}
+
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info) {
+    if (param_index >= PARAM_COUNT) {
+        return false;
+    }
+    
+    *param_info = ::param_info[param_index];
+    return true;
+}
+
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
+    if (param_id >= PARAM_COUNT) {
+        return false;
+    }
+    
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    *value = self->param_values[param_id];
+    return true;
+}
+
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size) {
+    if (param_id >= PARAM_COUNT) {
+        return false;
+    }
+    
+    // Format parameter values for display
+    switch (param_id) {
+        case PARAM_LOW_TYPE:
+        case PARAM_LOW_MID_TYPE:
+        case PARAM_HIGH_MID_TYPE:
+        case PARAM_HIGH_TYPE: {
+            const char* types[] = {"HPF", "LPF", "Bell", "Shelf"};
+            snprintf(display, size, "%s", types[(int)value]);
+            return true;
+        }
+        case PARAM_LOW_BYPASS:
+        case PARAM_LOW_MID_BYPASS:
+        case PARAM_HIGH_MID_BYPASS:
+        case PARAM_HIGH_BYPASS:
+        case PARAM_MASTER_BYPASS:
+            snprintf(display, size, "%s", value > 0.5 ? "ON" : "OFF");
+            return true;
+        case PARAM_LOW_FREQ:
+        case PARAM_LOW_MID_FREQ:
+        case PARAM_HIGH_MID_FREQ:
+        case PARAM_HIGH_FREQ:
+            if (value >= 1000.0) {
+                snprintf(display, size, "%.1f kHz", value / 1000.0);
+            } else {
+                snprintf(display, size, "%.0f Hz", value);
+            }
+            return true;
+        case PARAM_LOW_GAIN:
+        case PARAM_LOW_MID_GAIN:
+        case PARAM_HIGH_MID_GAIN:
+        case PARAM_HIGH_GAIN:
+        case PARAM_MASTER_GAIN:
+            snprintf(display, size, "%.1f dB", value);
+            return true;
+        case PARAM_LOW_Q:
+        case PARAM_LOW_MID_Q:
+        case PARAM_HIGH_MID_Q:
+        case PARAM_HIGH_Q:
+            snprintf(display, size, "%.2f", value);
+            return true;
+        default:
+            snprintf(display, size, "%.2f", value);
+            return true;
+    }
+}
+
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value) {
+    // Basic implementation - could be extended for more sophisticated parsing
+    *value = atof(display);
+    return true;
+}
+
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
+    // Handle parameter changes from automation
+    const uint32_t num_events = in->size(in);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t *hdr = in->get(in, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID && hdr->type == CLAP_EVENT_PARAM_VALUE) {
+            const clap_event_param_value_t *param_event = (const clap_event_param_value_t *)hdr;
+            if (param_event->param_id < PARAM_COUNT) {
+                my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+                self->param_values[param_event->param_id] = param_event->value;
+            }
+        }
+    }
+}
+
+static const clap_plugin_params_t my_params_extension = {
+    my_plugin_params_count,
+    my_plugin_params_get_info,
+    my_plugin_params_get_value,
+    my_plugin_params_value_to_text,
+    my_plugin_params_text_to_value,
+    my_plugin_params_flush
+};
 
 // --- GUI Extension Implementation ---
 #if VSTGUI_ENABLED
@@ -272,9 +419,11 @@ static const clap_plugin_gui_t my_gui_extension = {
 
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
+    
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        return &my_params_extension;
+    }
     
 #if VSTGUI_ENABLED
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
@@ -290,7 +439,7 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 #endif
 #endif
     
-    return NULL; // No other extensions supported in this basic example
+    return NULL; // No other extensions supported
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -339,6 +488,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         free(self);
         return NULL;
     }
+    self->gui_editor->setPlugin(self);
 #endif
 
     self->plugin.desc = &my_plugin_descriptor;
