@@ -159,6 +159,7 @@ enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+target_include_directories(my_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)

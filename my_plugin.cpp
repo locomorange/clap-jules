@@ -9,6 +9,60 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
+// --- Parameters Definition ---
+static const clap_param_info_t param_infos[PARAM_COUNT] = {
+    {
+        .id = PARAM_DEPTH,
+        .flags = CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_MODULATABLE,
+        .cookie = nullptr,
+        .name = "Depth",
+        .module = "",
+        .min_value = 0.0,
+        .max_value = 1.0,
+        .default_value = 0.5
+    },
+    {
+        .id = PARAM_SHARPNESS,
+        .flags = CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_MODULATABLE,
+        .cookie = nullptr,
+        .name = "Sharpness",
+        .module = "",
+        .min_value = 0.0,
+        .max_value = 1.0,
+        .default_value = 0.3
+    },
+    {
+        .id = PARAM_SELECTIVITY,
+        .flags = CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_MODULATABLE,
+        .cookie = nullptr,
+        .name = "Selectivity",
+        .module = "",
+        .min_value = 0.0,
+        .max_value = 1.0,
+        .default_value = 0.7
+    },
+    {
+        .id = PARAM_MODE,
+        .flags = CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED,
+        .cookie = nullptr,
+        .name = "Mode",
+        .module = "",
+        .min_value = 0.0,
+        .max_value = 3.0,
+        .default_value = 0.0
+    },
+    {
+        .id = PARAM_BALANCE,
+        .flags = CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_MODULATABLE,
+        .cookie = nullptr,
+        .name = "Balance",
+        .module = "",
+        .min_value = -1.0,
+        .max_value = 1.0,
+        .default_value = 0.0
+    }
+};
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -42,9 +96,14 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize parameter values to defaults
+    for (int i = 0; i < PARAM_COUNT; i++) {
+        self->params[i] = param_infos[i].default_value;
+    }
+    
     return true;
 }
 
@@ -269,12 +328,97 @@ static const clap_plugin_gui_t my_gui_extension = {
 };
 #endif // VSTGUI_ENABLED
 
+// --- Parameters Extension ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
+    return PARAM_COUNT;
+}
 
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info) {
+    if (param_index >= PARAM_COUNT) {
+        return false;
+    }
+    *param_info = param_infos[param_index];
+    return true;
+}
+
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (param_id >= PARAM_COUNT) {
+        return false;
+    }
+    *value = self->params[param_id];
+    return true;
+}
+
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size) {
+    if (param_id >= PARAM_COUNT) {
+        return false;
+    }
+    
+    switch (param_id) {
+        case PARAM_MODE:
+            {
+                const char* mode_names[] = {"Gentle", "Moderate", "Aggressive", "Extreme"};
+                int mode_index = (int)value;
+                if (mode_index >= 0 && mode_index < 4) {
+                    snprintf(display, size, "%s", mode_names[mode_index]);
+                } else {
+                    snprintf(display, size, "%.0f", value);
+                }
+            }
+            break;
+        case PARAM_BALANCE:
+            snprintf(display, size, "%.1f%%", value * 100.0);
+            break;
+        default:
+            snprintf(display, size, "%.2f", value);
+            break;
+    }
+    return true;
+}
+
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value) {
+    // Simple implementation - just parse as float
+    char *endptr;
+    double parsed = strtod(display, &endptr);
+    if (endptr != display) {
+        *value = parsed;
+        return true;
+    }
+    return false;
+}
+
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Process parameter changes from input events
+    const uint32_t num_events = in->size(in);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t *hdr = in->get(in, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID && hdr->type == CLAP_EVENT_PARAM_VALUE) {
+            const clap_event_param_value_t *param_event = (const clap_event_param_value_t *)hdr;
+            if (param_event->param_id < PARAM_COUNT) {
+                self->params[param_event->param_id] = param_event->value;
+            }
+        }
+    }
+}
+
+static const clap_plugin_params_t my_params_extension = {
+    my_plugin_params_count,
+    my_plugin_params_get_info,
+    my_plugin_params_get_value,
+    my_plugin_params_value_to_text,
+    my_plugin_params_text_to_value,
+    my_plugin_params_flush
+};
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
+    
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        return &my_params_extension;
+    }
     
 #if VSTGUI_ENABLED
     if (strcmp(id, CLAP_EXT_GUI) == 0) {

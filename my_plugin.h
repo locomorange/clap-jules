@@ -1,6 +1,17 @@
 #pragma once
 
 #include <clap/clap.h>
+#include <clap/ext/params.h>
+
+// Parameter IDs
+enum {
+    PARAM_DEPTH = 0,
+    PARAM_SHARPNESS,
+    PARAM_SELECTIVITY,
+    PARAM_MODE,
+    PARAM_BALANCE,
+    PARAM_COUNT
+};
 
 // Forward declaration
 #if VSTGUI_ENABLED
@@ -14,7 +25,8 @@ typedef struct {
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif
-    // Add any other plugin-specific data here
+    // Parameter values
+    double params[PARAM_COUNT];
 } my_plugin_t;
 
 // Plugin factory ID

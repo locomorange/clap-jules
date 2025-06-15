@@ -1,10 +1,18 @@
 #include <gtest/gtest.h>
+#include "../my_plugin.h"
 
-// Placeholder for functions from my_clap_plugin.h
-// For example, if you have a function like:
-// int add(int a, int b);
-// You can include the header:
-// #include "../my_plugin.h"
+// Test to verify parameter functionality
+TEST(MyPluginTest, ParameterTest) {
+    // Test that parameter count is correct
+    EXPECT_EQ(PARAM_COUNT, 5);
+    
+    // Test parameter ID values
+    EXPECT_EQ(PARAM_DEPTH, 0);
+    EXPECT_EQ(PARAM_SHARPNESS, 1);
+    EXPECT_EQ(PARAM_SELECTIVITY, 2);
+    EXPECT_EQ(PARAM_MODE, 3);
+    EXPECT_EQ(PARAM_BALANCE, 4);
+}
 
 TEST(MyPluginTest, PlaceholderTest) {
     ASSERT_EQ(1, 1);

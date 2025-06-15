@@ -2,12 +2,14 @@
 
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+#include <clap/ext/params.h>
 #include <vstgui/vstgui.h>
 #include <vstgui/lib/cframe.h>
+#include <vstgui/lib/controls/ccontrol.h>
 
 using namespace VSTGUI;
 
-class MyPluginEditor {
+class MyPluginEditor : public IControlListener {
 public:
     MyPluginEditor(const clap_host_t* host = nullptr);
     ~MyPluginEditor();
@@ -29,6 +31,12 @@ public:
     bool show();
     bool hide();
     
+    // Parameter synchronization
+    void updateParameter(clap_id paramId, double value);
+    
+    // IControlListener
+    void valueChanged(CControl* pControl) override;
+    
 private:
     CFrame* frame;
     bool isCreated;
@@ -38,4 +46,5 @@ private:
     const clap_host_t* host;
     
     void createControls();
+    void notifyParameterChange(clap_id paramId, double value);
 };
