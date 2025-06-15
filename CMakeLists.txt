@@ -4,6 +4,14 @@ project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Windows-specific compiler settings
+if(MSVC)
+    # Disable MSVC warnings for standard library functions
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    # Enable proper C++ exception handling
+    add_compile_options(/EHsc)
+endif()
+
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
 # If you want to use a custom location, you can set CLAP_PATH before running cmake.

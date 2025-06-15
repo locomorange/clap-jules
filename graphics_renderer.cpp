@@ -52,7 +52,8 @@ public:
     
     void drawText(const char* text, float x, float y, uint32_t color) override {
         // Simple text rendering placeholder - would use Skia for proper text rendering
-        printf("Drawing text '%s' at (%.1f, %.1f) with color 0x%08X\n", text, x, y, color);
+        // Note: In a production plugin, logging should be done through proper audio plugin logging
+        // For now, we'll just draw a placeholder rectangle representing the text
         
         // Draw a simple placeholder rectangle for text
         int textWidth = static_cast<int>(strlen(text)) * 8; // Approximate character width
@@ -82,9 +83,9 @@ public:
 
 #ifdef HAVE_SKIA
 // This would be the Skia implementation
-#include "skia/include/core/SkCanvas.h"
-#include "skia/include/core/SkSurface.h"
-#include "skia/include/core/SkPaint.h"
+#include "core/SkCanvas.h"
+#include "core/SkSurface.h"
+#include "core/SkPaint.h"
 
 class SkiaGraphicsRenderer : public GraphicsRenderer {
 private:
