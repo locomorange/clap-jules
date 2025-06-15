@@ -216,56 +216,71 @@ const void * CLAP_ABI plugin_entry_get_factory(const char *factory_id) {
     return NULL;
 }
 
+} // extern "C"
+
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
-CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
+// Move outside extern "C" block for better Windows compatibility
+extern "C" CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
     plugin_entry_init,
     plugin_entry_deinit,
     plugin_entry_get_factory
 };
 
-} // extern "C"
-
 // --- C++ Graphics Implementation ---
 namespace clap_jules {
 
 void initializeGraphics(my_plugin_t* plugin) {
-    // Initialize graphics renderer
-    auto renderer = createGraphicsRenderer();
-    plugin->graphics_renderer = renderer.release();
+    try {
+        // Initialize graphics renderer
+        auto renderer = createGraphicsRenderer();
+        plugin->graphics_renderer = renderer.release();
+    } catch (...) {
+        // Ensure no exceptions escape to C code
+        plugin->graphics_renderer = nullptr;
+    }
 }
 
 void cleanupGraphics(my_plugin_t* plugin) {
-    if (plugin->graphics_renderer) {
-        delete static_cast<GraphicsRenderer*>(plugin->graphics_renderer);
+    try {
+        if (plugin->graphics_renderer) {
+            delete static_cast<GraphicsRenderer*>(plugin->graphics_renderer);
+            plugin->graphics_renderer = nullptr;
+        }
+    } catch (...) {
+        // Ensure no exceptions escape to C code
         plugin->graphics_renderer = nullptr;
     }
 }
 
 void renderFrame(my_plugin_t* plugin, int width, int height) {
-    if (!plugin->graphics_renderer) return;
-    
-    auto* renderer = static_cast<GraphicsRenderer*>(plugin->graphics_renderer);
-    
-    // Demonstrate graphics rendering
-    renderer->beginFrame(width, height);
-    
-    // Clear background
-    renderer->clear(0xFF222222); // Dark gray background
-    
-    // Draw some example graphics
-    renderer->drawRect(10, 10, 100, 50, 0xFF4CAF50); // Green rectangle
-    renderer->drawCircle(200, 50, 30, 0xFF2196F3);   // Blue circle
-    renderer->drawText("CLAP + Graphics", 10, 80, 0xFFFFFFFF); // White text
-    
-    // Draw a simple spectrum visualization placeholder
-    for (int i = 0; i < 10; ++i) {
-        float barHeight = 20 + (i * 5); // Simulated spectrum data
-        renderer->drawRect(50 + i * 15, 120 - barHeight, 10, barHeight, 0xFFFF9800); // Orange bars
+    try {
+        if (!plugin->graphics_renderer) return;
+        
+        auto* renderer = static_cast<GraphicsRenderer*>(plugin->graphics_renderer);
+        
+        // Demonstrate graphics rendering
+        renderer->beginFrame(width, height);
+        
+        // Clear background
+        renderer->clear(0xFF222222); // Dark gray background
+        
+        // Draw some example graphics
+        renderer->drawRect(10, 10, 100, 50, 0xFF4CAF50); // Green rectangle
+        renderer->drawCircle(200, 50, 30, 0xFF2196F3);   // Blue circle
+        renderer->drawText("CLAP + Graphics", 10, 80, 0xFFFFFFFF); // White text
+        
+        // Draw a simple spectrum visualization placeholder
+        for (int i = 0; i < 10; ++i) {
+            float barHeight = 20 + (i * 5); // Simulated spectrum data
+            renderer->drawRect(50 + i * 15, 120 - barHeight, 10, barHeight, 0xFFFF9800); // Orange bars
+        }
+        
+        renderer->endFrame();
+    } catch (...) {
+        // Ensure no exceptions escape to C code - silently handle any errors
     }
-    
-    renderer->endFrame();
 }
 
 } // namespace clap_jules
