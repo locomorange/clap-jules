@@ -22,6 +22,7 @@ enum PluginParamIds {
     
     // EQ parameters  
     PARAM_CUTOFF,
+
     PARAM_RESONANCE,
     PARAM_DRIVE,
     PARAM_OUTPUT,
@@ -39,6 +40,7 @@ enum PluginParamIds {
     PARAM_COUNT
 };
 
+
 // Drawing styles for spectrum analyzer
 enum SpectrumDrawingStyle {
     STYLE_LINES = 0,
@@ -54,6 +56,7 @@ typedef struct {
     float spectrum_drawing_style;
     
     // EQ parameters
+
     double cutoff;
     double resonance;
     double drive;
@@ -65,7 +68,9 @@ typedef struct {
     double eq_q[3];
 } plugin_params_t;
 
+
 // Basic plugin structure - Combined functionality
+
 typedef struct {
     clap_plugin_t plugin;
     const clap_host_t* host;
@@ -80,7 +85,7 @@ typedef struct {
     
     // GUI
     std::unique_ptr<SpectrumGUI> gui;
-    
+
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif

@@ -1,6 +1,7 @@
 #include "my_plugin.h"
 #include "spectrum_analyzer.h"
 #include "spectrum_gui.h"
+
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
@@ -8,6 +9,7 @@
 #endif
 #include <clap/plugin-features.h>
 #include <clap/ext/params.h>
+
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -40,12 +42,14 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
     "com.example.spectrum-analyzer", // id
     "Real-time Spectrum Analyzer", // name
+
     "Audio Innovations",       // vendor
     "https://example.com",     // url
     "https://example.com/manual", // manual_url
     "https://example.com/support", // support_url
     "1.0.0",                   // version
     "Real-time spectrum analyzer with GUI support and parameter automation.", // description
+
     plugin_features, // features
 };
 
@@ -55,12 +59,14 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
+
     // Initialize plugin state
     self->sample_rate = 44100.0;
     self->max_frames_count = 512;
     
     // Initialize parameters with default values
     self->params.spectrum_drawing_style = 0.0f; // STYLE_LINES
+
     self->params.cutoff = 1000.0;
     self->params.resonance = 1.0;
     self->params.drive = 0.0;
@@ -73,13 +79,13 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
         self->params.eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
         self->params.eq_q[i] = 1.0;
     }
-    
+
     // Initialize spectrum analyzer
     self->spectrum_analyzer = std::make_unique<SpectrumAnalyzer>();
     
     // Initialize GUI
     self->gui = std::make_unique<SpectrumGUI>(self);
-    
+
     return true;
 }
 
@@ -418,10 +424,12 @@ static const clap_plugin_params_t my_plugin_params_extension = {
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     printf("MyPlugin: Host requesting extension: %s\n", id);
     
+
     if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
         return &my_plugin_params_extension;
     }
     
+
 #if VSTGUI_ENABLED
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
         return &my_gui_extension;

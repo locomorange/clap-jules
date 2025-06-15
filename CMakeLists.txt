@@ -98,6 +98,7 @@ endif()
 # Add your plugin target here
 set(PLUGIN_SOURCES my_plugin.cpp spectrum_analyzer.cpp spectrum_gui.cpp)
 
+
 # Add GUI sources only if VSTGUI is enabled
 if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
     list(APPEND PLUGIN_SOURCES my_plugin_gui.cpp)
