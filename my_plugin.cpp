@@ -4,11 +4,15 @@
 #define NOMINMAX
 #endif
 
+#include <cmath>    // Must be included after _USE_MATH_DEFINES on Windows
+
 #include "my_plugin.h"
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#if defined(__linux__)
 #include "my_plugin_linux_extensions.h"
+#endif
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
@@ -19,7 +23,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#include <cmath>    // For FFT calculations
 #include <algorithm>
 #include <complex>
 
