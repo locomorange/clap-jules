@@ -2,14 +2,32 @@
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
+#include <vstgui/lib/vstguiinit.h>
 #include <iostream>
 
-MyPluginEditor::MyPluginEditor()
+#ifdef __linux__
+#include <vstgui/lib/platform/platform_x11.h>
+#include <vstgui/lib/platform/linux/x11platform.h>
+#endif
+
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
+// Static initialization flag
+static bool vstgui_initialized = false;
+
+MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     : frame(nullptr)
     , isCreated(false) 
     , isVisible(false)
     , currentWidth(400)
     , currentHeight(300)
+    , host(host)
 {
 }
 
@@ -21,6 +39,8 @@ bool MyPluginEditor::isApiSupported(const char* api, bool isFloating) {
     // Support platform-specific APIs
 #ifdef __linux__
     if (strcmp(api, CLAP_WINDOW_API_X11) == 0) {
+        // For now, let's allow X11 and try to set up timer/fd support later
+        // The host extensions should be available by the time we need them
         return true;
     }
 #elif defined(__APPLE__)
@@ -57,6 +77,26 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
     // Check if the API is supported for this platform
     if (!isApiSupported(api, isFloating)) {
         return false;
+    }
+    
+    // Initialize VSTGUI if not already done
+    if (!vstgui_initialized) {
+        try {
+#ifdef __linux__
+            VSTGUI::init(nullptr);
+#elif defined(__APPLE__)
+            VSTGUI::init(CFBundleGetMainBundle());
+#elif defined(_WIN32)
+            VSTGUI::init(GetModuleHandle(nullptr));
+#else
+            VSTGUI::init(nullptr);
+#endif
+            vstgui_initialized = true;
+            std::cout << "MyPlugin GUI: VSTGUI initialized" << std::endl;
+        } catch (const std::exception& e) {
+            std::cout << "MyPlugin GUI: Error initializing VSTGUI: " << e.what() << std::endl;
+            return false;
+        }
     }
     
     try {
@@ -130,13 +170,30 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
     }
     
     try {
+        std::cout << "MyPlugin GUI: Setting parent window" << std::endl;
+        
+#ifdef __linux__
         // Embed into X11 window
         if (window->api && strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
-            // Use VSTGUI's platform-specific methods to embed
-            // For now, just return true to indicate we can handle the parent window
-            std::cout << "MyPlugin GUI: Set parent window (X11 ID: " << window->x11 << ")" << std::endl;
-            return true;
+            std::cout << "MyPlugin GUI: Opening frame with X11 parent (ID: " << window->x11 << ")" << std::endl;
+            bool result = frame->open((void*)(window->x11));
+            if (result) {
+                std::cout << "MyPlugin GUI: Frame opened successfully" << std::endl;
+            } else {
+                std::cout << "MyPlugin GUI: Failed to open frame" << std::endl;
+            }
+            return result;
         }
+#elif defined(__APPLE__)
+        if (window->api && strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
+            return frame->open(window->cocoa);
+        }
+#elif defined(_WIN32)
+        if (window->api && strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
+            return frame->open(window->win32);
+        }
+#endif
+        std::cout << "MyPlugin GUI: Unsupported window API: " << (window->api ? window->api : "null") << std::endl;
     }
     catch (const std::exception& e) {
         std::cout << "MyPlugin GUI: Error setting parent: " << e.what() << std::endl;

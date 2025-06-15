@@ -10,6 +10,7 @@ class MyPluginEditor;
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
+    const clap_host_t* host;
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif
