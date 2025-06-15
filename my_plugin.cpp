@@ -220,13 +220,15 @@ const void * CLAP_ABI plugin_entry_get_factory(const char *factory_id) {
 
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
-// Declare with C linkage and proper export for all platforms
-extern "C" CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
+// Must be declared as C symbol at global scope for proper DLL export on Windows
+extern "C" {
+CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION_INIT,
     plugin_entry_init,
     plugin_entry_deinit,
     plugin_entry_get_factory
 };
+} // extern "C"
 
 // --- C++ Graphics Implementation ---
 namespace clap_jules {
