@@ -1,8 +1,19 @@
 cmake_minimum_required(VERSION 3.25)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "CMAKE_BUILD_TYPE Type Unspecified; picking Release")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
+
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Option to include GUI support (enabled by default)
+option(CLAP_INCLUDE_GUI "Include GUI support in the CLAP plugin" TRUE)
 
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
@@ -39,52 +50,53 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
-# Add VSTGUI if available
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt")
-    message(STATUS "Found VSTGUI, checking platform support...")
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# Add VSTGUI if available and GUI is enabled
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt" AND ${CLAP_INCLUDE_GUI})
+    message(STATUS "Including VSTGUI")
     
-    # Check if we can build VSTGUI on this platform
-    set(VSTGUI_BUILD_ENABLED TRUE)
+    # Check platform dependencies before attempting to build VSTGUI
+    set(VSTGUI_CAN_BUILD TRUE)
     
     if(UNIX AND NOT APPLE)
-        # Linux - check for required dependencies
+        # Linux - Check for X11 and XCB libraries
         find_package(X11 QUIET)
         find_package(PkgConfig QUIET)
         if(PKG_CONFIG_FOUND)
-            pkg_check_modules(LIBXCB xcb QUIET)
+            pkg_check_modules(XCB xcb QUIET)
         endif()
         
-        if(NOT X11_FOUND OR NOT PKG_CONFIG_FOUND OR NOT LIBXCB_FOUND)
-            message(WARNING "VSTGUI Linux dependencies not found. Disabling VSTGUI. Install libx11-dev, libxcb-dev, and pkg-config.")
-            set(VSTGUI_BUILD_ENABLED FALSE)
+        if(NOT X11_FOUND OR NOT PKG_CONFIG_FOUND OR NOT XCB_FOUND)
+            message(WARNING "VSTGUI Linux dependencies not found (X11, XCB, pkg-config). GUI will be disabled.")
+            set(VSTGUI_CAN_BUILD FALSE)
         endif()
-    elseif(APPLE)
-        # macOS - VSTGUI should work with system frameworks
-        message(STATUS "macOS detected - VSTGUI will use Cocoa")
-    elseif(WIN32)
-        # Windows - VSTGUI should work with Win32 APIs
-        message(STATUS "Windows detected - VSTGUI will use Win32")
-    else()
-        message(WARNING "Unknown platform - VSTGUI support may be limited")
     endif()
     
-    if(VSTGUI_BUILD_ENABLED)
-        message(STATUS "Enabling VSTGUI support")
-        add_subdirectory(libs/vstgui)
+    if(VSTGUI_CAN_BUILD)
+        add_subdirectory(libs/vstgui EXCLUDE_FROM_ALL)
+        set(VSTGUI_BUILD_ENABLED TRUE)
+        
+        # Suppress deprecation warnings on Apple platforms
+        if (APPLE)
+            target_compile_options(vstgui PRIVATE -Wno-deprecated-declarations)
+        endif()
     else()
-        message(STATUS "VSTGUI disabled - plugin will be built without GUI support")
+        message(STATUS "VSTGUI dependencies not met - plugin will be built without GUI support")
+        set(VSTGUI_BUILD_ENABLED FALSE)
     endif()
 else()
+    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt")
+        message(STATUS "VSTGUI not found - plugin will be built without GUI support")
+    else()
+        message(STATUS "GUI disabled by option - plugin will be built without GUI support")
+    endif()
     set(VSTGUI_BUILD_ENABLED FALSE)
-    message(STATUS "VSTGUI not found - plugin will be built without GUI support")
 endif()
 
 # Add your plugin target here
 set(PLUGIN_SOURCES my_plugin.cpp)
 
 # Add GUI sources only if VSTGUI is enabled
-if (TARGET vstgui AND VSTGUI_BUILD_ENABLED)
+if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
     list(APPEND PLUGIN_SOURCES my_plugin_gui.cpp)
 endif()
 
@@ -92,12 +104,26 @@ add_library(my_clap_plugin SHARED ${PLUGIN_SOURCES})
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
 # Link VSTGUI if available
-if (TARGET vstgui AND VSTGUI_BUILD_ENABLED)
+if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
     target_link_libraries(my_clap_plugin PRIVATE vstgui)
     target_include_directories(my_clap_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui)
     target_compile_definitions(my_clap_plugin PRIVATE VSTGUI_ENABLED=1)
+    
+    # VSTGUI doesn't include the include paths and compile definitions in the library
+    # targets like other CMake libraries do, so explicitly include them here
+    target_compile_definitions(my_clap_plugin PRIVATE ${VSTGUI_COMPILE_DEFINITIONS})
 else()
     target_compile_definitions(my_clap_plugin PRIVATE VSTGUI_ENABLED=0)
+endif()
+
+# Platform-specific settings
+if(APPLE)
+    target_compile_definitions(my_clap_plugin PRIVATE IS_MAC=1)
+    target_link_libraries(my_clap_plugin PRIVATE "-framework CoreFoundation" "-framework AppKit" "-framework CoreGraphics")
+elseif(UNIX)
+    target_compile_definitions(my_clap_plugin PRIVATE IS_LINUX=1)
+elseif(WIN32)
+    target_compile_definitions(my_clap_plugin PRIVATE IS_WIN=1)
 endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
