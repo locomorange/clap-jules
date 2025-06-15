@@ -3,17 +3,20 @@
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
 #include <vstgui/lib/vstguiinit.h>
-#include <dlfcn.h>
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#elif defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #endif
 #include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 #include <exception> // For std::exception
-
-#if VSTGUI_ENABLED
-static void* vstgui_lib_handle = nullptr;
-#endif
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -366,25 +369,21 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
         
 #if VSTGUI_ENABLED
-        // Get the handle to the current shared library for VSTGUI initialization
-        vstgui_lib_handle = dlopen(plugin_path, RTLD_LAZY | RTLD_NOLOAD);
-        if (vstgui_lib_handle) {
-            try {
-                VSTGUI::init(vstgui_lib_handle);
-                printf("MyPlugin: VSTGUI initialized successfully\n");
-            } catch (const std::exception& e) {
-                printf("MyPlugin: Failed to initialize VSTGUI: %s\n", e.what());
-                dlclose(vstgui_lib_handle);
-                vstgui_lib_handle = nullptr;
-                return false;
-            } catch (...) {
-                printf("MyPlugin: Failed to initialize VSTGUI: unknown error\n");
-                dlclose(vstgui_lib_handle);
-                vstgui_lib_handle = nullptr;
-                return false;
-            }
-        } else {
-            printf("MyPlugin: Warning - Could not get library handle for VSTGUI initialization\n");
+        try {
+#ifdef __APPLE__
+            VSTGUI::init(CFBundleGetMainBundle());
+#elif defined(_WIN32)
+            VSTGUI::init(GetModuleHandle(nullptr));
+#else // Linux
+            VSTGUI::init(nullptr);
+#endif
+            printf("MyPlugin: VSTGUI initialized successfully\n");
+        } catch (const std::exception& e) {
+            printf("MyPlugin: Failed to initialize VSTGUI: %s\n", e.what());
+            return false;
+        } catch (...) {
+            printf("MyPlugin: Failed to initialize VSTGUI: unknown error\n");
+            return false;
         }
 #endif
         
@@ -395,15 +394,11 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         printf("MyPlugin: clap_entry.deinit called\n");
         
 #if VSTGUI_ENABLED
-        if (vstgui_lib_handle) {
-            try {
-                VSTGUI::exit();
-                printf("MyPlugin: VSTGUI cleanup completed\n");
-            } catch (...) {
-                printf("MyPlugin: Warning - Exception during VSTGUI cleanup\n");
-            }
-            dlclose(vstgui_lib_handle);
-            vstgui_lib_handle = nullptr;
+        try {
+            VSTGUI::exit();
+            printf("MyPlugin: VSTGUI cleanup completed\n");
+        } catch (...) {
+            printf("MyPlugin: Warning - Exception during VSTGUI cleanup\n");
         }
 #endif
     },
