@@ -72,6 +72,9 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt" AND ${CLAP_I
     endif()
     
     if(VSTGUI_CAN_BUILD)
+        # Disable standalone components that require additional dependencies
+        set(VSTGUI_STANDALONE OFF CACHE BOOL "Disable VSTGUI standalone components")
+        set(VSTGUI_TOOLS OFF CACHE BOOL "Disable VSTGUI tools")
         add_subdirectory(libs/vstgui EXCLUDE_FROM_ALL)
         set(VSTGUI_BUILD_ENABLED TRUE)
         
