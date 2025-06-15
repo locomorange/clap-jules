@@ -11,9 +11,31 @@
 struct SpectrumAnalyzer;
 class SpectrumGUI;
 
-// Parameter IDs
-enum {
+#if VSTGUI_ENABLED
+class MyPluginEditor;
+#endif
+
+// Parameter IDs - Combined spectrum analyzer and EQ parameters
+enum PluginParamIds {
+    // Spectrum analyzer parameters
     PARAM_SPECTRUM_DRAWING_STYLE = 0,
+    
+    // EQ parameters  
+    PARAM_CUTOFF,
+    PARAM_RESONANCE,
+    PARAM_DRIVE,
+    PARAM_OUTPUT,
+    PARAM_MIX,
+    PARAM_BYPASS,
+    PARAM_EQ_GAIN1,
+    PARAM_EQ_FREQ1,
+    PARAM_EQ_Q1,
+    PARAM_EQ_GAIN2,
+    PARAM_EQ_FREQ2,
+    PARAM_EQ_Q2,
+    PARAM_EQ_GAIN3,
+    PARAM_EQ_FREQ3,
+    PARAM_EQ_Q3,
     PARAM_COUNT
 };
 
@@ -26,9 +48,28 @@ enum SpectrumDrawingStyle {
     STYLE_COUNT
 };
 
-// Basic plugin structure
+// Plugin parameters structure - Combined parameters
+typedef struct {
+    // Spectrum analyzer parameters
+    float spectrum_drawing_style;
+    
+    // EQ parameters
+    double cutoff;
+    double resonance;
+    double drive;
+    double output;
+    double mix;
+    bool bypass;
+    double eq_gain[3];
+    double eq_freq[3];
+    double eq_q[3];
+} plugin_params_t;
+
+// Basic plugin structure - Combined functionality
 typedef struct {
     clap_plugin_t plugin;
+    const clap_host_t* host;
+    plugin_params_t params;
     
     // Audio processing
     double sample_rate;
@@ -37,11 +78,13 @@ typedef struct {
     // Spectrum analyzer
     std::unique_ptr<SpectrumAnalyzer> spectrum_analyzer;
     
-    // Parameters
-    float spectrum_drawing_style;
-    
     // GUI
     std::unique_ptr<SpectrumGUI> gui;
+    
+#if VSTGUI_ENABLED
+    MyPluginEditor* gui_editor;
+#endif
+    // Add any other plugin-specific data here
 } my_plugin_t;
 
 // Plugin factory ID

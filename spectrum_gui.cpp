@@ -166,7 +166,7 @@ int SpectrumGUI::get_drawing_style() const {
     if (!plugin) {
         return STYLE_LINES;
     }
-    return static_cast<int>(plugin->spectrum_drawing_style);
+    return static_cast<int>(plugin->params.spectrum_drawing_style);
 }
 
 void SpectrumGUI::render_spectrum() {

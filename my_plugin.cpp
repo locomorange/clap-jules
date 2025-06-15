@@ -1,11 +1,16 @@
 #include "my_plugin.h"
 #include "spectrum_analyzer.h"
 #include "spectrum_gui.h"
+#if VSTGUI_ENABLED
+#include "my_plugin_gui.h"
+#include <clap/ext/gui.h>
+#include "my_plugin_linux_extensions.h"
+#endif
+#include <clap/plugin-features.h>
+#include <clap/ext/params.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
-#include <clap/ext/params.h>
-#include <clap/ext/gui.h>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -27,35 +32,21 @@ static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id 
 static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value);
 static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out);
 
-// --- GUI extension functions ---
-static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
-static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
-static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
-static void my_plugin_gui_destroy(const clap_plugin_t *plugin);
-static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale);
-static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
-static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin);
-static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height);
-static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window);
-static bool my_plugin_gui_show(const clap_plugin_t *plugin);
-static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
-
 // --- Plugin Descriptor ---
-// Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+// Features array for the plugin descriptor  
+static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
-    "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
-    "My Company",           // vendor
-    "https://example.com",  // url
-    "https://example.com/bugtracker", // manual_url
-    "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "com.example.spectrum-analyzer", // id
+    "Real-time Spectrum Analyzer", // name
+    "Audio Innovations",       // vendor
+    "https://example.com",     // url
+    "https://example.com/manual", // manual_url
+    "https://example.com/support", // support_url
+    "1.0.0",                   // version
+    "Real-time spectrum analyzer with GUI support and parameter automation.", // description
     plugin_features, // features
-    // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
 
 
@@ -67,7 +58,21 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     // Initialize plugin state
     self->sample_rate = 44100.0;
     self->max_frames_count = 512;
-    self->spectrum_drawing_style = 0.0f; // STYLE_LINES
+    
+    // Initialize parameters with default values
+    self->params.spectrum_drawing_style = 0.0f; // STYLE_LINES
+    self->params.cutoff = 1000.0;
+    self->params.resonance = 1.0;
+    self->params.drive = 0.0;
+    self->params.output = 0.0;
+    self->params.mix = 1.0;
+    self->params.bypass = false;
+    
+    for (int i = 0; i < 3; ++i) {
+        self->params.eq_gain[i] = 0.0;
+        self->params.eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
+        self->params.eq_q[i] = 1.0;
+    }
     
     // Initialize spectrum analyzer
     self->spectrum_analyzer = std::make_unique<SpectrumAnalyzer>();
@@ -80,14 +85,23 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self) {
+#if VSTGUI_ENABLED
+        if (self->gui_editor) {
+            delete self->gui_editor;
+            self->gui_editor = nullptr;
+        }
+#endif
+        free(self);
+    }
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
     
-    // Store audio settings
+    // Update sample rate and frame count
     self->sample_rate = sample_rate;
     self->max_frames_count = max_frames_count;
     
@@ -96,6 +110,7 @@ static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_r
         self->spectrum_analyzer->initialize(sample_rate);
     }
     
+    // Allocate and prepare resources needed for processing (e.g., buffers)
     return true;
 }
 
@@ -121,53 +136,191 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
-    // Handle parameter events
+    // Process input events for parameter changes
     const uint32_t num_events = process->in_events->size(process->in_events);
     for (uint32_t i = 0; i < num_events; ++i) {
         const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
         if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
             switch (hdr->type) {
                 case CLAP_EVENT_PARAM_VALUE: {
-                    const clap_event_param_value_t* param_event = (const clap_event_param_value_t*)hdr;
-                    if (param_event->param_id == PARAM_SPECTRUM_DRAWING_STYLE) {
-                        self->spectrum_drawing_style = static_cast<float>(param_event->value);
+                    const clap_event_param_value_t* pev = (const clap_event_param_value_t*)hdr;
+                    if (pev->param_id == PARAM_SPECTRUM_DRAWING_STYLE) {
+                        self->params.spectrum_drawing_style = (float)pev->value;
                     }
+                    // Handle other parameter changes...
                     break;
                 }
             }
         }
     }
 
-    // Process audio from input to output and feed spectrum analyzer
+    // Process audio from input to output (stereo) and analyze spectrum
     if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
         clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
         const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
 
         if (out_buf->channel_count >= 2 && in_buf->channel_count >= 2 && out_buf->data32 && in_buf->data32) {
-            // Pass-through audio
+            // Copy input to output (passthrough)
             for (uint32_t i = 0; i < process->frames_count; ++i) {
                 out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
                 out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
             }
             
-            // Feed spectrum analyzer with mono mix
+            // Analyze spectrum if analyzer is available
             if (self->spectrum_analyzer) {
+                // Create mixed mono signal for analysis
                 std::vector<float> mono_samples(process->frames_count);
                 for (uint32_t i = 0; i < process->frames_count; ++i) {
                     mono_samples[i] = (in_buf->data32[0][i] + in_buf->data32[1][i]) * 0.5f;
                 }
+                
+                // Process the audio through the spectrum analyzer
                 self->spectrum_analyzer->process_samples(mono_samples.data(), process->frames_count);
             }
         }
     }
     
-    // Update GUI with new spectrum data
-    if (self->gui) {
-        self->gui->update_spectrum_data();
-    }
-    
     return CLAP_PROCESS_CONTINUE;
 }
+
+// --- GUI Extension Implementation ---
+#if VSTGUI_ENABLED
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->isApiSupported(api, is_floating);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->getPreferredApi(api, is_floating);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->create(api, is_floating);
+    }
+    return false;
+}
+
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        self->gui_editor->destroy();
+    }
+}
+
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setScale(scale);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->getSize(width, height);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->canResize();
+    }
+    return false;
+}
+
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->getResizeHints(hints);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->adjustSize(width, height);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setSize(width, height);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setParent(window);
+    }
+    return false;
+}
+
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->setTransient(window);
+    }
+    return false;
+}
+
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        self->gui_editor->suggestTitle(title);
+    }
+}
+
+static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->show();
+    }
+    return false;
+}
+
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui_editor) {
+        return self->gui_editor->hide();
+    }
+    return false;
+}
+
+static const clap_plugin_gui_t my_gui_extension = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    my_plugin_gui_get_resize_hints,
+    my_plugin_gui_adjust_size,
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    my_plugin_gui_set_transient,
+    my_plugin_gui_suggest_title,
+    my_plugin_gui_show,
+    my_plugin_gui_hide
+};
+#endif // VSTGUI_ENABLED
 
 // --- Parameters Extension Implementation ---
 static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
@@ -178,13 +331,17 @@ static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t para
     switch (param_index) {
         case PARAM_SPECTRUM_DRAWING_STYLE:
             param_info->id = PARAM_SPECTRUM_DRAWING_STYLE;
-            strncpy(param_info->name, "Spectrum Style", sizeof(param_info->name));
+            strncpy(param_info->name, "Drawing Style", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
             strncpy(param_info->module, "Spectrum", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
             param_info->min_value = 0.0;
             param_info->max_value = STYLE_COUNT - 1;
-            param_info->default_value = STYLE_LINES;
+            param_info->default_value = 0.0;
             param_info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM;
+            param_info->cookie = nullptr;
             return true;
+        // Add cases for other parameters as needed...
         default:
             return false;
     }
@@ -192,11 +349,11 @@ static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t para
 
 static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    
     switch (param_id) {
         case PARAM_SPECTRUM_DRAWING_STYLE:
-            *value = self->spectrum_drawing_style;
+            *value = self->params.spectrum_drawing_style;
             return true;
+        // Add cases for other parameters...
         default:
             return false;
     }
@@ -206,9 +363,10 @@ static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id 
     switch (param_id) {
         case PARAM_SPECTRUM_DRAWING_STYLE: {
             const char* style_names[] = {"Lines", "Dots", "Bins", "Fills"};
-            int style_index = static_cast<int>(value);
+            int style_index = (int)value;
             if (style_index >= 0 && style_index < STYLE_COUNT) {
                 strncpy(display, style_names[style_index], size);
+                display[size - 1] = '\0';
                 return true;
             }
             return false;
@@ -236,17 +394,13 @@ static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id 
 }
 
 static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
-    // Handle parameter changes that occur outside of process()
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    
+    // Handle parameter automation events
     const uint32_t num_events = in->size(in);
     for (uint32_t i = 0; i < num_events; ++i) {
         const clap_event_header_t* hdr = in->get(in, i);
         if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID && hdr->type == CLAP_EVENT_PARAM_VALUE) {
-            const clap_event_param_value_t* param_event = (const clap_event_param_value_t*)hdr;
-            if (param_event->param_id == PARAM_SPECTRUM_DRAWING_STYLE) {
-                self->spectrum_drawing_style = static_cast<float>(param_event->value);
-            }
+            const clap_event_param_value_t* pev = (const clap_event_param_value_t*)hdr;
+            // Handle parameter value change
         }
     }
 }
@@ -260,95 +414,29 @@ static const clap_plugin_params_t my_plugin_params_extension = {
     my_plugin_params_flush,
 };
 
-// --- GUI Extension Implementation ---
-static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->is_api_supported(api, is_floating) : false;
-}
-
-static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->get_preferred_api(api, is_floating) : false;
-}
-
-static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->create(api, is_floating) : false;
-}
-
-static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    if (self->gui) {
-        self->gui->destroy();
-    }
-}
-
-static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->set_scale(scale) : false;
-}
-
-static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->get_size(width, height) : false;
-}
-
-static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->can_resize() : false;
-}
-
-static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->set_size(width, height) : false;
-}
-
-static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->set_parent(window) : false;
-}
-
-static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    bool result = (self->gui ? self->gui->show() : false);
-    if (result) {
-        printf("MyPlugin: GUI shown\n");
-    }
-    return result;
-}
-
-static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    return self->gui ? self->gui->hide() : false;
-}
-
-static const clap_plugin_gui_t my_plugin_gui_extension = {
-    my_plugin_gui_is_api_supported,
-    my_plugin_gui_get_preferred_api,
-    my_plugin_gui_create,
-    my_plugin_gui_destroy,
-    my_plugin_gui_set_scale,
-    my_plugin_gui_get_size,
-    my_plugin_gui_can_resize,
-    nullptr, // get_resize_hints - not implemented
-    nullptr, // adjust_size - not implemented
-    my_plugin_gui_set_size,
-    my_plugin_gui_set_parent,
-    nullptr, // set_transient - not implemented for floating windows
-    nullptr, // suggest_title - not implemented for floating windows
-    my_plugin_gui_show,
-    my_plugin_gui_hide,
-};
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
+    printf("MyPlugin: Host requesting extension: %s\n", id);
+    
     if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
         return &my_plugin_params_extension;
     }
+    
+#if VSTGUI_ENABLED
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
-        return &my_plugin_gui_extension;
+        return &my_gui_extension;
     }
-    printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No other extensions supported yet
+#if defined(__linux__)
+    if (strcmp(id, CLAP_EXT_TIMER_SUPPORT) == 0) {
+        return &my_timer_support_extension;
+    }
+    if (strcmp(id, CLAP_EXT_POSIX_FD_SUPPORT) == 0) {
+        return &my_posix_fd_support_extension;
+    }
+#endif
+#endif
+    
+    return NULL; // No other extensions supported in this basic example
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -385,6 +473,19 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
     }
+
+    // Store host pointer for extension access
+    self->host = host;
+
+    // Initialize GUI editor
+#if VSTGUI_ENABLED
+    self->gui_editor = new MyPluginEditor(host);
+    if (!self->gui_editor) {
+        fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
+        free(self);
+        return NULL;
+    }
+#endif
 
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
