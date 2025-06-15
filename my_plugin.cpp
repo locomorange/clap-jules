@@ -25,9 +25,9 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- FFT and spectrum analysis functions ---
-static void init_fft_data(fft_data_t* fft_data, double sample_rate);
-static void cleanup_fft_data(fft_data_t* fft_data);
-static void generate_hann_window(std::vector<float>& window, size_t size);
+void init_fft_data(fft_data_t* fft_data, double sample_rate);
+void cleanup_fft_data(fft_data_t* fft_data);
+void generate_hann_window(std::vector<float>& window, size_t size);
 static void perform_fft(std::vector<std::complex<float>>& data);
 static void process_spectrum_analysis(my_plugin_t* self, const float* audio_data, uint32_t frame_count);
 static void update_spectrum_data(fft_data_t* fft_data);
@@ -53,7 +53,7 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 // FFT and Spectrum Analysis Implementation
 //=============================================================================
 
-static void init_fft_data(fft_data_t* fft_data, double sample_rate) {
+void init_fft_data(fft_data_t* fft_data, double sample_rate) {
     fft_data->sample_rate = sample_rate;
     fft_data->buffer_index = 0;
     fft_data->frames_since_last_update = 0;
@@ -83,7 +83,7 @@ static void init_fft_data(fft_data_t* fft_data, double sample_rate) {
     fft_data->spectrum_data.enabled = true;
 }
 
-static void cleanup_fft_data(fft_data_t* fft_data) {
+void cleanup_fft_data(fft_data_t* fft_data) {
     std::lock_guard<std::mutex> lock(fft_data->spectrum_data.data_mutex);
     fft_data->fft_buffer.clear();
     fft_data->input_buffer.clear();
@@ -92,7 +92,7 @@ static void cleanup_fft_data(fft_data_t* fft_data) {
     fft_data->spectrum_data.frequencies.clear();
 }
 
-static void generate_hann_window(std::vector<float>& window, size_t size) {
+void generate_hann_window(std::vector<float>& window, size_t size) {
     for (size_t i = 0; i < size; ++i) {
         window[i] = 0.5f * (1.0f - cosf(2.0f * M_PI * i / (size - 1)));
     }
@@ -448,7 +448,14 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
-    // printf("MyPlugin: on_main_thread called\n");
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Update spectrum display if GUI is available
+#if VSTGUI_ENABLED
+    if (self && self->gui_editor) {
+        self->gui_editor->updateSpectrumDisplay();
+    }
+#endif
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -486,7 +493,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
 
     // Initialize GUI editor
 #if VSTGUI_ENABLED
-    self->gui_editor = new MyPluginEditor(host);
+    self->gui_editor = new MyPluginEditor(host, self);
     if (!self->gui_editor) {
         fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
         free(self);
@@ -516,6 +523,47 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
     my_factory_get_plugin_descriptor,
     my_factory_create_plugin,
 };
+
+//=============================================================================
+// Helper Functions for GUI Access
+//=============================================================================
+
+bool get_plugin_spectrum_data(const my_plugin_t* plugin, std::vector<float>& magnitudes, std::vector<float>& frequencies) {
+    if (!plugin || !plugin->fft_data.spectrum_data.data_ready.load()) {
+        return false;
+    }
+    
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(plugin->fft_data.spectrum_data.data_mutex));
+    
+    if (plugin->fft_data.spectrum_data.magnitudes.size() != magnitudes.size() ||
+        plugin->fft_data.spectrum_data.frequencies.size() != frequencies.size()) {
+        magnitudes.resize(plugin->fft_data.spectrum_data.magnitudes.size());
+        frequencies.resize(plugin->fft_data.spectrum_data.frequencies.size());
+    }
+    
+    magnitudes = plugin->fft_data.spectrum_data.magnitudes;
+    frequencies = plugin->fft_data.spectrum_data.frequencies;
+    
+    return true;
+}
+
+void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled) {
+    if (plugin) {
+        plugin->params.spectrum_enabled = enabled;
+        plugin->fft_data.spectrum_data.enabled = enabled;
+    }
+}
+
+void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style) {
+    if (plugin) {
+        plugin->params.spectrum_style = style;
+        plugin->fft_data.spectrum_data.draw_style = style;
+    }
+}
+
+//=============================================================================
+// CLAP Entry Point
+//=============================================================================
 
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.

@@ -527,13 +527,14 @@ void SpectrumAnalyzerView::setEnabled(bool enable) {
 // MyPluginEditor Implementation
 //=============================================================================
 
-MyPluginEditor::MyPluginEditor(const clap_host_t* host)
+MyPluginEditor::MyPluginEditor(const clap_host_t* host, my_plugin_t* plugin)
     : frame(nullptr)
     , isCreated(false) 
     , isVisible(false)
     , currentWidth(900)  // Wider for professional layout
     , currentHeight(600) // Taller for better proportions
     , host(host)
+    , pluginInstance(plugin)
     , leftPanel(nullptr)
     , rightPanel(nullptr)
     , eqPanel(nullptr)
@@ -1166,6 +1167,9 @@ void MyPluginEditor::updateParameter(int paramId, double value) {
             if (spectrumView) {
                 spectrumView->setEnabled(value > 0.5);
             }
+            if (pluginInstance) {
+                set_plugin_spectrum_enabled(pluginInstance, value > 0.5);
+            }
             break;
         case PARAM_SPECTRUM_STYLE:
             if (spectrumStyleMenu) {
@@ -1173,6 +1177,9 @@ void MyPluginEditor::updateParameter(int paramId, double value) {
             }
             if (spectrumView) {
                 spectrumView->setDrawStyle((SpectrumDrawStyle)(int)value);
+            }
+            if (pluginInstance) {
+                set_plugin_spectrum_style(pluginInstance, (SpectrumDrawStyle)(int)value);
             }
             break;
     }
@@ -1187,12 +1194,13 @@ void MyPluginEditor::updateParameter(int paramId, double value) {
 }
 
 void MyPluginEditor::updateSpectrumDisplay() {
-    // This method will be called to update the spectrum display with new data
-    // Implementation will depend on how we get spectrum data from the plugin
-    if (spectrumView && host) {
-        // TODO: Get spectrum data from plugin and update display
-        // This would require implementing a mechanism to share data between
-        // the audio thread (where FFT analysis happens) and the GUI thread
+    // Update the spectrum display with new data from the plugin
+    if (spectrumView && pluginInstance) {
+        std::vector<float> magnitudes, frequencies;
+        
+        if (get_plugin_spectrum_data(pluginInstance, magnitudes, frequencies)) {
+            spectrumView->updateSpectrumData(magnitudes, frequencies);
+        }
     }
 }
 

@@ -97,3 +97,24 @@ typedef struct {
 
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
+
+// Helper functions to access plugin data from GUI
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Function to get spectrum data from plugin (thread-safe)
+bool get_plugin_spectrum_data(const my_plugin_t* plugin, std::vector<float>& magnitudes, std::vector<float>& frequencies);
+
+// Function to update spectrum parameters
+void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled);
+void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style);
+
+// FFT and spectrum analysis functions (for testing)
+void init_fft_data(fft_data_t* fft_data, double sample_rate);
+void cleanup_fft_data(fft_data_t* fft_data);
+void generate_hann_window(std::vector<float>& window, size_t size);
+
+#ifdef __cplusplus
+}
+#endif

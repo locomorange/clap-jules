@@ -93,7 +93,7 @@ private:
 
 class MyPluginEditor {
 public:
-    MyPluginEditor(const clap_host_t* host = nullptr);
+    MyPluginEditor(const clap_host_t* host = nullptr, my_plugin_t* plugin = nullptr);
     ~MyPluginEditor();
     
     // CLAP GUI interface implementation
@@ -130,6 +130,7 @@ private:
     uint32_t currentWidth;
     uint32_t currentHeight;
     const clap_host_t* host;
+    my_plugin_t* pluginInstance;
     
     // GUI components
     CViewContainer* leftPanel;
