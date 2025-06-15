@@ -16,8 +16,6 @@ if(WIN32 AND MSVC)
     add_compile_options(/wd4251)  # DLL export warnings
     # Ensure we're using the correct calling convention
     add_compile_options(/Zc:__cplusplus)
-    # Help with symbol export on Windows
-    add_compile_definitions(CLAP_EXPORT_SYMBOLS)
 endif()
 
 # Try to find CLAP automatically, then try to find it in a fixed location.

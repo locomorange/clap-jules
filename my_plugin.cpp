@@ -220,9 +220,9 @@ const void * CLAP_ABI plugin_entry_get_factory(const char *factory_id) {
 
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
-// Move outside extern "C" block for better Windows compatibility
+// Declare with C linkage and proper export for all platforms
 extern "C" CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
-    CLAP_VERSION,
+    CLAP_VERSION_INIT,
     plugin_entry_init,
     plugin_entry_deinit,
     plugin_entry_get_factory
