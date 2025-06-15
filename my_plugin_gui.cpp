@@ -11,6 +11,8 @@
 #include <vstgui/lib/cviewcontainer.h>
 #include <vstgui/lib/vstguiinit.h>
 #include <iostream>
+#include <cmath>
+#include <vector>
 
 #ifdef __linux__
 #include <vstgui/lib/platform/platform_x11.h>
@@ -459,6 +461,15 @@ void MyPluginEditor::createControlPanel() {
         freqLabel->setHoriAlign(kCenterText);
         bandSection->addView(freqLabel);
         
+        // Frequency value display
+        CRect freqValueRect(15, 90, 65, 105);
+        auto freqValueLabel = new CTextLabel(freqValueRect, "80Hz");
+        freqValueLabel->setFontColor(CColor(220, 220, 225, 255));
+        freqValueLabel->setBackColor(CColor(0, 0, 0, 0));
+        freqValueLabel->setFont(kNormalFontSmaller);
+        freqValueLabel->setHoriAlign(kCenterText);
+        bandSection->addView(freqValueLabel);
+        
         // Gain knob
         CRect gainRect(80, 30, 120, 70);
         *gainKnobs[band] = new CKnob(gainRect, nullptr, bandParams[band][1], nullptr, nullptr);
@@ -475,6 +486,15 @@ void MyPluginEditor::createControlPanel() {
         gainLabel->setHoriAlign(kCenterText);
         bandSection->addView(gainLabel);
         
+        // Gain value display
+        CRect gainValueRect(75, 90, 125, 105);
+        auto gainValueLabel = new CTextLabel(gainValueRect, "0.0dB");
+        gainValueLabel->setFontColor(CColor(220, 220, 225, 255));
+        gainValueLabel->setBackColor(CColor(0, 0, 0, 0));
+        gainValueLabel->setFont(kNormalFontSmaller);
+        gainValueLabel->setHoriAlign(kCenterText);
+        bandSection->addView(gainValueLabel);
+        
         // Q knob
         CRect qRect(140, 30, 180, 70);
         *qKnobs[band] = new CKnob(qRect, nullptr, bandParams[band][2], nullptr, nullptr);
@@ -490,6 +510,15 @@ void MyPluginEditor::createControlPanel() {
         qLabel->setFont(kNormalFontSmall);
         qLabel->setHoriAlign(kCenterText);
         bandSection->addView(qLabel);
+        
+        // Q value display
+        CRect qValueRect(135, 90, 185, 105);
+        auto qValueLabel = new CTextLabel(qValueRect, "0.70");
+        qValueLabel->setFontColor(CColor(220, 220, 225, 255));
+        qValueLabel->setBackColor(CColor(0, 0, 0, 0));
+        qValueLabel->setFont(kNormalFontSmaller);
+        qValueLabel->setHoriAlign(kCenterText);
+        bandSection->addView(qValueLabel);
         
         // Type menu
         CRect typeRect(200, 30, 260, 50);
@@ -622,12 +651,26 @@ void EQCurveView::drawGrid(CDrawContext* pContext) {
     
     CRect viewRect = getViewSize();
     
+    // Draw dark background first
+    pContext->setFillColor(CColor(15, 15, 20, 255));
+    pContext->drawRect(viewRect, kDrawFilled);
+    
     // Vertical grid lines (frequency)
     const double freqs[] = {20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000};
-    for (double freq : freqs) {
+    const char* freqLabels[] = {"20", "50", "100", "200", "500", "1k", "2k", "5k", "10k", "20k"};
+    
+    pContext->setFontColor(CColor(120, 120, 125, 255));
+    pContext->setFont(kNormalFontSmall);
+    
+    for (int i = 0; i < 10; i++) {
+        double freq = freqs[i];
         double x = viewRect.left + (log10(freq / 20.0) / log10(1000.0)) * viewRect.getWidth();
         if (x >= viewRect.left && x <= viewRect.right) {
             pContext->drawLine(CPoint(x, viewRect.top), CPoint(x, viewRect.bottom));
+            
+            // Draw frequency labels
+            CRect labelRect(x - 15, viewRect.bottom - 20, x + 15, viewRect.bottom - 5);
+            pContext->drawString(freqLabels[i], labelRect, kCenterText);
         }
     }
     
@@ -635,15 +678,24 @@ void EQCurveView::drawGrid(CDrawContext* pContext) {
     for (int db = -15; db <= 15; db += 5) {
         double y = viewRect.top + viewRect.getHeight() * 0.5 - (db / 30.0) * viewRect.getHeight();
         if (y >= viewRect.top && y <= viewRect.bottom) {
+            if (db == 0) {
+                pContext->setLineWidth(2.0);
+                pContext->setFrameColor(CColor(100, 100, 105, 255));
+            } else {
+                pContext->setLineWidth(1.0);
+                pContext->setFrameColor(CColor(60, 60, 65, 255));
+            }
             pContext->drawLine(CPoint(viewRect.left, y), CPoint(viewRect.right, y));
+            
+            // Draw dB labels
+            if (db != 0) {
+                char dbLabel[8];
+                snprintf(dbLabel, sizeof(dbLabel), "%+d", db);
+                CRect labelRect(viewRect.left + 5, y - 8, viewRect.left + 30, y + 8);
+                pContext->drawString(dbLabel, labelRect, kLeftText);
+            }
         }
     }
-    
-    // Center line (0 dB)
-    pContext->setLineWidth(2.0);
-    pContext->setFrameColor(CColor(100, 100, 105, 255));
-    double centerY = viewRect.top + viewRect.getHeight() * 0.5;
-    pContext->drawLine(CPoint(viewRect.left, centerY), CPoint(viewRect.right, centerY));
 }
 
 void EQCurveView::drawCurve(CDrawContext* pContext) {
@@ -654,21 +706,44 @@ void EQCurveView::drawCurve(CDrawContext* pContext) {
     
     CRect viewRect = getViewSize();
     
-    // Draw EQ response curve (simplified)
-    CPoint lastPoint;
-    bool firstPoint = true;
+    // Draw EQ response curve (simplified bell filter simulation)
+    std::vector<CPoint> curvePoints;
     
     for (int x = 0; x < viewRect.getWidth(); x += 2) {
         double freq = 20.0 * pow(1000.0, (double)x / viewRect.getWidth());
-        double gain = 0.0; // Calculate actual EQ response here
+        double totalGain = 0.0;
         
-        CPoint point = freqGainToPoint(freq, gain);
+        // Calculate combined response from all bands
+        const int bandParams[][3] = {
+            {PARAM_LOW_FREQ, PARAM_LOW_GAIN, PARAM_LOW_Q},
+            {PARAM_LOW_MID_FREQ, PARAM_LOW_MID_GAIN, PARAM_LOW_MID_Q},
+            {PARAM_HIGH_MID_FREQ, PARAM_HIGH_MID_GAIN, PARAM_HIGH_MID_Q},
+            {PARAM_HIGH_FREQ, PARAM_HIGH_GAIN, PARAM_HIGH_Q}
+        };
         
-        if (!firstPoint) {
-            pContext->drawLine(lastPoint, point);
+        for (int band = 0; band < 4; band++) {
+            double bandFreq = plugin->param_values[bandParams[band][0]];
+            double bandGain = plugin->param_values[bandParams[band][1]];
+            double bandQ = plugin->param_values[bandParams[band][2]];
+            
+            // Simple bell filter approximation
+            if (bandGain != 0.0) {
+                double freqRatio = freq / bandFreq;
+                double bandwidth = 1.0 / bandQ;
+                double response = 1.0 / (1.0 + pow((freqRatio - 1.0/freqRatio) / bandwidth, 2));
+                totalGain += bandGain * response;
+            }
         }
-        lastPoint = point;
-        firstPoint = false;
+        
+        CPoint point = freqGainToPoint(freq, totalGain);
+        curvePoints.push_back(point);
+    }
+    
+    // Draw the curve
+    if (curvePoints.size() > 1) {
+        for (size_t i = 1; i < curvePoints.size(); i++) {
+            pContext->drawLine(curvePoints[i-1], curvePoints[i]);
+        }
     }
 }
 
@@ -690,18 +765,51 @@ void EQCurveView::drawControlPoints(CDrawContext* pContext) {
         CColor(255, 255, 100, 255)  // Yellow
     };
     
+    const char* bandNames[] = {"LOW", "L-MID", "H-MID", "HIGH"};
+    
+    pContext->setFont(kNormalFontSmall);
+    
     for (int band = 0; band < 4; band++) {
         double freq = plugin->param_values[bandParams[band][0]];
         double gain = plugin->param_values[bandParams[band][1]];
         
         CPoint point = freqGainToPoint(freq, gain);
         
+        // Draw control point
         pContext->setFillColor(bandColors[band]);
         pContext->setFrameColor(CColor(255, 255, 255, 255));
         pContext->setLineWidth(2.0);
         
-        CRect pointRect(point.x - 4, point.y - 4, point.x + 4, point.y + 4);
+        CRect pointRect(point.x - 5, point.y - 5, point.x + 5, point.y + 5);
         pContext->drawEllipse(pointRect, kDrawFilledAndStroked);
+        
+        // Draw parameter labels next to control points
+        pContext->setFontColor(bandColors[band]);
+        char freqLabel[32];
+        char gainLabel[16];
+        
+        if (freq >= 1000.0) {
+            snprintf(freqLabel, sizeof(freqLabel), "%.1fk", freq / 1000.0);
+        } else {
+            snprintf(freqLabel, sizeof(freqLabel), "%.0f", freq);
+        }
+        snprintf(gainLabel, sizeof(gainLabel), "%+.1fdB", gain);
+        
+        // Position labels to avoid overlap
+        CRect labelRect;
+        if (point.y < getViewSize().top + 50) {
+            // Label below point
+            labelRect = CRect(point.x - 25, point.y + 10, point.x + 25, point.y + 35);
+        } else {
+            // Label above point
+            labelRect = CRect(point.x - 25, point.y - 35, point.x + 25, point.y - 10);
+        }
+        
+        pContext->drawString(bandNames[band], labelRect, kCenterText);
+        labelRect.offset(0, 12);
+        pContext->drawString(freqLabel, labelRect, kCenterText);
+        labelRect.offset(0, 12);
+        pContext->drawString(gainLabel, labelRect, kCenterText);
     }
 }
 
@@ -725,16 +833,79 @@ void EQCurveView::pointToFreqGain(CPoint point, double& freq, double& gain) {
 }
 
 CMouseEventResult EQCurveView::onMouseDown(CPoint& where, const CButtonState& buttons) {
-    // Implement interactive EQ point dragging
-    return kMouseEventHandled;
+    if (!plugin) return kMouseEventNotHandled;
+    
+    // Find the nearest control point
+    const int bandParams[][2] = {
+        {PARAM_LOW_FREQ, PARAM_LOW_GAIN},
+        {PARAM_LOW_MID_FREQ, PARAM_LOW_MID_GAIN},
+        {PARAM_HIGH_MID_FREQ, PARAM_HIGH_MID_GAIN},
+        {PARAM_HIGH_FREQ, PARAM_HIGH_GAIN}
+    };
+    
+    double minDistance = 20.0; // Maximum snap distance
+    draggedBand = -1;
+    
+    for (int band = 0; band < 4; band++) {
+        double freq = plugin->param_values[bandParams[band][0]];
+        double gain = plugin->param_values[bandParams[band][1]];
+        CPoint bandPoint = freqGainToPoint(freq, gain);
+        
+        double distance = sqrt(pow(where.x - bandPoint.x, 2) + pow(where.y - bandPoint.y, 2));
+        if (distance < minDistance) {
+            minDistance = distance;
+            draggedBand = band;
+        }
+    }
+    
+    if (draggedBand >= 0) {
+        isDragging = true;
+        return kMouseEventHandled;
+    }
+    
+    return kMouseEventNotHandled;
 }
 
 CMouseEventResult EQCurveView::onMouseMoved(CPoint& where, const CButtonState& buttons) {
+    if (!isDragging || draggedBand < 0 || !plugin) {
+        return kMouseEventNotHandled;
+    }
+    
+    const int bandParams[][2] = {
+        {PARAM_LOW_FREQ, PARAM_LOW_GAIN},
+        {PARAM_LOW_MID_FREQ, PARAM_LOW_MID_GAIN},
+        {PARAM_HIGH_MID_FREQ, PARAM_HIGH_MID_GAIN},
+        {PARAM_HIGH_FREQ, PARAM_HIGH_GAIN}
+    };
+    
+    // Convert mouse position to frequency and gain
+    double newFreq, newGain;
+    pointToFreqGain(where, newFreq, newGain);
+    
+    // Clamp values to parameter ranges
+    const clap_param_info_t& freqInfo = param_info[bandParams[draggedBand][0]];
+    const clap_param_info_t& gainInfo = param_info[bandParams[draggedBand][1]];
+    
+    newFreq = std::max(freqInfo.min_value, std::min(freqInfo.max_value, newFreq));
+    newGain = std::max(gainInfo.min_value, std::min(gainInfo.max_value, newGain));
+    
+    // Update parameter values
+    plugin->param_values[bandParams[draggedBand][0]] = newFreq;
+    plugin->param_values[bandParams[draggedBand][1]] = newGain;
+    
+    // Trigger redraw
+    setDirty(true);
+    
     return kMouseEventHandled;
 }
 
 CMouseEventResult EQCurveView::onMouseUp(CPoint& where, const CButtonState& buttons) {
-    return kMouseEventHandled;
+    if (isDragging) {
+        isDragging = false;
+        draggedBand = -1;
+        return kMouseEventHandled;
+    }
+    return kMouseEventNotHandled;
 }
 
 void EQCurveView::updateCurve() {
