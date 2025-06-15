@@ -2,7 +2,6 @@
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
-#include <vstgui/lib/platform/iplatformframecallback.h>
 #include <vstgui/lib/vstguiinit.h>
 #include <vstgui/vstgui.h>
 #include <iostream>
