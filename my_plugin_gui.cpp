@@ -111,6 +111,8 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
         frame = new CFrame(rect, nullptr);
         
         if (frame) {
+            // Set a light gray background for better contrast
+            frame->setBackgroundColor(CColor(240, 240, 240, 255)); // Light gray background
             createControls();
             isCreated = true;
             std::cout << "MyPlugin GUI: Created successfully" << std::endl;
@@ -299,8 +301,8 @@ void MyPluginEditor::createControls() {
     // Create a title label
     CRect titleRect(10, 10, 590, 35);
     auto titleLabel = new CTextLabel(titleRect, "CLAP Plugin - VSTGUI Controls Test Interface");
-    titleLabel->setFontColor(kBlackCColor);
-    titleLabel->setBackColor(kTransparentCColor);
+    titleLabel->setFontColor(CColor(20, 20, 20, 255)); // Dark gray text for better readability
+    titleLabel->setBackColor(CColor(220, 235, 255, 255)); // Light blue background
     titleLabel->setHoriAlign(kCenterText);
     frame->addView(titleLabel);
     
@@ -314,8 +316,8 @@ void MyPluginEditor::createControls() {
     
     CRect volumeLabelRect(20, 115, 90, 135);
     auto volumeLabel = new CTextLabel(volumeLabelRect, "Volume");
-    volumeLabel->setFontColor(kBlackCColor);
-    volumeLabel->setBackColor(kTransparentCColor);
+    volumeLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    volumeLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     volumeLabel->setHoriAlign(kCenterText);
     frame->addView(volumeLabel);
     
@@ -328,8 +330,8 @@ void MyPluginEditor::createControls() {
     
     CRect filterLabelRect(100, 115, 170, 135);
     auto filterLabel = new CTextLabel(filterLabelRect, "Filter");
-    filterLabel->setFontColor(kBlackCColor);
-    filterLabel->setBackColor(kTransparentCColor);
+    filterLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    filterLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     filterLabel->setHoriAlign(kCenterText);
     frame->addView(filterLabel);
     
@@ -342,8 +344,8 @@ void MyPluginEditor::createControls() {
     
     CRect resLabelRect(180, 115, 250, 135);
     auto resLabel = new CTextLabel(resLabelRect, "Resonance");
-    resLabel->setFontColor(kBlackCColor);
-    resLabel->setBackColor(kTransparentCColor);
+    resLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    resLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     resLabel->setHoriAlign(kCenterText);
     frame->addView(resLabel);
     
@@ -356,8 +358,8 @@ void MyPluginEditor::createControls() {
     
     CRect hSliderLabelRect(30, 185, 240, 205);
     auto hSliderLabel = new CTextLabel(hSliderLabelRect, "Horizontal Slider (Cutoff)");
-    hSliderLabel->setFontColor(kBlackCColor);
-    hSliderLabel->setBackColor(kTransparentCColor);
+    hSliderLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    hSliderLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(hSliderLabel);
     
     // Vertical slider
@@ -368,8 +370,8 @@ void MyPluginEditor::createControls() {
     
     CRect vSliderLabelRect(260, 185, 300, 205);
     auto vSliderLabel = new CTextLabel(vSliderLabelRect, "Vertical");
-    vSliderLabel->setFontColor(kBlackCColor);
-    vSliderLabel->setBackColor(kTransparentCColor);
+    vSliderLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    vSliderLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     vSliderLabel->setHoriAlign(kCenterText);
     frame->addView(vSliderLabel);
     
@@ -390,8 +392,8 @@ void MyPluginEditor::createControls() {
     
     CRect kickLabelRect(230, 260, 320, 280);
     auto kickLabel = new CTextLabel(kickLabelRect, "Kick Button");
-    kickLabel->setFontColor(kBlackCColor);
-    kickLabel->setBackColor(kTransparentCColor);
+    kickLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    kickLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     kickLabel->setHoriAlign(kCenterText);
     frame->addView(kickLabel);
     
@@ -408,8 +410,8 @@ void MyPluginEditor::createControls() {
     
     CRect menuLabelRect(30, 330, 150, 350);
     auto menuLabel = new CTextLabel(menuLabelRect, "Filter Type");
-    menuLabel->setFontColor(kBlackCColor);
-    menuLabel->setBackColor(kTransparentCColor);
+    menuLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    menuLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(menuLabel);
     
     // Segment button
@@ -429,8 +431,8 @@ void MyPluginEditor::createControls() {
     
     CRect segmentLabelRect(170, 330, 320, 350);
     auto segmentLabel = new CTextLabel(segmentLabelRect, "Waveform");
-    segmentLabel->setFontColor(kBlackCColor);
-    segmentLabel->setBackColor(kTransparentCColor);
+    segmentLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    segmentLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(segmentLabel);
     
     // === Row 5: Text Edit and Switches ===
@@ -442,8 +444,8 @@ void MyPluginEditor::createControls() {
     
     CRect textEditLabelRect(30, 400, 200, 420);
     auto textEditLabel = new CTextLabel(textEditLabelRect, "Text Input");
-    textEditLabel->setFontColor(kBlackCColor);
-    textEditLabel->setBackColor(kTransparentCColor);
+    textEditLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    textEditLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(textEditLabel);
     
     // On/Off switch
@@ -454,8 +456,8 @@ void MyPluginEditor::createControls() {
     
     CRect switch1LabelRect(220, 400, 280, 420);
     auto switch1Label = new CTextLabel(switch1LabelRect, "On/Off");
-    switch1Label->setFontColor(kBlackCColor);
-    switch1Label->setBackColor(kTransparentCColor);
+    switch1Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    switch1Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(switch1Label);
     
     // === Additional Controls on the Right Side ===
@@ -468,8 +470,8 @@ void MyPluginEditor::createControls() {
     
     CRect knob4LabelRect(340, 115, 410, 135);
     auto knob4Label = new CTextLabel(knob4LabelRect, "Attack");
-    knob4Label->setFontColor(kBlackCColor);
-    knob4Label->setBackColor(kTransparentCColor);
+    knob4Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    knob4Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     knob4Label->setHoriAlign(kCenterText);
     frame->addView(knob4Label);
     
@@ -481,8 +483,8 @@ void MyPluginEditor::createControls() {
     
     CRect knob5LabelRect(420, 115, 490, 135);
     auto knob5Label = new CTextLabel(knob5LabelRect, "Decay");
-    knob5Label->setFontColor(kBlackCColor);
-    knob5Label->setBackColor(kTransparentCColor);
+    knob5Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    knob5Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     knob5Label->setHoriAlign(kCenterText);
     frame->addView(knob5Label);
     
@@ -494,8 +496,8 @@ void MyPluginEditor::createControls() {
     
     CRect knob6LabelRect(500, 115, 570, 135);
     auto knob6Label = new CTextLabel(knob6LabelRect, "Release");
-    knob6Label->setFontColor(kBlackCColor);
-    knob6Label->setBackColor(kTransparentCColor);
+    knob6Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    knob6Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     knob6Label->setHoriAlign(kCenterText);
     frame->addView(knob6Label);
     
@@ -507,8 +509,8 @@ void MyPluginEditor::createControls() {
     
     CRect hSlider2LabelRect(350, 185, 560, 205);
     auto hSlider2Label = new CTextLabel(hSlider2LabelRect, "Envelope Amount");
-    hSlider2Label->setFontColor(kBlackCColor);
-    hSlider2Label->setBackColor(kTransparentCColor);
+    hSlider2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    hSlider2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(hSlider2Label);
     
     // More buttons on the right
@@ -528,8 +530,8 @@ void MyPluginEditor::createControls() {
     
     CRect vuMeterLabelRect(350, 300, 430, 320);
     auto vuMeterLabel = new CTextLabel(vuMeterLabelRect, "VU Meter");
-    vuMeterLabel->setFontColor(kBlackCColor);
-    vuMeterLabel->setBackColor(kTransparentCColor);
+    vuMeterLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    vuMeterLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(vuMeterLabel);
     
     // More switches
@@ -545,8 +547,8 @@ void MyPluginEditor::createControls() {
     
     CRect switchGroupLabelRect(450, 300, 540, 320);
     auto switchGroupLabel = new CTextLabel(switchGroupLabelRect, "Switches");
-    switchGroupLabel->setFontColor(kBlackCColor);
-    switchGroupLabel->setBackColor(kTransparentCColor);
+    switchGroupLabel->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    switchGroupLabel->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(switchGroupLabel);
     
     // Additional option menu
@@ -560,8 +562,8 @@ void MyPluginEditor::createControls() {
     
     CRect menu2LabelRect(350, 370, 470, 390);
     auto menu2Label = new CTextLabel(menu2LabelRect, "Output Mode");
-    menu2Label->setFontColor(kBlackCColor);
-    menu2Label->setBackColor(kTransparentCColor);
+    menu2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    menu2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(menu2Label);
     
     // Additional segment button
@@ -581,15 +583,15 @@ void MyPluginEditor::createControls() {
     
     CRect segment2LabelRect(480, 370, 570, 390);
     auto segment2Label = new CTextLabel(segment2LabelRect, "Mode");
-    segment2Label->setFontColor(kBlackCColor);
-    segment2Label->setBackColor(kTransparentCColor);
+    segment2Label->setFontColor(CColor(40, 40, 40, 255)); // Dark gray text
+    segment2Label->setBackColor(CColor(255, 255, 255, 200)); // Semi-transparent white background
     frame->addView(segment2Label);
     
     // Status label at the bottom
     CRect statusRect(10, 450, 590, 470);
     auto statusLabel = new CTextLabel(statusRect, "VSTGUI Test Interface - All controls functional for testing purposes");
-    statusLabel->setFontColor(kBlueCColor);
-    statusLabel->setBackColor(kTransparentCColor);
+    statusLabel->setFontColor(CColor(0, 80, 160, 255)); // Dark blue text
+    statusLabel->setBackColor(CColor(230, 245, 255, 220)); // Light blue background
     statusLabel->setHoriAlign(kCenterText);
     frame->addView(statusLabel);
 }
