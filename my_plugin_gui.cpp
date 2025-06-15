@@ -21,7 +21,7 @@
 #endif
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #endif
 
 // Static initialization flag
@@ -236,7 +236,22 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
         }
 #elif defined(_WIN32)
         if (window->api && strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
-            return frame->open(window->win32);
+            std::cout << "MyPlugin GUI: Attempting to embed in Win32 parent window" << std::endl;
+            try {
+                bool result = frame->open(window->win32);
+                if (result) {
+                    std::cout << "MyPlugin GUI: Frame opened successfully in Win32 window" << std::endl;
+                } else {
+                    std::cout << "MyPlugin GUI: Failed to open frame in Win32 window" << std::endl;
+                }
+                return result;
+            } catch (const std::exception& e) {
+                std::cout << "MyPlugin GUI: Exception opening Win32 frame: " << e.what() << std::endl;
+                return false;
+            } catch (...) {
+                std::cout << "MyPlugin GUI: Unknown exception opening Win32 frame" << std::endl;
+                return false;
+            }
         }
 #endif
         std::cout << "MyPlugin GUI: Unsupported window API: " << (window->api ? window->api : "null") << std::endl;
@@ -422,8 +437,8 @@ void MyPluginEditor::createControls() {
     
     // Balance slider (horizontal)
     CRect balanceSliderRect(30, controlY, 120, controlY + 20);
-    auto balanceSlider = new CHorizontalSlider(balanceSliderRect, this, PARAM_BALANCE, -1.0, 1.0, nullptr, nullptr);
-    balanceSlider->setValue(0.0f);
+    auto balanceSlider = new CHorizontalSlider(balanceSliderRect, this, PARAM_BALANCE, 0, 100, nullptr, nullptr);
+    balanceSlider->setValue(50.0f); // Middle position for balance = 0
     balanceSlider->setFrameColor(CColor(80, 80, 80, 255));
     balanceSlider->setBackColor(CColor(40, 40, 45, 255));
     balanceSlider->setValueColor(CColor(255, 255, 120, 255)); // Yellow slider
@@ -524,7 +539,8 @@ void MyPluginEditor::valueChanged(CControl* pControl) {
             value = static_cast<double>(static_cast<COptionMenu*>(pControl)->getCurrentIndex());
             break;
         case PARAM_BALANCE:
-            // Balance is -1 to +1, slider value is already in this range
+            // Balance slider is 0-100, convert to -1 to +1
+            value = (value / 50.0) - 1.0;
             break;
         default:
             return; // Unknown parameter

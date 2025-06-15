@@ -79,6 +79,23 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui/CMakeLists.txt" AND ${CLAP_I
             message(WARNING "VSTGUI Linux dependencies not found (X11, XCB, pkg-config). GUI will be disabled.")
             set(VSTGUI_CAN_BUILD FALSE)
         endif()
+    elseif(WIN32)
+        # Windows - Check basic requirements
+        # VSTGUI on Windows requires Windows SDK and some basic APIs
+        # Check if we can compile a basic Windows program
+        include(CheckCXXSourceCompiles)
+        check_cxx_source_compiles("
+            #include <windows.h>
+            int main() { 
+                HWND hwnd = NULL;
+                return 0; 
+            }"
+            WINDOWS_SDK_AVAILABLE)
+        
+        if(NOT WINDOWS_SDK_AVAILABLE)
+            message(WARNING "Windows SDK not properly available for VSTGUI. GUI will be disabled.")
+            set(VSTGUI_CAN_BUILD FALSE)
+        endif()
     endif()
     
     if(VSTGUI_CAN_BUILD)
