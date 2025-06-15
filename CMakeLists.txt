@@ -39,9 +39,67 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Skia graphics library integration
+option(ENABLE_SKIA "Enable Skia graphics library support" OFF)
+
+if(ENABLE_SKIA)
+    # Try to find Skia in various locations
+    set(SKIA_SEARCH_PATHS
+        "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/skia"
+        "/usr/local/skia"
+        "/opt/skia"
+    )
+
+    foreach(SKIA_PATH ${SKIA_SEARCH_PATHS})
+        if(EXISTS "${SKIA_PATH}/include/core/SkCanvas.h")
+            message(STATUS "Found Skia headers in ${SKIA_PATH}")
+            set(SKIA_FOUND TRUE)
+            set(SKIA_INCLUDE_DIR "${SKIA_PATH}/include")
+            
+            # Look for Skia library files
+            find_library(SKIA_LIBRARY
+                NAMES skia libskia
+                PATHS "${SKIA_PATH}/out/Release" "${SKIA_PATH}/out/Static" "${SKIA_PATH}/lib"
+                NO_DEFAULT_PATH
+            )
+            
+            if(SKIA_LIBRARY)
+                message(STATUS "Found Skia library: ${SKIA_LIBRARY}")
+                set(HAVE_SKIA TRUE)
+            else()
+                message(STATUS "Skia headers found but library not built. Please build Skia first.")
+                message(STATUS "  cd ${SKIA_PATH}")
+                message(STATUS "  python tools/git-sync-deps")
+                message(STATUS "  bin/gn gen out/Release --args='is_debug=false'")
+                message(STATUS "  ninja -C out/Release")
+            endif()
+            break()
+        endif()
+    endforeach()
+
+    if(NOT SKIA_FOUND)
+        message(STATUS "Skia not found. Graphics rendering will use basic implementation.")
+        message(STATUS "To enable Skia support:")
+        message(STATUS "  1. Ensure Skia is available as a git submodule in libs/skia")
+        message(STATUS "  2. Build Skia following the instructions in its documentation")
+        message(STATUS "  3. Re-run cmake with -DENABLE_SKIA=ON")
+    endif()
+else()
+    message(STATUS "Skia support disabled. Use -DENABLE_SKIA=ON to enable.")
+endif()
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp graphics_renderer.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Configure Skia if available
+if(HAVE_SKIA)
+    target_include_directories(my_clap_plugin PRIVATE ${SKIA_INCLUDE_DIR})
+    target_link_libraries(my_clap_plugin PRIVATE ${SKIA_LIBRARY})
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_SKIA=1)
+    message(STATUS "Skia integration enabled for plugin")
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -69,6 +127,14 @@ enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+target_include_directories(my_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Add CLAP include directories to the test target
+if(CLAP_FOUND)
+    target_link_libraries(my_plugin_tests PRIVATE clap)
+else()
+    target_include_directories(my_plugin_tests PRIVATE ${CLAP_PATH}/include)
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)

@@ -1,7 +1,9 @@
 #include "my_plugin.h"
+#include "graphics_renderer.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <memory>   // For unique_ptr
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -36,19 +38,33 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize graphics renderer
+    clap_jules::initializeGraphics(self);
+    
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Cleanup graphics renderer
+    clap_jules::cleanupGraphics(self);
+    
     // Free any resources allocated in init
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
+    
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Demonstrate graphics rendering when plugin is activated
+    clap_jules::renderFrame(self, 320, 240);
+    
     // Allocate and prepare resources needed for processing (e.g., buffers)
     return true;
 }
@@ -208,3 +224,56 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         return NULL;
     }
 };
+
+// --- C++ Graphics Implementation ---
+namespace clap_jules {
+
+void initializeGraphics(my_plugin_t* plugin) {
+    printf("MyPlugin: Initializing graphics renderer...\n");
+    auto renderer = createGraphicsRenderer();
+    plugin->graphics_renderer = renderer.release();
+    
+    #ifdef HAVE_SKIA
+    printf("MyPlugin: Skia graphics renderer initialized\n");
+    #else
+    printf("MyPlugin: Basic graphics renderer initialized\n");
+    #endif
+}
+
+void cleanupGraphics(my_plugin_t* plugin) {
+    if (plugin->graphics_renderer) {
+        printf("MyPlugin: Cleaning up graphics renderer\n");
+        delete static_cast<GraphicsRenderer*>(plugin->graphics_renderer);
+        plugin->graphics_renderer = nullptr;
+    }
+}
+
+void renderFrame(my_plugin_t* plugin, int width, int height) {
+    if (!plugin->graphics_renderer) return;
+    
+    auto* renderer = static_cast<GraphicsRenderer*>(plugin->graphics_renderer);
+    
+    // Demonstrate graphics rendering
+    renderer->beginFrame(width, height);
+    
+    // Clear background
+    renderer->clear(0xFF222222); // Dark gray background
+    
+    // Draw some example graphics
+    renderer->drawRect(10, 10, 100, 50, 0xFF4CAF50); // Green rectangle
+    renderer->drawCircle(200, 50, 30, 0xFF2196F3);   // Blue circle
+    renderer->drawText("CLAP + Graphics", 10, 80, 0xFFFFFFFF); // White text
+    
+    // Draw a simple spectrum visualization placeholder
+    for (int i = 0; i < 10; ++i) {
+        float barHeight = 20 + (i * 5); // Simulated spectrum data
+        renderer->drawRect(50 + i * 15, 120 - barHeight, 10, barHeight, 0xFFFF9800); // Orange bars
+    }
+    
+    renderer->endFrame();
+    
+    printf("MyPlugin: Rendered frame %dx%d, data size: %zu bytes\n", 
+           width, height, renderer->getFrameSize());
+}
+
+} // namespace clap_jules

@@ -7,3 +7,6 @@
 [submodule "libs/clap-helpers"]
 	path = libs/clap-helpers
 	url = https://github.com/free-audio/clap-helpers.git
+[submodule "libs/skia"]
+	path = libs/skia
+	url = https://github.com/google/skia.git
