@@ -2,12 +2,22 @@
 
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+#include <clap/ext/params.h>
 #include <vstgui/vstgui.h>
 #include <vstgui/lib/cframe.h>
+#include <vstgui/lib/controls/cknob.h>
+#include <vstgui/lib/controls/cslider.h>
+#include <vstgui/lib/controls/ctextlabel.h>
+#include <vstgui/lib/controls/cbuttons.h>
+#include <vstgui/lib/controls/coptionmenu.h>
+#include <vstgui/lib/controls/csegmentbutton.h>
 
 using namespace VSTGUI;
 
-class MyPluginEditor {
+// Forward declaration
+struct my_plugin_t;
+
+class MyPluginEditor : public IControlListener {
 public:
     MyPluginEditor(const clap_host_t* host = nullptr);
     ~MyPluginEditor();
@@ -29,6 +39,13 @@ public:
     bool show();
     bool hide();
     
+    // Parameter binding
+    void setPlugin(struct my_plugin_t* plugin) { this->plugin = plugin; }
+    void updateParameter(uint32_t param_id, double value);
+    
+    // IControlListener implementation
+    void valueChanged(CControl* control) override;
+    
 private:
     CFrame* frame;
     bool isCreated;
@@ -36,6 +53,21 @@ private:
     uint32_t currentWidth;
     uint32_t currentHeight;
     const clap_host_t* host;
+    struct my_plugin_t* plugin;
     
-    void createControls();
+    // Control pointers for parameter binding
+    CKnob* depthKnob;
+    CKnob* sharpnessKnob;
+    CKnob* selectivityKnob;
+    CKnob* balanceKnob;
+    CKnob* frequencyKnob;
+    CKnob* gainKnob;
+    CKnob* qKnob;
+    CSegmentButton* modeButton;
+    COnOffButton* linkButton;
+    COnOffButton* bypassButton;
+    
+    void createSoothe2StyleControls();
+    void drawSpectrum(CDrawContext* context, const CRect& rect);
+    void drawFilterCurve(CDrawContext* context, const CRect& rect);
 };
