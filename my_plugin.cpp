@@ -105,7 +105,7 @@ void cleanup_fft_data(fft_data_t* fft_data) {
 
 void generate_hann_window(std::vector<float>& window, size_t size) {
     for (size_t i = 0; i < size; ++i) {
-        window[i] = 0.5f * (1.0f - cosf(2.0f * M_PI * i / (size - 1)));
+        window[i] = 0.5f * (1.0f - std::cos(2.0f * M_PI * i / (size - 1)));
     }
 }
 
@@ -129,7 +129,7 @@ static void perform_fft(std::vector<std::complex<float>>& data) {
     // Cooley-Tukey FFT
     for (size_t len = 2; len <= N; len <<= 1) {
         float angle = 2.0f * M_PI / len;
-        std::complex<float> wlen(cosf(angle), sinf(angle));
+        std::complex<float> wlen(std::cos(angle), std::sin(angle));
         
         for (size_t i = 0; i < N; i += len) {
             std::complex<float> w(1.0f, 0.0f);
