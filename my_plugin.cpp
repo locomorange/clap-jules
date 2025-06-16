@@ -232,26 +232,100 @@ static void my_plugin_render_content(my_plugin_t *self) {
     // Render the plugin's GUI content
     self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50)); // Dark blue-gray background
     
-    // Draw UI elements
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
-                                   clap_jules::graphics::Color(80, 120, 200)); // Blue rectangle
-    self->graphics_context->drawCircle(clap_jules::graphics::Point(self->gui_width/2, self->gui_height/2), 40, 
-                                     clap_jules::graphics::Color(120, 200, 120)); // Green circle
-    self->graphics_context->drawLine(clap_jules::graphics::Point(20, self->gui_height - 50), 
-                                   clap_jules::graphics::Point(self->gui_width - 20, self->gui_height - 50),
-                                   clap_jules::graphics::Color(200, 100, 255), 3.0f); // Purple line
-    self->graphics_context->drawText("CLAP-Jules GUI", clap_jules::graphics::Point(20, self->gui_height - 20), 
-                                   clap_jules::graphics::Color(255, 255, 255), 20.0f); // White text
-    
-    // Add some animated content to demonstrate it's working
+    // Animation counter
     static int frame_counter = 0;
     frame_counter++;
+    float time = frame_counter * 0.05f;
     
-    // Draw a small animated square
-    float x = 50 + 30 * sin(frame_counter * 0.1f);
-    float y = 80 + 20 * cos(frame_counter * 0.1f);
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(x, y, 20, 20), 
-                                   clap_jules::graphics::Color(255, 200, 100)); // Animated yellow square
+    // Draw a grid pattern in the background
+    for (int i = 0; i < self->gui_width; i += 40) {
+        self->graphics_context->drawLine(clap_jules::graphics::Point(i, 0), 
+                                       clap_jules::graphics::Point(i, self->gui_height),
+                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
+    }
+    for (int j = 0; j < self->gui_height; j += 40) {
+        self->graphics_context->drawLine(clap_jules::graphics::Point(0, j), 
+                                       clap_jules::graphics::Point(self->gui_width, j),
+                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
+    }
+    
+    // Draw various shapes for testing
+    // 1. Static blue rectangle (top-left)
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
+                                   clap_jules::graphics::Color(80, 120, 200));
+    
+    // 2. Pulsing green circle (center)
+    float pulse_radius = 40 + 15 * sin(time * 2.0f);
+    self->graphics_context->drawCircle(clap_jules::graphics::Point(self->gui_width/2, self->gui_height/2), 
+                                     pulse_radius, clap_jules::graphics::Color(120, 200, 120));
+    
+    // 3. Color-changing circles around the center
+    for (int i = 0; i < 6; i++) {
+        float angle = time + i * 3.14159f / 3.0f;
+        float orbit_x = self->gui_width/2 + 80 * cos(angle);
+        float orbit_y = self->gui_height/2 + 80 * sin(angle);
+        int r = (int)(127 + 127 * sin(time + i));
+        int g = (int)(127 + 127 * sin(time + i + 2.0f));
+        int b = (int)(127 + 127 * sin(time + i + 4.0f));
+        self->graphics_context->drawCircle(clap_jules::graphics::Point(orbit_x, orbit_y), 15, 
+                                         clap_jules::graphics::Color(r, g, b));
+    }
+    
+    // 4. Animated rectangles with different colors (top-right corner)
+    for (int i = 0; i < 3; i++) {
+        float rect_x = self->gui_width - 150 + i * 20;
+        float rect_y = 20 + 15 * sin(time * 1.5f + i);
+        int color_intensity = (int)(100 + 100 * sin(time + i * 2.0f));
+        self->graphics_context->drawRect(clap_jules::graphics::Rect(rect_x, rect_y, 30, 50), 
+                                       clap_jules::graphics::Color(color_intensity, 255 - color_intensity, 150));
+    }
+    
+    // 5. Moving purple line
+    float line_y = self->gui_height - 80 + 20 * sin(time);
+    self->graphics_context->drawLine(clap_jules::graphics::Point(20, line_y), 
+                                   clap_jules::graphics::Point(self->gui_width - 20, line_y),
+                                   clap_jules::graphics::Color(200, 100, 255), 3.0f);
+    
+    // 6. Bouncing animated squares
+    float bounce_x = 50 + 30 * sin(time * 2.0f);
+    float bounce_y = 80 + 20 * cos(time * 1.8f);
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x, bounce_y, 20, 20), 
+                                   clap_jules::graphics::Color(255, 200, 100));
+    
+    // Another bouncing square with different pattern
+    float bounce_x2 = self->gui_width - 80 + 25 * cos(time * 1.3f);
+    float bounce_y2 = self->gui_height - 120 + 30 * sin(time * 1.7f);
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x2, bounce_y2, 25, 25), 
+                                   clap_jules::graphics::Color(255, 100, 200));
+    
+    // 7. Text with different sizes and colors
+    self->graphics_context->drawText("CLAP-Jules", clap_jules::graphics::Point(20, 30), 
+                                   clap_jules::graphics::Color(255, 255, 255), 24.0f);
+    self->graphics_context->drawText("Graphics Test", clap_jules::graphics::Point(20, 55), 
+                                   clap_jules::graphics::Color(255, 255, 100), 16.0f);
+    
+    // 8. Frame counter display
+    char frame_text[64];
+    snprintf(frame_text, sizeof(frame_text), "Frame: %d", frame_counter);
+    self->graphics_context->drawText(frame_text, clap_jules::graphics::Point(self->gui_width - 120, 30), 
+                                   clap_jules::graphics::Color(100, 255, 100), 14.0f);
+    
+    // 9. Drawing some lines to create a star pattern (bottom-left)
+    float star_center_x = 80;
+    float star_center_y = self->gui_height - 80;
+    for (int i = 0; i < 8; i++) {
+        float angle = i * 3.14159f / 4.0f + time * 0.5f;
+        float end_x = star_center_x + 30 * cos(angle);
+        float end_y = star_center_y + 30 * sin(angle);
+        int line_color = (int)(150 + 100 * sin(time + i));
+        self->graphics_context->drawLine(clap_jules::graphics::Point(star_center_x, star_center_y),
+                                       clap_jules::graphics::Point(end_x, end_y),
+                                       clap_jules::graphics::Color(line_color, 200, 255 - line_color), 2.0f);
+    }
+    
+    // 10. Status text at bottom
+    self->graphics_context->drawText("GUI Active & Rendering", clap_jules::graphics::Point(20, self->gui_height - 20), 
+                                   clap_jules::graphics::Color(255, 255, 255), 18.0f);
     
     // Finalize rendering
     self->graphics_context->present();
