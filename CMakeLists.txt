@@ -152,5 +152,10 @@ if(CLAP_JULES_BUILD_GRAPHICS_EXAMPLES)
     add_executable(graphics_demo examples/graphics_demo.cpp)
     target_link_libraries(graphics_demo PRIVATE clap_jules_graphics)
     
+    # GUI test executable
+    add_executable(gui_test examples/gui_test.cpp)
+    target_link_libraries(gui_test PRIVATE clap dl)
+    
     message(STATUS "Graphics demo built: run with './build/graphics_demo'")
+    message(STATUS "GUI test built: run with './build/gui_test'")
 endif()
