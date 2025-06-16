@@ -12,12 +12,27 @@ env:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build on ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            name: "Linux with GUI"
+          - os: windows-latest
+            name: "Windows with GUI"
+          - os: macos-latest
+            name: "macOS with GUI"
+          - os: ubuntu-latest
+            name: "Linux without GUI"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
+          - os: windows-latest
+            name: "Windows without GUI"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
+          - os: macos-latest
+            name: "macOS without GUI"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
 
     steps:
     - name: Checkout repository
@@ -28,6 +43,28 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: 'latest'
+
+    - name: Install VSTGUI dependencies (Linux with GUI only)
+      if: runner.os == 'Linux' && !contains(matrix.name, 'without GUI')
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          pkg-config \
+          libx11-dev \
+          libxcb1-dev \
+          libxcb-util-dev \
+          libxcb-cursor-dev \
+          libxcb-keysyms1-dev \
+          libxcb-xkb-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-dev \
+          libfreetype6-dev \
+          libglib2.0-dev \
+          libcairo2-dev \
+          libpango1.0-dev
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -46,7 +83,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build ${{ matrix.cmakeConfig }}
 
     - name: Build project
       run: cmake --build build --config Release
@@ -62,11 +99,74 @@ jobs:
         echo "Getting plugin info with clap-info..."
         clap-info build/MyFirstClapPlugin.so --brief
 
+    - name: Test GUI functionality (Linux with GUI only)
+      if: runner.os == 'Linux' && !contains(matrix.name, 'without GUI')
+      run: |
+        echo "Testing GUI functionality..."
+        # Create a simple test that verifies GUI extension works without crashing
+        cat > test_gui_simple.cpp << 'EOF'
+        #include <clap/clap.h>
+        #include <clap/ext/gui.h>
+        #include <dlfcn.h>
+        #include <iostream>
+        #include <cstring>
+        
+        static const void* host_get_extension(const clap_host_t *host, const char *ext) { return nullptr; }
+        static void host_request_restart(const clap_host_t *host) {}
+        static void host_request_process(const clap_host_t *host) {}
+        static void host_request_callback(const clap_host_t *host) {}
+        
+        static clap_host_t host = {
+            CLAP_VERSION, nullptr, "test-host", "Test Host", "1.0", 
+            "https://example.com", host_get_extension, host_request_restart, host_request_process, host_request_callback
+        };
+        
+        int main() {
+            void *lib = dlopen("build/MyFirstClapPlugin.so", RTLD_NOW);
+            if (!lib) return 1;
+            
+            auto entry = (const clap_plugin_entry_t*)dlsym(lib, "clap_entry");
+            if (!entry || !entry->init("test")) return 1;
+            
+            auto factory = (const clap_plugin_factory_t*)entry->get_factory(CLAP_PLUGIN_FACTORY_ID);
+            if (!factory) return 1;
+            
+            auto desc = factory->get_plugin_descriptor(factory, 0);
+            auto plugin = factory->create_plugin(factory, &host, desc->id);
+            if (!plugin || !plugin->init(plugin)) return 1;
+            
+            auto gui = (const clap_plugin_gui_t*)plugin->get_extension(plugin, CLAP_EXT_GUI);
+            if (!gui) {
+                std::cout << "No GUI extension" << std::endl;
+                plugin->destroy(plugin);
+                entry->deinit();
+                dlclose(lib);
+                return 0;
+            }
+            
+            // Test create/destroy cycle
+            if (gui->create(plugin, CLAP_WINDOW_API_X11, false)) {
+                std::cout << "GUI created successfully" << std::endl;
+                gui->destroy(plugin);
+                std::cout << "GUI destroyed successfully" << std::endl;
+            }
+            
+            plugin->destroy(plugin);
+            entry->deinit();
+            dlclose(lib);
+            std::cout << "GUI test completed without crashes" << std::endl;
+            return 0;
+        }
+        EOF
+        
+        g++ -std=c++17 -I libs/clap/include test_gui_simple.cpp -o test_gui_simple -ldl
+        ./test_gui_simple
+
     - name: Upload Artifact (Windows)
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: MyFirstClapPlugin-windows-${{ github.sha }}
+        name: MyFirstClapPlugin-windows-${{ matrix.name }}-${{ github.sha }}
         path: build/Release/MyFirstClapPlugin.clap
         retention-days: 10
 
@@ -74,7 +174,7 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
-        name: MyFirstClapPlugin-linux-${{ github.sha }}
+        name: MyFirstClapPlugin-linux-${{ matrix.name }}-${{ github.sha }}
         path: build/MyFirstClapPlugin.so
         retention-days: 10
 
@@ -82,17 +182,32 @@ jobs:
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
-        name: MyFirstClapPlugin-macos-${{ github.sha }}
+        name: MyFirstClapPlugin-macos-${{ matrix.name }}-${{ github.sha }}
         path: build/MyFirstClapPlugin.dylib
         retention-days: 10
 
   test:
-    name: Test on ${{ matrix.os }}
+    name: Test on ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     needs: build # Ensures build job completes before test job starts
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            name: "Linux with GUI"
+          - os: windows-latest
+            name: "Windows with GUI"
+          - os: macos-latest
+            name: "macOS with GUI"
+          - os: ubuntu-latest
+            name: "Linux without GUI"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
+          - os: windows-latest
+            name: "Windows without GUI"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
+          - os: macos-latest
+            name: "macOS without GUI"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
 
     steps:
     - name: Checkout repository
@@ -103,6 +218,28 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: 'latest'
+
+    - name: Install VSTGUI dependencies (Linux with GUI only)
+      if: runner.os == 'Linux' && !contains(matrix.name, 'without GUI')
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          pkg-config \
+          libx11-dev \
+          libxcb1-dev \
+          libxcb-util-dev \
+          libxcb-cursor-dev \
+          libxcb-keysyms1-dev \
+          libxcb-xkb-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-dev \
+          libfreetype6-dev \
+          libglib2.0-dev \
+          libcairo2-dev \
+          libpango1.0-dev
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -121,7 +258,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build ${{ matrix.cmakeConfig }}
 
     - name: Build project (including tests)
       run: cmake --build build --config Release
