@@ -17,5 +17,11 @@ typedef struct {
 // Plugin factory ID
 extern CLAP_EXPORT const struct clap_plugin_factory my_plugin_factory;
 
+// Plugin descriptor (defined in plugin_factory.cpp)
+extern const clap_plugin_descriptor_t my_plugin_descriptor;
+
+// Plugin instance creation function
+extern const clap_plugin_t *create_my_plugin_instance(const clap_host_t *host, const char *plugin_id);
+
 // CLAP entry point
 extern CLAP_EXPORT const clap_plugin_entry_t clap_entry;

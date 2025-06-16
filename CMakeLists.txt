@@ -96,7 +96,7 @@ else()
 endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp plugin_factory.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
 # Link Skia if enabled
@@ -129,7 +129,7 @@ message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstC
 add_subdirectory(libs/googletest)
 enable_testing()
 
-add_executable(my_plugin_tests test/test_my_plugin.cpp)
+add_executable(my_plugin_tests test/test_my_plugin.cpp plugin_factory.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin clap)
 
 # Add Skia-specific tests if Skia is enabled
