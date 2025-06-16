@@ -1,6 +1,29 @@
 # clap-jules
 
-A CLAP (CLever Audio Plugin) development project with integrated validation and analysis tools, featuring Skia 2D graphics support for custom plugin interfaces.
+# clap-jules
+
+A CLAP (CLever Audio Plugin) development project with integrated validation and analysis tools, featuring Skia 2D graphics support for custom plugin interfaces and a horizontal VU meter for real-time audio monitoring.
+
+## VU Meter Plugin 📊
+
+This project includes a fully functional VU meter plugin that provides:
+
+- **Real-time Audio Monitoring**: Processes audio input from DAW and displays levels in real-time
+- **Horizontal Bar Display**: Clean horizontal meter layout with separate left/right channels  
+- **Professional Metering**: RMS level calculation for true VU meter behavior
+- **Peak Detection**: Peak level indicators with hold functionality
+- **dB Scale**: Standard -60dB to 0dB range with color-coded display
+- **Audio Pass-through**: No signal processing - pure monitoring tool
+- **CLAP Compatible**: Full CLAP specification compliance with GUI support
+
+### Usage
+1. Load `MyFirstClapPlugin.so` in your DAW as a CLAP plugin  
+2. Insert on any audio track or bus for monitoring
+3. Open the plugin GUI to view the horizontal VU meter
+4. Play audio to see real-time level visualization
+
+### Demo
+Run `./build/vu_meter_demo` to see the VU meter functionality in action.
 
 ## Features
 

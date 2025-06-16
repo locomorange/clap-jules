@@ -3,7 +3,7 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
-#include <cmath>    // For sin/cos
+#include <cmath>    // For sin/cos/sqrt/fabs
 #include <memory>   // For std::make_unique, std::unique_ptr
 #include <clap/ext/gui.h>
 
@@ -61,18 +61,18 @@ static const clap_plugin_gui_t my_plugin_gui = {
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"analyzer", "audio-effect", "stereo", nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
-    "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
-    "My Company",           // vendor
+    "com.example.clap-jules-vumeter", // id
+    "CLAP-Jules VU Meter", // name
+    "CLAP-Jules",           // vendor
     "https://example.com",  // url
     "https://example.com/bugtracker", // manual_url
     "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "0.1.0",                // version
+    "A simple horizontal VU meter for monitoring audio levels in DAW.", // description
     plugin_features, // features
     // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
@@ -86,12 +86,20 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     // Initialize GUI state
     self->gui_created = false;
     self->gui_visible = false;
-    self->gui_width = 320;
-    self->gui_height = 240;
+    self->gui_width = 420;  // Wider for horizontal VU meter
+    self->gui_height = 200; // Shorter height, focused on VU meter
     self->gui_api = nullptr;
     self->gui_is_floating = false;
     self->native_window = nullptr;
     self->needs_redraw = true;
+    
+    // Initialize VU meter state
+    self->current_level_left = 0.0f;
+    self->current_level_right = 0.0f;
+    self->peak_level_left = 0.0f;
+    self->peak_level_right = 0.0f;
+    self->peak_hold_counter_left = 0;
+    self->peak_hold_counter_right = 0;
 #if defined(__linux__) && defined(HAVE_X11)
     self->x11_renderer = nullptr;
 #endif
@@ -156,45 +164,95 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Process audio from input to output (stereo) and calculate VU levels
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
 
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+        if (out_buf->channel_count >= 2 && in_buf->channel_count >= 2 && out_buf->data32 && in_buf->data32) {
+            // Variables for RMS calculation
+            float sum_left = 0.0f;
+            float sum_right = 0.0f;
+            float peak_left = 0.0f;
+            float peak_right = 0.0f;
+            
+            // Process each sample and calculate levels
+            for (uint32_t i = 0; i < process->frames_count; ++i) {
+                float sample_left = in_buf->data32[0][i];
+                float sample_right = in_buf->data32[1][i];
+                
+                // Pass audio through (this is a VU meter, not an effect)
+                out_buf->data32[0][i] = sample_left;
+                out_buf->data32[1][i] = sample_right;
+                
+                // Calculate RMS (Root Mean Square) for VU meter behavior
+                sum_left += sample_left * sample_left;
+                sum_right += sample_right * sample_right;
+                
+                // Track peak levels
+                float abs_left = fabs(sample_left);
+                float abs_right = fabs(sample_right);
+                if (abs_left > peak_left) peak_left = abs_left;
+                if (abs_right > peak_right) peak_right = abs_right;
+            }
+            
+            // Calculate RMS levels (average over the buffer)
+            if (process->frames_count > 0) {
+                float rms_left = sqrtf(sum_left / process->frames_count);
+                float rms_right = sqrtf(sum_right / process->frames_count);
+                
+                // Smooth the levels (simple low-pass filter)
+                const float smoothing = 0.1f; // Adjust for responsiveness (0.0 = no smoothing, 1.0 = instant)
+                self->current_level_left = self->current_level_left * (1.0f - smoothing) + rms_left * smoothing;
+                self->current_level_right = self->current_level_right * (1.0f - smoothing) + rms_right * smoothing;
+                
+                // Update peak levels with hold
+                const int peak_hold_time = 30; // Hold peak for ~30 process calls
+                
+                if (peak_left > self->peak_level_left) {
+                    self->peak_level_left = peak_left;
+                    self->peak_hold_counter_left = peak_hold_time;
+                } else if (self->peak_hold_counter_left > 0) {
+                    self->peak_hold_counter_left--;
+                } else {
+                    // Slow decay for peak level
+                    self->peak_level_left *= 0.99f;
+                }
+                
+                if (peak_right > self->peak_level_right) {
+                    self->peak_level_right = peak_right;
+                    self->peak_hold_counter_right = peak_hold_time;
+                } else if (self->peak_hold_counter_right > 0) {
+                    self->peak_hold_counter_right--;
+                } else {
+                    // Slow decay for peak level
+                    self->peak_level_right *= 0.99f;
+                }
+                
+                // Trigger GUI redraw if there's significant level change
+                if (self->gui_created && self->gui_visible) {
+                    self->needs_redraw = true;
+                }
+            }
+        }
+    } else {
+        // No audio input - decay levels to zero
+        self->current_level_left *= 0.95f;
+        self->current_level_right *= 0.95f;
+        if (self->peak_hold_counter_left > 0) {
+            self->peak_hold_counter_left--;
+        } else {
+            self->peak_level_left *= 0.99f;
+        }
+        if (self->peak_hold_counter_right > 0) {
+            self->peak_hold_counter_right--;
+        } else {
+            self->peak_level_right *= 0.99f;
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 
@@ -215,10 +273,12 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
-    // If GUI is visible, update the rendering
+    // If GUI is visible, update the rendering for VU meter
     if (self->gui_created && self->gui_visible && self->graphics_context) {
+        // Always render for VU meter (it needs frequent updates)
         my_plugin_render_content(self);
         my_plugin_present_graphics(self);
+        self->needs_redraw = false;
     }
 }
 
@@ -229,108 +289,118 @@ static void my_plugin_render_content(my_plugin_t *self) {
         return;
     }
     
-    // Render the plugin's GUI content
-    self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50)); // Dark blue-gray background
+    // Clear background with dark color
+    self->graphics_context->clear(clap_jules::graphics::Color(20, 20, 25)); // Very dark background
     
-    // Animation counter
-    static int frame_counter = 0;
-    frame_counter++;
-    float time = frame_counter * 0.05f;
-    
-    // Draw a grid pattern in the background
-    for (int i = 0; i < self->gui_width; i += 40) {
-        self->graphics_context->drawLine(clap_jules::graphics::Point(i, 0), 
-                                       clap_jules::graphics::Point(i, self->gui_height),
-                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
-    }
-    for (int j = 0; j < self->gui_height; j += 40) {
-        self->graphics_context->drawLine(clap_jules::graphics::Point(0, j), 
-                                       clap_jules::graphics::Point(self->gui_width, j),
-                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
-    }
-    
-    // Draw various shapes for testing
-    // 1. Static blue rectangle (top-left)
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
-                                   clap_jules::graphics::Color(80, 120, 200));
-    
-    // 2. Pulsing green circle (center)
-    float pulse_radius = 40 + 15 * sin(time * 2.0f);
-    self->graphics_context->drawCircle(clap_jules::graphics::Point(self->gui_width/2, self->gui_height/2), 
-                                     pulse_radius, clap_jules::graphics::Color(120, 200, 120));
-    
-    // 3. Color-changing circles around the center
-    for (int i = 0; i < 6; i++) {
-        float angle = time + i * 3.14159f / 3.0f;
-        float orbit_x = self->gui_width/2 + 80 * cos(angle);
-        float orbit_y = self->gui_height/2 + 80 * sin(angle);
-        int r = (int)(127 + 127 * sin(time + i));
-        int g = (int)(127 + 127 * sin(time + i + 2.0f));
-        int b = (int)(127 + 127 * sin(time + i + 4.0f));
-        self->graphics_context->drawCircle(clap_jules::graphics::Point(orbit_x, orbit_y), 15, 
-                                         clap_jules::graphics::Color(r, g, b));
-    }
-    
-    // 4. Animated rectangles with different colors (top-right corner)
-    for (int i = 0; i < 3; i++) {
-        float rect_x = self->gui_width - 150 + i * 20;
-        float rect_y = 20 + 15 * sin(time * 1.5f + i);
-        int color_intensity = (int)(100 + 100 * sin(time + i * 2.0f));
-        self->graphics_context->drawRect(clap_jules::graphics::Rect(rect_x, rect_y, 30, 50), 
-                                       clap_jules::graphics::Color(color_intensity, 255 - color_intensity, 150));
-    }
-    
-    // 5. Moving purple line
-    float line_y = self->gui_height - 80 + 20 * sin(time);
-    self->graphics_context->drawLine(clap_jules::graphics::Point(20, line_y), 
-                                   clap_jules::graphics::Point(self->gui_width - 20, line_y),
-                                   clap_jules::graphics::Color(200, 100, 255), 3.0f);
-    
-    // 6. Bouncing animated squares
-    float bounce_x = 50 + 30 * sin(time * 2.0f);
-    float bounce_y = 80 + 20 * cos(time * 1.8f);
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x, bounce_y, 20, 20), 
-                                   clap_jules::graphics::Color(255, 200, 100));
-    
-    // Another bouncing square with different pattern
-    float bounce_x2 = self->gui_width - 80 + 25 * cos(time * 1.3f);
-    float bounce_y2 = self->gui_height - 120 + 30 * sin(time * 1.7f);
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x2, bounce_y2, 25, 25), 
-                                   clap_jules::graphics::Color(255, 100, 200));
-    
-    // 7. Text with different sizes and colors
-    self->graphics_context->drawText("CLAP-Jules", clap_jules::graphics::Point(20, 30), 
-                                   clap_jules::graphics::Color(255, 255, 255), 24.0f);
-    self->graphics_context->drawText("Graphics Test", clap_jules::graphics::Point(20, 55), 
-                                   clap_jules::graphics::Color(255, 255, 100), 16.0f);
-    
-    // 8. Frame counter display
-    char frame_text[64];
-    snprintf(frame_text, sizeof(frame_text), "Frame: %d", frame_counter);
-    self->graphics_context->drawText(frame_text, clap_jules::graphics::Point(self->gui_width - 120, 30), 
-                                   clap_jules::graphics::Color(100, 255, 100), 14.0f);
-    
-    // 9. Drawing some lines to create a star pattern (bottom-left)
-    float star_center_x = 80;
-    float star_center_y = self->gui_height - 80;
-    for (int i = 0; i < 8; i++) {
-        float angle = i * 3.14159f / 4.0f + time * 0.5f;
-        float end_x = star_center_x + 30 * cos(angle);
-        float end_y = star_center_y + 30 * sin(angle);
-        int line_color = (int)(150 + 100 * sin(time + i));
-        self->graphics_context->drawLine(clap_jules::graphics::Point(star_center_x, star_center_y),
-                                       clap_jules::graphics::Point(end_x, end_y),
-                                       clap_jules::graphics::Color(line_color, 200, 255 - line_color), 2.0f);
-    }
-    
-    // 10. Status text at bottom
-    self->graphics_context->drawText("GUI Active & Rendering", clap_jules::graphics::Point(20, self->gui_height - 20), 
+    // Draw title
+    self->graphics_context->drawText("VU Meter", clap_jules::graphics::Point(20, 30), 
                                    clap_jules::graphics::Color(255, 255, 255), 18.0f);
+    
+    // VU meter dimensions and positioning
+    const float meter_x = 20;
+    const float meter_y = 50;
+    const float meter_width = self->gui_width - 40; // Leave 20px margin on each side
+    const float meter_height = 40;
+    const float meter_spacing = 50; // Space between left and right channel meters
+    
+    // Helper function to convert level to dB and get color
+    auto levelToDb = [](float level) -> float {
+        if (level <= 0.0f) return -60.0f; // Minimum -60dB
+        return 20.0f * log10f(level);
+    };
+    
+    auto getLevelColor = [](float db) -> clap_jules::graphics::Color {
+        if (db > -6.0f) return clap_jules::graphics::Color(255, 50, 50);   // Red (hot)
+        if (db > -12.0f) return clap_jules::graphics::Color(255, 200, 50); // Yellow (warm)
+        if (db > -24.0f) return clap_jules::graphics::Color(50, 255, 50);  // Green (good)
+        return clap_jules::graphics::Color(100, 150, 100);                 // Dark green (low)
+    };
+    
+    // Draw Left Channel VU Meter
+    self->graphics_context->drawText("L", clap_jules::graphics::Point(meter_x, meter_y + 15), 
+                                   clap_jules::graphics::Color(255, 255, 255), 14.0f);
+    
+    // Background bar for left channel
+    clap_jules::graphics::Rect left_bg(meter_x + 25, meter_y, meter_width - 25, meter_height);
+    self->graphics_context->drawRect(left_bg, clap_jules::graphics::Color(40, 40, 45));
+    
+    // Active level bar for left channel
+    float left_db = levelToDb(self->current_level_left);
+    float left_normalized = (left_db + 60.0f) / 60.0f; // Normalize -60dB to 0dB range to 0.0-1.0
+    if (left_normalized < 0.0f) left_normalized = 0.0f;
+    if (left_normalized > 1.0f) left_normalized = 1.0f;
+    
+    float left_bar_width = (meter_width - 25) * left_normalized;
+    if (left_bar_width > 0) {
+        clap_jules::graphics::Rect left_level(meter_x + 25, meter_y, left_bar_width, meter_height);
+        self->graphics_context->drawRect(left_level, getLevelColor(left_db));
+    }
+    
+    // Peak indicator for left channel
+    float left_peak_db = levelToDb(self->peak_level_left);
+    float left_peak_normalized = (left_peak_db + 60.0f) / 60.0f;
+    if (left_peak_normalized > 0.0f && left_peak_normalized <= 1.0f) {
+        float peak_x = meter_x + 25 + (meter_width - 25) * left_peak_normalized;
+        self->graphics_context->drawLine(clap_jules::graphics::Point(peak_x, meter_y), 
+                                       clap_jules::graphics::Point(peak_x, meter_y + meter_height),
+                                       clap_jules::graphics::Color(255, 255, 255), 2.0f);
+    }
+    
+    // Draw Right Channel VU Meter
+    float right_meter_y = meter_y + meter_spacing;
+    self->graphics_context->drawText("R", clap_jules::graphics::Point(meter_x, right_meter_y + 15), 
+                                   clap_jules::graphics::Color(255, 255, 255), 14.0f);
+    
+    // Background bar for right channel
+    clap_jules::graphics::Rect right_bg(meter_x + 25, right_meter_y, meter_width - 25, meter_height);
+    self->graphics_context->drawRect(right_bg, clap_jules::graphics::Color(40, 40, 45));
+    
+    // Active level bar for right channel
+    float right_db = levelToDb(self->current_level_right);
+    float right_normalized = (right_db + 60.0f) / 60.0f; // Normalize -60dB to 0dB range to 0.0-1.0
+    if (right_normalized < 0.0f) right_normalized = 0.0f;
+    if (right_normalized > 1.0f) right_normalized = 1.0f;
+    
+    float right_bar_width = (meter_width - 25) * right_normalized;
+    if (right_bar_width > 0) {
+        clap_jules::graphics::Rect right_level(meter_x + 25, right_meter_y, right_bar_width, meter_height);
+        self->graphics_context->drawRect(right_level, getLevelColor(right_db));
+    }
+    
+    // Peak indicator for right channel
+    float right_peak_db = levelToDb(self->peak_level_right);
+    float right_peak_normalized = (right_peak_db + 60.0f) / 60.0f;
+    if (right_peak_normalized > 0.0f && right_peak_normalized <= 1.0f) {
+        float peak_x = meter_x + 25 + (meter_width - 25) * right_peak_normalized;
+        self->graphics_context->drawLine(clap_jules::graphics::Point(peak_x, right_meter_y), 
+                                       clap_jules::graphics::Point(peak_x, right_meter_y + meter_height),
+                                       clap_jules::graphics::Color(255, 255, 255), 2.0f);
+    }
+    
+    // Draw scale markings (dB scale)
+    const float scale_y = right_meter_y + meter_height + 20;
+    self->graphics_context->drawText("-60", clap_jules::graphics::Point(meter_x + 25, scale_y), 
+                                   clap_jules::graphics::Color(180, 180, 180), 10.0f);
+    self->graphics_context->drawText("-30", clap_jules::graphics::Point(meter_x + 25 + (meter_width - 25) * 0.5f - 10, scale_y), 
+                                   clap_jules::graphics::Color(180, 180, 180), 10.0f);
+    self->graphics_context->drawText("-12", clap_jules::graphics::Point(meter_x + 25 + (meter_width - 25) * 0.8f - 10, scale_y), 
+                                   clap_jules::graphics::Color(180, 180, 180), 10.0f);
+    self->graphics_context->drawText("0dB", clap_jules::graphics::Point(meter_x + meter_width - 20, scale_y), 
+                                   clap_jules::graphics::Color(180, 180, 180), 10.0f);
+    
+    // Draw numerical level display
+    char level_text[64];
+    snprintf(level_text, sizeof(level_text), "L: %.1fdB  R: %.1fdB", left_db, right_db);
+    self->graphics_context->drawText(level_text, clap_jules::graphics::Point(meter_x, scale_y + 25), 
+                                   clap_jules::graphics::Color(200, 200, 200), 12.0f);
+    
+    // Instructions
+    self->graphics_context->drawText("Play audio to see VU meter activity", 
+                                   clap_jules::graphics::Point(meter_x, self->gui_height - 30), 
+                                   clap_jules::graphics::Color(150, 150, 150), 12.0f);
     
     // Finalize rendering
     self->graphics_context->present();
-    
-    printf("MyPlugin: Rendered frame %d at size %ux%u\n", frame_counter, self->gui_width, self->gui_height);
 }
 
 static bool my_plugin_present_graphics(my_plugin_t *self) {

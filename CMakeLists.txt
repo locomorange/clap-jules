@@ -169,14 +169,23 @@ target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 add_executable(graphics_tests test/test_graphics.cpp)
 target_link_libraries(graphics_tests PRIVATE gtest gtest_main clap_jules_graphics)
 
+add_executable(vu_meter_tests test/test_vu_meter.cpp)
+target_link_libraries(vu_meter_tests PRIVATE gtest gtest_main my_clap_plugin clap)
+target_include_directories(vu_meter_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
 gtest_discover_tests(graphics_tests)
+gtest_discover_tests(vu_meter_tests)
 
 # Graphics examples
 if(CLAP_JULES_BUILD_GRAPHICS_EXAMPLES)
     add_executable(graphics_demo examples/graphics_demo.cpp)
     target_link_libraries(graphics_demo PRIVATE clap_jules_graphics)
+    
+    add_executable(vu_meter_demo examples/vu_meter_demo.cpp)
+    target_link_libraries(vu_meter_demo PRIVATE my_clap_plugin clap)
+    target_include_directories(vu_meter_demo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     
     # GUI test executable (Unix/Linux only - uses dlopen/dlsym)
     if(NOT WIN32)
@@ -185,6 +194,7 @@ if(CLAP_JULES_BUILD_GRAPHICS_EXAMPLES)
     endif()
     
     message(STATUS "Graphics demo built: run with './build/graphics_demo'")
+    message(STATUS "VU meter demo built: run with './build/vu_meter_demo'")
     if(NOT WIN32)
         message(STATUS "GUI test built: run with './build/gui_test'")
     endif()

@@ -42,6 +42,14 @@ typedef struct {
     
     // Render callback data
     bool needs_redraw = false;
+    
+    // VU meter data
+    float current_level_left = 0.0f;  // Current audio level for left channel (0.0 to 1.0)
+    float current_level_right = 0.0f; // Current audio level for right channel (0.0 to 1.0)
+    float peak_level_left = 0.0f;     // Peak level for left channel
+    float peak_level_right = 0.0f;    // Peak level for right channel
+    int peak_hold_counter_left = 0;   // Counter for peak hold display
+    int peak_hold_counter_right = 0;  // Counter for peak hold display
 } my_plugin_t;
 
 // Plugin factory ID
