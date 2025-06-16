@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "../spectrum_analyzer.h"
 #include <vector>
+#define _USE_MATH_DEFINES
 #include <cmath>
 
 class SpectrumAnalyzerTest : public ::testing::Test {

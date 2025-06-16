@@ -1,6 +1,8 @@
 #include "spectrum_analyzer.h"
 #include <algorithm>
 #include <cstring>
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 namespace clap_jules {
 
