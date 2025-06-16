@@ -4,6 +4,7 @@
 #include <clap/ext/gui.h>
 #include <memory>
 #include "graphics/skia_graphics.h"
+#include "graphics/soothe2_gui.h"
 
 #if defined(__linux__) && defined(HAVE_X11)
 #include "graphics/x11_renderer.h"
@@ -20,13 +21,16 @@ typedef struct {
     // GUI-related data
     bool gui_created = false;
     bool gui_visible = false;
-    uint32_t gui_width = 0;
-    uint32_t gui_height = 0;
+    uint32_t gui_width = 800;
+    uint32_t gui_height = 600;
     const char* gui_api = nullptr;
     bool gui_is_floating = false;
     
     // Graphics context for rendering
     std::unique_ptr<clap_jules::graphics::GraphicsContext> graphics_context = nullptr;
+    
+    // Soothe2 GUI
+    std::unique_ptr<clap_jules::ui::Soothe2GUI> soothe2_gui = nullptr;
     
     // Platform-specific window handle
     void* native_window = nullptr;
@@ -42,6 +46,11 @@ typedef struct {
     
     // Render callback data
     bool needs_redraw = false;
+    
+    // Mouse state for GUI interaction
+    bool mouse_pressed = false;
+    float last_mouse_x = 0.0f;
+    float last_mouse_y = 0.0f;
 } my_plugin_t;
 
 // Plugin factory ID
