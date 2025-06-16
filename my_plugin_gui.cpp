@@ -604,47 +604,67 @@ bool MyPluginEditor::getPreferredApi(const char** api, bool* isFloating) {
 
 bool MyPluginEditor::create(const char* api, bool isFloating) {
     if (isCreated) {
+        std::cout << "MyPlugin GUI: Already created, returning true" << std::endl;
         return true;
     }
     
+    std::cout << "MyPlugin GUI: Creating GUI with API: " << (api ? api : "null") 
+              << ", isFloating: " << (isFloating ? "true" : "false") << std::endl;
+    
     // Check if the API is supported for this platform
     if (!isApiSupported(api, isFloating)) {
+        std::cout << "MyPlugin GUI: API not supported: " << (api ? api : "null") << std::endl;
         return false;
     }
     
     // Initialize VSTGUI if not already done
     if (!vstgui_initialized) {
+        std::cout << "MyPlugin GUI: Initializing VSTGUI..." << std::endl;
         try {
 #ifdef __linux__
             VSTGUI::init(nullptr);
+            std::cout << "MyPlugin GUI: VSTGUI initialized for Linux" << std::endl;
 #elif defined(__APPLE__)
             VSTGUI::init(CFBundleGetMainBundle());
+            std::cout << "MyPlugin GUI: VSTGUI initialized for macOS" << std::endl;
 #elif defined(_WIN32)
-            VSTGUI::init(GetModuleHandle(nullptr));
+            HMODULE hModule = GetModuleHandle(nullptr);
+            std::cout << "MyPlugin GUI: Module handle: " << hModule << std::endl;
+            VSTGUI::init(hModule);
+            std::cout << "MyPlugin GUI: VSTGUI initialized for Windows" << std::endl;
 #else
             VSTGUI::init(nullptr);
+            std::cout << "MyPlugin GUI: VSTGUI initialized for unknown platform" << std::endl;
 #endif
             vstgui_initialized = true;
-            std::cout << "MyPlugin GUI: VSTGUI initialized" << std::endl;
+            std::cout << "MyPlugin GUI: VSTGUI initialization complete" << std::endl;
         } catch (const std::exception& e) {
             std::cout << "MyPlugin GUI: Error initializing VSTGUI: " << e.what() << std::endl;
             return false;
         }
+    } else {
+        std::cout << "MyPlugin GUI: VSTGUI already initialized" << std::endl;
     }
     
     try {
+        std::cout << "MyPlugin GUI: Creating CFrame..." << std::endl;
         // Create VSTGUI frame with professional size
         CRect rect(0, 0, currentWidth, currentHeight);
         frame = new CFrame(rect, nullptr);
         
         if (frame) {
+            std::cout << "MyPlugin GUI: CFrame created successfully" << std::endl;
             // Set professional dark background
             frame->setBackgroundColor(kBackgroundColor);
+            std::cout << "MyPlugin GUI: Background color set" << std::endl;
             createControls();
+            std::cout << "MyPlugin GUI: Controls created" << std::endl;
             isCreated = true;
             std::cout << "MyPlugin GUI: Professional GUI created successfully (" 
                       << currentWidth << "x" << currentHeight << ")" << std::endl;
             return true;
+        } else {
+            std::cout << "MyPlugin GUI: Failed to create CFrame (returned nullptr)" << std::endl;
         }
     }
     catch (const std::exception& e) {
@@ -755,7 +775,45 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
         }
 #elif defined(_WIN32)
         if (window->api && strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
-            return frame->open(window->win32);
+            std::cout << "MyPlugin GUI: Request to embed in Windows parent (HWND: " << window->win32 << ")" << std::endl;
+            
+            // Add safety check for valid window handle
+            if (window->win32 == NULL) {
+                std::cout << "MyPlugin GUI: Invalid window handle (NULL)" << std::endl;
+                return false;
+            }
+            
+            // Verify the window handle is valid using Windows API
+            if (!IsWindow((HWND)window->win32)) {
+                std::cout << "MyPlugin GUI: Invalid window handle - not a valid window (HWND: " << window->win32 << ")" << std::endl;
+                return false;
+            }
+            
+            // Get additional window information for debugging
+            RECT windowRect;
+            if (GetWindowRect((HWND)window->win32, &windowRect)) {
+                std::cout << "MyPlugin GUI: Host window rect: " << windowRect.left << "," << windowRect.top 
+                          << " to " << windowRect.right << "," << windowRect.bottom << std::endl;
+            } else {
+                std::cout << "MyPlugin GUI: Warning: Could not get host window rect" << std::endl;
+            }
+            
+            // Try to open the frame and embed it in the host window
+            try {
+                bool result = frame->open(window->win32);
+                if (result) {
+                    std::cout << "MyPlugin GUI: Frame opened and embedded successfully in Windows window (HWND: " << window->win32 << ")" << std::endl;
+                } else {
+                    std::cout << "MyPlugin GUI: Failed to open frame (VSTGUI returned false)" << std::endl;
+                }
+                return result;
+            } catch (const std::exception& e) {
+                std::cout << "MyPlugin GUI: Exception opening frame: " << e.what() << std::endl;
+                return false;
+            } catch (...) {
+                std::cout << "MyPlugin GUI: Unknown exception opening frame" << std::endl;
+                return false;
+            }
         }
 #endif
         std::cout << "MyPlugin GUI: Unsupported window API: " << (window->api ? window->api : "null") << std::endl;
@@ -777,14 +835,18 @@ void MyPluginEditor::suggestTitle(const char* title) {
 }
 
 bool MyPluginEditor::show() {
+    std::cout << "MyPlugin GUI: show() called, isCreated=" << isCreated << ", frame=" << (frame ? "valid" : "null") << std::endl;
+    
     if (!isCreated || !frame) {
+        std::cout << "MyPlugin GUI: Cannot show - not created or frame is null" << std::endl;
         return false;
     }
     
     try {
+        std::cout << "MyPlugin GUI: Setting frame visible..." << std::endl;
         frame->setVisible(true);
         isVisible = true;
-        std::cout << "MyPlugin GUI: Shown" << std::endl;
+        std::cout << "MyPlugin GUI: Frame set to visible, isVisible=" << isVisible << std::endl;
         return true;
     }
     catch (const std::exception& e) {
