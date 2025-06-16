@@ -28,7 +28,7 @@ namespace {
         
         // Combine
         for (size_t i = 0; i < N/2; ++i) {
-            std::complex<float> t = std::polar(1.0f, -2.0f * (float)M_PI * (float)i / (float)N) * odd[i];
+            std::complex<float> t = std::polar(1.0f, -2.0f * static_cast<float>(M_PI) * static_cast<float>(i) / static_cast<float>(N)) * odd[i];
             x[i] = even[i] + t;
             x[i+N/2] = even[i] - t;
         }
@@ -51,7 +51,7 @@ namespace {
                 
                 // Apply window function (Hann window)
                 for (size_t j = 0; j < FFT_SIZE; ++j) {
-                    float window = 0.5f * (1.0f - cos(2.0f * M_PI * j / (FFT_SIZE - 1)));
+                    float window = 0.5f * (1.0f - cos(2.0f * static_cast<float>(M_PI) * static_cast<float>(j) / static_cast<float>(FFT_SIZE - 1)));
                     self->fft_buffer[j] *= window;
                 }
                 

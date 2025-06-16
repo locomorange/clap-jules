@@ -5,7 +5,12 @@
 #include <memory>
 #include <vector>
 #include <complex>
+#include <cmath>
 #include "graphics/skia_graphics.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #if defined(__linux__) && defined(HAVE_X11)
 #include "graphics/x11_renderer.h"
@@ -28,7 +33,7 @@ enum class SpectrumDrawMode {
 };
 
 // Basic plugin structure
-typedef struct {
+struct MyPluginStruct {
     clap_plugin_t plugin;
     
     // GUI-related data
@@ -70,7 +75,8 @@ typedef struct {
     
     // Smoothing factor for spectrum display (0.0 to 1.0)
     float spectrum_smoothing = 0.7f;
-} my_plugin_t;
+};
+typedef MyPluginStruct my_plugin_t;
 
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
