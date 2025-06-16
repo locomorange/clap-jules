@@ -4,6 +4,7 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 #include <cmath>    // For sin/cos
+#include <memory>   // For std::make_unique, std::unique_ptr
 #include <clap/ext/gui.h>
 
 // --- Forward declarations of plugin functions ---

@@ -2,6 +2,7 @@
 
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+#include <memory>
 #include "graphics/skia_graphics.h"
 
 #if defined(__linux__) && defined(HAVE_X11)
