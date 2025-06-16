@@ -49,26 +49,22 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 // C++ Implementation Classes (internal)
 #ifdef __cplusplus
 
-#include <vector>
-#include <complex>
-#include <atomic>
-#include <mutex>
-
+// Simplified C++ classes using basic arrays instead of complex STL containers
 class FFTProcessor {
 private:
-    std::vector<std::complex<float>> fft_buffer;
-    std::vector<float> window_function;
-    std::vector<float> input_buffer;
-    std::vector<float> magnitude_buffer;
-    std::vector<float> frequency_buffer;
+    float fft_buffer_real[SPECTRUM_FFT_SIZE];
+    float fft_buffer_imag[SPECTRUM_FFT_SIZE];
+    float window_function[SPECTRUM_FFT_SIZE];
+    float input_buffer[SPECTRUM_FFT_SIZE];
+    float magnitude_buffer[SPECTRUM_FFT_SIZE / 2];
+    float frequency_buffer[SPECTRUM_FFT_SIZE / 2];
     size_t buffer_index;
     size_t frames_since_last_update;
     double sample_rate;
-    std::mutex data_mutex;
-    std::atomic<bool> data_ready;
+    bool data_ready;
 
-    void perform_fft(std::vector<std::complex<float>>& data);
-    void generate_hann_window(std::vector<float>& window, size_t size);
+    void perform_fft(float* real_data, float* imag_data, size_t size);
+    void generate_hann_window(float* window, size_t size);
     void update_spectrum_data();
 
 public:
@@ -80,10 +76,10 @@ public:
 
 class SpectrumAnalyzer {
 private:
-    std::vector<float> current_magnitudes;
-    std::vector<float> current_frequencies;
-    std::mutex data_mutex;
-    std::atomic<bool> enabled;
+    float current_magnitudes[SPECTRUM_FFT_SIZE / 2];
+    float current_frequencies[SPECTRUM_FFT_SIZE / 2];
+    size_t data_count;
+    bool enabled;
     SpectrumDrawStyle draw_style;
 
 public:
@@ -93,7 +89,7 @@ public:
     bool get_data(float* magnitudes, float* frequencies, size_t* count);
     void set_enabled(bool enabled);
     void set_style(SpectrumDrawStyle style);
-    bool is_enabled() const { return enabled.load(); }
+    bool is_enabled() const { return enabled; }
     SpectrumDrawStyle get_style() const { return draw_style; }
 };
 
@@ -126,12 +122,18 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 FFTProcessor::FFTProcessor(double sample_rate) 
     : buffer_index(0), frames_since_last_update(0), sample_rate(sample_rate), data_ready(false)
 {
-    // Initialize buffers
-    fft_buffer.resize(SPECTRUM_FFT_SIZE);
-    input_buffer.resize(SPECTRUM_FFT_SIZE);
-    window_function.resize(SPECTRUM_FFT_SIZE);
-    magnitude_buffer.resize(SPECTRUM_FFT_SIZE / 2);
-    frequency_buffer.resize(SPECTRUM_FFT_SIZE / 2);
+    // Initialize buffers to zero
+    for (size_t i = 0; i < SPECTRUM_FFT_SIZE; ++i) {
+        fft_buffer_real[i] = 0.0f;
+        fft_buffer_imag[i] = 0.0f;
+        input_buffer[i] = 0.0f;
+        window_function[i] = 0.0f;
+    }
+    
+    for (size_t i = 0; i < SPECTRUM_FFT_SIZE / 2; ++i) {
+        magnitude_buffer[i] = 0.0f;
+        frequency_buffer[i] = 0.0f;
+    }
     
     // Generate Hann window
     generate_hann_window(window_function, SPECTRUM_FFT_SIZE);
@@ -146,7 +148,7 @@ FFTProcessor::~FFTProcessor() {
     // Destructor - vectors clean up automatically
 }
 
-void FFTProcessor::generate_hann_window(std::vector<float>& window, size_t size) {
+void FFTProcessor::generate_hann_window(float* window, size_t size) {
     if (size <= 1) {
         if (size == 1) {
             window[0] = 1.0f;
@@ -160,8 +162,7 @@ void FFTProcessor::generate_hann_window(std::vector<float>& window, size_t size)
     }
 }
 
-void FFTProcessor::perform_fft(std::vector<std::complex<float>>& data) {
-    const size_t N = data.size();
+void FFTProcessor::perform_fft(float* real_data, float* imag_data, size_t N) {
     if (N <= 1) return;
     
     // Bit-reversal permutation
@@ -172,23 +173,41 @@ void FFTProcessor::perform_fft(std::vector<std::complex<float>>& data) {
         }
         j ^= bit;
         if (i < j) {
-            std::swap(data[i], data[j]);
+            // Swap real parts
+            float temp = real_data[i];
+            real_data[i] = real_data[j];
+            real_data[j] = temp;
+            // Swap imaginary parts
+            temp = imag_data[i];
+            imag_data[i] = imag_data[j];
+            imag_data[j] = temp;
         }
     }
     
     // Cooley-Tukey FFT
     for (size_t len = 2; len <= N; len <<= 1) {
         double angle = 2.0 * M_PI / static_cast<double>(len);
-        std::complex<float> wlen(static_cast<float>(std::cos(angle)), static_cast<float>(std::sin(angle)));
+        float wlen_real = static_cast<float>(std::cos(angle));
+        float wlen_imag = static_cast<float>(std::sin(angle));
         
         for (size_t i = 0; i < N; i += len) {
-            std::complex<float> w(1.0f, 0.0f);
+            float w_real = 1.0f;
+            float w_imag = 0.0f;
             for (size_t j = 0; j < len / 2; ++j) {
-                std::complex<float> u = data[i + j];
-                std::complex<float> v = data[i + j + len / 2] * w;
-                data[i + j] = u + v;
-                data[i + j + len / 2] = u - v;
-                w *= wlen;
+                float u_real = real_data[i + j];
+                float u_imag = imag_data[i + j];
+                float v_real = real_data[i + j + len / 2] * w_real - imag_data[i + j + len / 2] * w_imag;
+                float v_imag = real_data[i + j + len / 2] * w_imag + imag_data[i + j + len / 2] * w_real;
+                
+                real_data[i + j] = u_real + v_real;
+                imag_data[i + j] = u_imag + v_imag;
+                real_data[i + j + len / 2] = u_real - v_real;
+                imag_data[i + j + len / 2] = u_imag - v_imag;
+                
+                // Update w
+                float temp = w_real * wlen_real - w_imag * wlen_imag;
+                w_imag = w_real * wlen_imag + w_imag * wlen_real;
+                w_real = temp;
             }
         }
     }
@@ -213,42 +232,46 @@ void FFTProcessor::update_spectrum_data() {
     // Copy input buffer and apply window function
     for (size_t i = 0; i < SPECTRUM_FFT_SIZE; ++i) {
         size_t idx = (buffer_index + i) % SPECTRUM_FFT_SIZE;
-        fft_buffer[i] = std::complex<float>(input_buffer[idx] * window_function[i], 0.0f);
+        fft_buffer_real[i] = input_buffer[idx] * window_function[i];
+        fft_buffer_imag[i] = 0.0f;
     }
     
     // Perform FFT
-    perform_fft(fft_buffer);
+    perform_fft(fft_buffer_real, fft_buffer_imag, SPECTRUM_FFT_SIZE);
     
     // Update magnitude data
-    {
-        std::lock_guard<std::mutex> lock(data_mutex);
-        const size_t num_bins = SPECTRUM_FFT_SIZE / 2;
-        for (size_t i = 0; i < num_bins; ++i) {
-            float magnitude = std::abs(fft_buffer[i]);
-            float db = 20.0f * static_cast<float>(std::log10(std::max(magnitude, 1e-6f)));
-            magnitude_buffer[i] = std::max(0.0f, std::min(1.0f, (db + 60.0f) / 60.0f));
-        }
-        data_ready.store(true);
+    const size_t num_bins = SPECTRUM_FFT_SIZE / 2;
+    for (size_t i = 0; i < num_bins; ++i) {
+        float magnitude = static_cast<float>(std::sqrt(fft_buffer_real[i] * fft_buffer_real[i] + 
+                                                      fft_buffer_imag[i] * fft_buffer_imag[i]));
+        float db = 20.0f * static_cast<float>(std::log10(std::max(magnitude, 1e-6f)));
+        magnitude_buffer[i] = std::max(0.0f, std::min(1.0f, (db + 60.0f) / 60.0f));
     }
+    data_ready = true;
 }
 
 bool FFTProcessor::get_spectrum_data(float* magnitudes, float* frequencies, size_t* count) {
-    std::lock_guard<std::mutex> lock(data_mutex);
     const size_t num_bins = SPECTRUM_FFT_SIZE / 2;
     *count = num_bins;
     
     // Always provide frequency data
     if (frequencies) {
-        std::copy(frequency_buffer.begin(), frequency_buffer.end(), frequencies);
+        for (size_t i = 0; i < num_bins; ++i) {
+            frequencies[i] = frequency_buffer[i];
+        }
     }
     
     // Only provide magnitude data if FFT processing has occurred
     if (magnitudes) {
-        if (data_ready.load()) {
-            std::copy(magnitude_buffer.begin(), magnitude_buffer.end(), magnitudes);
+        if (data_ready) {
+            for (size_t i = 0; i < num_bins; ++i) {
+                magnitudes[i] = magnitude_buffer[i];
+            }
         } else {
             // Initialize with zeros if no data ready yet
-            std::fill(magnitudes, magnitudes + num_bins, 0.0f);
+            for (size_t i = 0; i < num_bins; ++i) {
+                magnitudes[i] = 0.0f;
+            }
         }
     }
     
@@ -256,45 +279,55 @@ bool FFTProcessor::get_spectrum_data(float* magnitudes, float* frequencies, size
 }
 
 // SpectrumAnalyzer Implementation
-SpectrumAnalyzer::SpectrumAnalyzer() : enabled(true), draw_style(SPECTRUM_STYLE_LINES) {
-    current_magnitudes.resize(SPECTRUM_FFT_SIZE / 2, 0.0f);
-    current_frequencies.resize(SPECTRUM_FFT_SIZE / 2, 0.0f);
+SpectrumAnalyzer::SpectrumAnalyzer() : data_count(0), enabled(true), draw_style(SPECTRUM_STYLE_LINES) {
+    // Initialize arrays to zero
+    for (size_t i = 0; i < SPECTRUM_FFT_SIZE / 2; ++i) {
+        current_magnitudes[i] = 0.0f;
+        current_frequencies[i] = 0.0f;
+    }
 }
 
 SpectrumAnalyzer::~SpectrumAnalyzer() {
-    // Destructor - vectors clean up automatically
+    // Destructor - nothing to clean up for arrays
 }
 
 void SpectrumAnalyzer::update_data(const float* magnitudes, const float* frequencies, size_t count) {
-    std::lock_guard<std::mutex> lock(data_mutex);
+    const size_t copy_count = std::min(count, (size_t)(SPECTRUM_FFT_SIZE / 2));
+    data_count = copy_count;
     
-    const size_t copy_count = std::min(count, current_magnitudes.size());
     if (magnitudes) {
-        std::copy(magnitudes, magnitudes + copy_count, current_magnitudes.begin());
+        for (size_t i = 0; i < copy_count; ++i) {
+            current_magnitudes[i] = magnitudes[i];
+        }
     }
     if (frequencies) {
-        std::copy(frequencies, frequencies + copy_count, current_frequencies.begin());
+        for (size_t i = 0; i < copy_count; ++i) {
+            current_frequencies[i] = frequencies[i];
+        }
     }
 }
 
 bool SpectrumAnalyzer::get_data(float* magnitudes, float* frequencies, size_t* count) {
-    if (!enabled.load()) return false;
+    if (!enabled) return false;
     
-    std::lock_guard<std::mutex> lock(data_mutex);
-    *count = current_magnitudes.size();
+    *count = data_count;
     
     if (magnitudes) {
-        std::copy(current_magnitudes.begin(), current_magnitudes.end(), magnitudes);
+        for (size_t i = 0; i < data_count; ++i) {
+            magnitudes[i] = current_magnitudes[i];
+        }
     }
     if (frequencies) {
-        std::copy(current_frequencies.begin(), current_frequencies.end(), frequencies);
+        for (size_t i = 0; i < data_count; ++i) {
+            frequencies[i] = current_frequencies[i];
+        }
     }
     
     return true;
 }
 
 void SpectrumAnalyzer::set_enabled(bool new_enabled) {
-    enabled.store(new_enabled);
+    enabled = new_enabled;
 }
 
 void SpectrumAnalyzer::set_style(SpectrumDrawStyle new_style) {
