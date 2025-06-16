@@ -289,6 +289,212 @@ void EQVisualizationView::setNodeSelected(int nodeIndex, bool selected) {
 }
 
 //=============================================================================
+// SpectrumVisualizationView Implementation  
+//=============================================================================
+
+SpectrumVisualizationView::SpectrumVisualizationView(const CRect& size)
+    : CView(size), drawingStyle(0) {
+    // Initialize with empty spectrum data
+    spectrumData.resize(256, -60.0f);
+    frequencyBins.resize(256);
+    
+    // Initialize frequency bins (20Hz to 20kHz logarithmically)
+    const float log_min = std::log10(MIN_FREQ);
+    const float log_max = std::log10(MAX_FREQ);
+    const float log_range = log_max - log_min;
+    
+    for (size_t i = 0; i < frequencyBins.size(); ++i) {
+        float log_freq = log_min + (log_range * i) / (frequencyBins.size() - 1);
+        frequencyBins[i] = std::pow(10.0f, log_freq);
+    }
+}
+
+SpectrumVisualizationView::~SpectrumVisualizationView() {
+}
+
+void SpectrumVisualizationView::draw(CDrawContext* context) {
+    CRect bounds = getViewSize();
+    
+    // Clear background
+    context->setFillColor(MyPluginEditor::kPanelColor);
+    context->drawRect(bounds, kDrawFilled);
+    
+    drawGrid(context);
+    drawSpectrum(context);
+}
+
+void SpectrumVisualizationView::drawGrid(CDrawContext* context) {
+    CRect bounds = getViewSize();
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(1.0);
+    context->setFrameColor(MyPluginEditor::kGridColor);
+    
+    // Draw frequency grid lines (logarithmic)
+    const float frequencies[] = {20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000};
+    const int num_freq_lines = sizeof(frequencies) / sizeof(frequencies[0]);
+    
+    for (int i = 0; i < num_freq_lines; ++i) {
+        float freq = frequencies[i];
+        float normalizedX = std::log10(freq / MIN_FREQ) / std::log10(MAX_FREQ / MIN_FREQ);
+        float x = bounds.left + normalizedX * bounds.getWidth();
+        
+        if (x >= bounds.left && x <= bounds.right) {
+            context->drawLine(CPoint(x, bounds.top), CPoint(x, bounds.bottom));
+        }
+    }
+    
+    // Draw magnitude grid lines  
+    const float magnitudes[] = {-60, -40, -20, 0};
+    const int num_mag_lines = sizeof(magnitudes) / sizeof(magnitudes[0]);
+    
+    for (int i = 0; i < num_mag_lines; ++i) {
+        float mag = magnitudes[i];
+        float normalizedY = (MAX_DB - mag) / (MAX_DB - MIN_DB);
+        float y = bounds.top + normalizedY * bounds.getHeight();
+        
+        if (y >= bounds.top && y <= bounds.bottom) {
+            context->drawLine(CPoint(bounds.left, y), CPoint(bounds.right, y));
+        }
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrum(CDrawContext* context) {
+    if (spectrumData.empty()) {
+        return;
+    }
+    
+    switch (drawingStyle) {
+        case 0: // STYLE_LINES
+            drawSpectrumAsLines(context);
+            break;
+        case 1: // STYLE_DOTS
+            drawSpectrumAsDots(context);
+            break;
+        case 2: // STYLE_BINS
+            drawSpectrumAsBins(context);
+            break;
+        case 3: // STYLE_FILLS
+            drawSpectrumAsFills(context);
+            break;
+        default:
+            drawSpectrumAsLines(context);
+            break;
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrumAsLines(CDrawContext* context) {
+    if (spectrumData.size() < 2) return;
+    
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(2.0);
+    context->setFrameColor(MyPluginEditor::kAccentColor);
+    
+    CGraphicsPath* path = context->createGraphicsPath();
+    
+    bool first = true;
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        
+        if (first) {
+            path->beginSubpath(point);
+            first = false;
+        } else {
+            path->addLine(point);
+        }
+    }
+    
+    context->drawGraphicsPath(path, CDrawContext::kPathStroked);
+    path->forget();
+}
+
+void SpectrumVisualizationView::drawSpectrumAsDots(CDrawContext* context) {
+    context->setFillColor(MyPluginEditor::kAccentColor);
+    
+    const float dotSize = 3.0f;
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        CRect dotRect(point.x - dotSize/2, point.y - dotSize/2, 
+                      point.x + dotSize/2, point.y + dotSize/2);
+        context->drawEllipse(dotRect, kDrawFilled);
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrumAsBins(CDrawContext* context) {
+    CRect bounds = getViewSize();
+    context->setFillColor(MyPluginEditor::kAccentColor);
+    
+    float binWidth = bounds.getWidth() / static_cast<float>(spectrumData.size());
+    
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        
+        float x = bounds.left + i * binWidth;
+        CRect binRect(x, point.y, x + binWidth * 0.8f, bounds.bottom);
+        context->drawRect(binRect, kDrawFilled);
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrumAsFills(CDrawContext* context) {
+    if (spectrumData.size() < 2) return;
+    
+    CRect bounds = getViewSize();
+    context->setFillColor(CColor(MyPluginEditor::kAccentColor.red, 
+                                 MyPluginEditor::kAccentColor.green, 
+                                 MyPluginEditor::kAccentColor.blue, 100));
+    
+    CGraphicsPath* path = context->createGraphicsPath();
+    
+    // Start from bottom-left
+    path->beginSubpath(CPoint(bounds.left, bounds.bottom));
+    
+    // Draw the spectrum curve
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        path->addLine(point);
+    }
+    
+    // Close the path at bottom-right
+    path->addLine(CPoint(bounds.right, bounds.bottom));
+    path->closeSubpath();
+    
+    context->drawGraphicsPath(path, CDrawContext::kPathFilled);
+    path->forget();
+}
+
+CPoint SpectrumVisualizationView::frequencyToPosition(float freq, float magnitude) {
+    CRect bounds = getViewSize();
+    
+    // Convert frequency to logarithmic X position
+    float normalizedX = std::log10(freq / MIN_FREQ) / std::log10(MAX_FREQ / MIN_FREQ);
+    float x = bounds.left + normalizedX * bounds.getWidth();
+    
+    // Convert magnitude to Y position (higher magnitudes = lower Y values)
+    float normalizedY = (MAX_DB - magnitude) / (MAX_DB - MIN_DB);
+    float y = bounds.top + normalizedY * bounds.getHeight();
+    
+    // Clamp to bounds
+    x = std::max(bounds.left, std::min(bounds.right, x));
+    y = std::max(bounds.top, std::min(bounds.bottom, y));
+    
+    return CPoint(x, y);
+}
+
+void SpectrumVisualizationView::updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins) {
+    if (!spectrum_data.empty()) {
+        spectrumData = spectrum_data;
+    }
+    if (!frequency_bins.empty()) {
+        frequencyBins = frequency_bins;
+    }
+    invalid(); // Trigger redraw
+}
+
+void SpectrumVisualizationView::setDrawingStyle(int style) {
+    drawingStyle = style;
+    invalid(); // Trigger redraw
+}
+
+//=============================================================================
 // MyPluginEditor Implementation
 //=============================================================================
 
@@ -302,6 +508,7 @@ MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     , leftPanel(nullptr)
     , rightPanel(nullptr)
     , eqView(nullptr)
+    , spectrumView(nullptr)
     , cutoffKnob(nullptr)
     , resonanceKnob(nullptr)
     , driveKnob(nullptr)
@@ -786,11 +993,15 @@ void MyPluginEditor::createLeftPanel() {
 void MyPluginEditor::createRightPanel() {
     if (!frame) return;
     
-    // Right panel for EQ visualization
+    // Right panel for visualizations
     CRect rightRect(250, 0, currentWidth, currentHeight);
     rightPanel = new CViewContainer(rightRect);
     rightPanel->setBackgroundColor(kBackgroundColor);
     frame->addView(rightPanel);
+    
+    // Split the right panel into EQ (top) and Spectrum (bottom)
+    float panelHeight = rightRect.getHeight();
+    float halfHeight = panelHeight * 0.5f;
     
     // EQ section header
     CRect eqHeaderRect(20, 20, rightRect.getWidth() - 20, 50);
@@ -802,8 +1013,8 @@ void MyPluginEditor::createRightPanel() {
     eqHeaderLabel->setStyle(eqHeaderLabel->getStyle() | CTextLabel::kNoFrame);
     rightPanel->addView(eqHeaderLabel);
     
-    // Main EQ visualization area
-    CRect eqRect(20, 60, rightRect.getWidth() - 20, rightRect.getHeight() - 60);
+    // EQ visualization area (top half)
+    CRect eqRect(20, 60, rightRect.getWidth() - 20, halfHeight - 10);
     eqView = new EQVisualizationView(eqRect);
     rightPanel->addView(eqView);
     
@@ -812,6 +1023,21 @@ void MyPluginEditor::createRightPanel() {
     double eq_gain[3] = {0.0, 0.0, 0.0};
     double eq_q[3] = {1.0, 1.0, 1.0};
     eqView->updateEQData(eq_freq, eq_gain, eq_q);
+    
+    // Spectrum section header
+    CRect spectrumHeaderRect(20, halfHeight + 10, rightRect.getWidth() - 20, halfHeight + 40);
+    auto spectrumHeaderLabel = new CTextLabel(spectrumHeaderRect, "REAL-TIME SPECTRUM ANALYZER");
+    spectrumHeaderLabel->setFontColor(kAccentColor);
+    spectrumHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
+    spectrumHeaderLabel->setFont(new CFontDesc("Arial", 14, kBoldFace));
+    spectrumHeaderLabel->setHoriAlign(kLeftText);
+    spectrumHeaderLabel->setStyle(spectrumHeaderLabel->getStyle() | CTextLabel::kNoFrame);
+    rightPanel->addView(spectrumHeaderLabel);
+    
+    // Spectrum visualization area (bottom half)
+    CRect spectrumRect(20, halfHeight + 50, rightRect.getWidth() - 20, rightRect.getHeight() - 20);
+    spectrumView = new SpectrumVisualizationView(spectrumRect);
+    rightPanel->addView(spectrumView);
 }
 
 void MyPluginEditor::styleControl(CView* control) {
@@ -844,22 +1070,27 @@ void MyPluginEditor::updateParameter(int paramId, double value) {
     
     // Update GUI controls
     switch (paramId) {
-        case 0: // PARAM_CUTOFF
+        case 0: // PARAM_SPECTRUM_DRAWING_STYLE
+            if (spectrumView) {
+                spectrumView->setDrawingStyle(static_cast<int>(value));
+            }
+            break;
+        case 1: // PARAM_CUTOFF
             if (cutoffKnob) cutoffKnob->setValue(value);
             break;
-        case 1: // PARAM_RESONANCE
+        case 2: // PARAM_RESONANCE
             if (resonanceKnob) resonanceKnob->setValue(value);
             break;
-        case 2: // PARAM_DRIVE
+        case 3: // PARAM_DRIVE
             if (driveKnob) driveKnob->setValue(value);
             break;
-        case 3: // PARAM_OUTPUT
+        case 4: // PARAM_OUTPUT
             if (outputKnob) outputKnob->setValue(value);
             break;
-        case 4: // PARAM_MIX
+        case 5: // PARAM_MIX
             if (mixSlider) mixSlider->setValue(value * 100.0);
             break;
-        case 5: // PARAM_BYPASS
+        case 6: // PARAM_BYPASS
             if (bypassButton) {
                 bypassButton->setValue(value > 0.5 ? 1.0 : 0.0);
             }
@@ -881,4 +1112,14 @@ void MyPluginEditor::onParameterChanged(int paramId, double value) {
     // Here you would typically notify the host about parameter changes
     // This would require implementing the CLAP parameter extension
     std::cout << "Parameter " << paramId << " changed to " << value << std::endl;
+}
+
+void MyPluginEditor::updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins) {
+    if (spectrumView) {
+        spectrumView->updateSpectrumData(spectrum_data, frequency_bins);
+        
+        // Update drawing style from parameter (PARAM_SPECTRUM_DRAWING_STYLE = 0)
+        int drawingStyle = static_cast<int>(currentParams[0]);
+        spectrumView->setDrawingStyle(drawingStyle);
+    }
 }

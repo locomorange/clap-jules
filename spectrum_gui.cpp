@@ -198,25 +198,105 @@ void SpectrumGUI::render_spectrum() {
 }
 
 void SpectrumGUI::draw_lines(const std::vector<float>& spectrum) {
-    // Placeholder for line drawing
+    // Enhanced output for line drawing
     // In real implementation: draw connected lines between spectrum points
-    printf("Drawing spectrum as lines (%zu points)\n", spectrum.size());
+    printf("Drawing spectrum as lines (%zu points):\n", spectrum.size());
+    
+    // Show some actual spectrum values for debugging
+    if (spectrum.size() > 10) {
+        printf("  Sample values: [0]=%.1fdB [64]=%.1fdB [128]=%.1fdB [192]=%.1fdB [255]=%.1fdB\n",
+               spectrum[0], 
+               spectrum[spectrum.size() / 4], 
+               spectrum[spectrum.size() / 2], 
+               spectrum[spectrum.size() * 3 / 4], 
+               spectrum[spectrum.size() - 1]);
+    }
+    
+    // Find peak frequency
+    float maxVal = -120.0f;
+    size_t maxIdx = 0;
+    for (size_t i = 0; i < spectrum.size(); ++i) {
+        if (spectrum[i] > maxVal) {
+            maxVal = spectrum[i];
+            maxIdx = i;
+        }
+    }
+    
+    if (maxVal > -80.0f) {
+        printf("  Peak: %.1fdB at bin %zu (approx %.0fHz)\n", 
+               maxVal, maxIdx, frequency_bins_[maxIdx]);
+    }
 }
 
 void SpectrumGUI::draw_dots(const std::vector<float>& spectrum) {
-    // Placeholder for dot drawing
-    // In real implementation: draw individual dots at spectrum points
+    // Enhanced output for dot drawing
     printf("Drawing spectrum as dots (%zu points)\n", spectrum.size());
+    
+    // Show active frequency bins (above threshold)
+    int activeCount = 0;
+    for (size_t i = 0; i < spectrum.size() && activeCount < 5; ++i) {
+        if (spectrum[i] > -60.0f) {
+            printf("  Dot at %.0fHz: %.1fdB\n", frequency_bins_[i], spectrum[i]);
+            activeCount++;
+        }
+    }
+    if (activeCount == 0) {
+        printf("  No significant peaks found (all below -60dB)\n");
+    }
 }
 
 void SpectrumGUI::draw_bins(const std::vector<float>& spectrum) {
-    // Placeholder for bin drawing
-    // In real implementation: draw vertical bars for each frequency bin
+    // Enhanced output for bin drawing
     printf("Drawing spectrum as bins (%zu bins)\n", spectrum.size());
+    
+    // Find actual range for better visualization
+    float minVal = *std::min_element(spectrum.begin(), spectrum.end());
+    float maxVal = *std::max_element(spectrum.begin(), spectrum.end());
+    float range = maxVal - minVal;
+    
+    // Create a simple ASCII representation
+    printf("  ASCII Spectrum (approximate):\n  ");
+    for (size_t i = 0; i < std::min(spectrum.size(), size_t(60)); ++i) {
+        // Normalize using actual range
+        float normalized = range > 0.1f ? (spectrum[i] - minVal) / range : 0.0f;
+        normalized = std::max(0.0f, std::min(1.0f, normalized));
+        
+        if (normalized > 0.8f) printf("█");
+        else if (normalized > 0.6f) printf("▆");
+        else if (normalized > 0.4f) printf("▄");
+        else if (normalized > 0.2f) printf("▂");
+        else if (normalized > 0.1f) printf("▁");
+        else printf("_");
+        
+        // Add frequency markers every 10 bins
+        if (i > 0 && i % 10 == 0) printf("|");
+    }
+    printf("\n");
+    
+    // Show frequency scale
+    printf("  Freq:   20Hz");
+    for (int i = 1; i < 6; ++i) {
+        printf("      %dkHz", i * 2);
+    }
+    printf("\n");
+    
+    // Show range of values for debugging
+    printf("  Value range: %.1fdB to %.1fdB\n", minVal, maxVal);
 }
 
 void SpectrumGUI::draw_fills(const std::vector<float>& spectrum) {
-    // Placeholder for filled drawing
-    // In real implementation: draw filled area under the spectrum curve
+    // Enhanced output for filled drawing
     printf("Drawing spectrum as fills (%zu points)\n", spectrum.size());
+    
+    // Calculate RMS and peak values
+    float rms = 0.0f;
+    float peak = -120.0f;
+    for (size_t i = 0; i < spectrum.size(); ++i) {
+        float linear = std::pow(10.0f, spectrum[i] / 20.0f);
+        rms += linear * linear;
+        peak = std::max(peak, spectrum[i]);
+    }
+    rms = 20.0f * std::log10(std::sqrt(rms / spectrum.size()));
+    
+    printf("  Spectrum stats - RMS: %.1fdB, Peak: %.1fdB\n", rms, peak);
 }

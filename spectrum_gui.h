@@ -31,6 +31,10 @@ public:
     // Get drawing style from plugin
     int get_drawing_style() const;
 
+    // Public methods for testing
+    void test_render_spectrum() { render_spectrum(); }
+    void test_draw_bins(const std::vector<float>& spectrum) { draw_bins(spectrum); }
+
 private:
     void* plugin_data_;
     bool is_created_;

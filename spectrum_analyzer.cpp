@@ -55,6 +55,7 @@ void SpectrumAnalyzer::process_samples(const float* samples, size_t num_samples)
 
 void SpectrumAnalyzer::perform_fft() {
     // Copy input buffer to FFT buffer with windowing
+    // Start from the oldest data in the circular buffer
     for (size_t i = 0; i < FFT_SIZE; ++i) {
         size_t buffer_idx = (input_buffer_pos_ + i) % FFT_SIZE;
         fft_buffer_[i] = std::complex<float>(input_buffer_[buffer_idx] * windowing_function_[i], 0.0f);
@@ -88,7 +89,7 @@ void SpectrumAnalyzer::create_logarithmic_bins() {
 }
 
 void SpectrumAnalyzer::update_display_spectrum() {
-    const float freq_per_bin = static_cast<float>(sample_rate_) / (2.0f * FFT_SIZE);
+    const float freq_per_bin = static_cast<float>(sample_rate_) / FFT_SIZE;
     
     for (size_t i = 0; i < DISPLAY_BINS; ++i) {
         float target_freq = frequency_bins_[i];

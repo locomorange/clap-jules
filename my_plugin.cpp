@@ -183,6 +183,24 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
                 
                 // Process the audio through the spectrum analyzer
                 self->spectrum_analyzer->process_samples(mono_samples.data(), process->frames_count);
+                
+                // Update GUI with new spectrum data
+                if (self->spectrum_analyzer->has_new_data()) {
+#if VSTGUI_ENABLED
+                    if (self->gui_editor) {
+                        self->gui_editor->updateSpectrumData(
+                            self->spectrum_analyzer->get_spectrum_data(),
+                            self->spectrum_analyzer->get_frequency_bins()
+                        );
+                    }
+#endif
+                    // Also update the basic GUI for compatibility
+                    if (self->gui) {
+                        self->gui->update_spectrum_data();
+                    }
+                    
+                    self->spectrum_analyzer->acknowledge_data();
+                }
             }
         }
     }
