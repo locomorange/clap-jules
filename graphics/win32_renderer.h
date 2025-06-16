@@ -59,6 +59,7 @@ public:
     
     // Get the child window handle
     HWND getChildWindow() const { return hwnd_; }
+};
 
 } // namespace graphics
 } // namespace clap_jules
