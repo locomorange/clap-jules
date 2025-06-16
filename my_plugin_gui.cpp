@@ -1,5 +1,7 @@
 #include "my_plugin_gui.h"
 #include "my_plugin.h"
+#include "spectrum_analyzer.h"
+#include "spectrum_gui.h"
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
