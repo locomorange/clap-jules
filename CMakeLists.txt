@@ -172,6 +172,10 @@ target_link_libraries(graphics_tests PRIVATE gtest gtest_main clap_jules_graphic
 add_executable(vu_meter_tests test/test_vu_meter.cpp)
 target_link_libraries(vu_meter_tests PRIVATE gtest gtest_main my_clap_plugin clap)
 target_include_directories(vu_meter_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+# Explicitly link graphics library on Windows to ensure Win32Renderer symbols are available
+if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(vu_meter_tests PRIVATE clap_jules_graphics)
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
@@ -186,6 +190,10 @@ if(CLAP_JULES_BUILD_GRAPHICS_EXAMPLES)
     add_executable(vu_meter_demo examples/vu_meter_demo.cpp)
     target_link_libraries(vu_meter_demo PRIVATE my_clap_plugin clap)
     target_include_directories(vu_meter_demo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    # Explicitly link graphics library on Windows to ensure Win32Renderer symbols are available
+    if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        target_link_libraries(vu_meter_demo PRIVATE clap_jules_graphics)
+    endif()
     
     # GUI test executable (Unix/Linux only - uses dlopen/dlsym)
     if(NOT WIN32)
