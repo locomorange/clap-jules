@@ -53,7 +53,7 @@ TEST_F(SpectrumAnalyzerTest, AudioProcessing) {
     float sample_rate = 44100.0f;
     
     for (size_t i = 0; i < test_audio.size(); ++i) {
-        test_audio[i] = 0.5f * sin(2.0f * M_PI * frequency * i / sample_rate);
+        test_audio[i] = 0.5f * sin(2.0f * 3.14159265358979323846f * frequency * i / sample_rate);
     }
     
     // Process the audio
