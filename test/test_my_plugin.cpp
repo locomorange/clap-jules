@@ -2,6 +2,7 @@
 #include <cmath>
 #include "../my_plugin.h"
 #include "../spectrum_analyzer.h"
+#include "../spectrum_gui.h" // Include this to resolve SpectrumGUI incomplete type
 #include <clap/ext/gui.h>
 
 // Define M_PI if not already defined (Windows compatibility)

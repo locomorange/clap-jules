@@ -6,6 +6,7 @@
 #include <complex>
 #include <vector>
 #include <memory>
+#include <cstring> // For memset
 
 // Forward declarations
 struct SpectrumAnalyzer;
@@ -70,8 +71,7 @@ typedef struct {
 
 
 // Basic plugin structure - Combined functionality
-
-typedef struct {
+typedef struct my_plugin_t {
     clap_plugin_t plugin;
     const clap_host_t* host;
     plugin_params_t params;
@@ -89,7 +89,20 @@ typedef struct {
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif
-    // Add any other plugin-specific data here
+
+    // Constructor to initialize the struct properly
+    my_plugin_t() : host(nullptr), sample_rate(44100.0), max_frames_count(512)
+#if VSTGUI_ENABLED
+        , gui_editor(nullptr)
+#endif
+    {
+        // Initialize plugin struct to zero
+        memset(&plugin, 0, sizeof(plugin));
+        memset(&params, 0, sizeof(params));
+    }
+    
+    // Destructor declaration (implementation in .cpp file)
+    ~my_plugin_t();
 } my_plugin_t;
 
 // Plugin factory ID

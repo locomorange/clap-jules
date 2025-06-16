@@ -15,6 +15,7 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <new>      // For std::nothrow
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -27,6 +28,11 @@ static void my_plugin_reset(const struct clap_plugin *plugin);
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+
+// --- Plugin structure destructor implementation ---
+my_plugin_t::~my_plugin_t() {
+    // C++ destructors for unique_ptr will be called automatically
+}
 
 // --- Parameters extension functions ---
 static uint32_t my_plugin_params_count(const clap_plugin_t *plugin);
@@ -100,7 +106,8 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
             self->gui_editor = nullptr;
         }
 #endif
-        free(self);
+        // Use delete instead of free for proper C++ object destruction
+        delete self;
     }
 }
 
@@ -719,7 +726,8 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         return NULL;
     }
 
-    my_plugin_t *self = (my_plugin_t *)calloc(1, sizeof(my_plugin_t));
+    // Use new instead of calloc for proper C++ object construction
+    my_plugin_t *self = new(std::nothrow) my_plugin_t();
     if (!self) {
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
@@ -733,7 +741,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->gui_editor = new MyPluginEditor(host);
     if (!self->gui_editor) {
         fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
-        free(self);
+        delete self;
         return NULL;
     }
 #endif
