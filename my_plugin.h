@@ -4,6 +4,7 @@
 #include <clap/ext/gui.h>
 #include <memory>
 #include "graphics/skia_graphics.h"
+#include "spectrum_analyzer.h"
 
 #if defined(__linux__) && defined(HAVE_X11)
 #include "graphics/x11_renderer.h"
@@ -42,6 +43,14 @@ typedef struct {
     
     // Render callback data
     bool needs_redraw = false;
+    
+    // Spectrum analyzer
+    std::unique_ptr<clap_jules::SpectrumAnalyzer> spectrum_analyzer = nullptr;
+    double sample_rate = 44100.0;
+    
+    // UI state for drawing mode controls
+    int selected_draw_mode = 0; // 0=Lines, 1=Dots, 2=Bins, 3=Fill
+    int mode_cycle_counter = 0; // For automatic mode cycling demonstration
 } my_plugin_t;
 
 // Plugin factory ID
