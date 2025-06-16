@@ -2,6 +2,8 @@
 
 #if VSTGUI_ENABLED && defined(__linux__)
 
+#include "spectrum_analyzer.h"
+#include "spectrum_gui.h"
 #include <stdio.h>
 
 // --- Timer Support Extension Implementation ---

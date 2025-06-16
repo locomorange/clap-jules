@@ -1,5 +1,7 @@
 #include "my_plugin_gui.h"
 #include "my_plugin.h"
+#include "spectrum_analyzer.h"
+#include "spectrum_gui.h"
 #include <vstgui/lib/controls/cknob.h>
 #include <vstgui/lib/controls/cslider.h>
 #include <vstgui/lib/controls/ctextlabel.h>
@@ -14,6 +16,9 @@
 #include <vstgui/lib/cgraphicspath.h>
 #include <iostream>
 #include <cmath>
+#include <cstdio> // For snprintf
+#include <ctime>  // For time functions
+#include <cstdlib> // For rand()
 
 #ifdef __linux__
 #include <vstgui/lib/platform/platform_x11.h>
@@ -25,7 +30,10 @@
 #endif
 
 #ifdef _WIN32
-#include <Windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #endif
 
 // Static initialization flag
@@ -55,8 +63,8 @@ EQVisualizationView::~EQVisualizationView() {
 }
 
 void EQVisualizationView::draw(CDrawContext* context) {
-    // Clear background
-    context->setFillColor(MyPluginEditor::kBackgroundColor);
+    // Use a semi-transparent background so spectrum shows through
+    context->setFillColor(CColor(25, 25, 30, 128)); // 50% transparent
     context->drawRect(getViewSize(), kDrawFilled);
     
     drawGrid(context);
@@ -286,6 +294,302 @@ void EQVisualizationView::setNodeSelected(int nodeIndex, bool selected) {
 }
 
 //=============================================================================
+// SpectrumVisualizationView Implementation  
+//=============================================================================
+
+SpectrumVisualizationView::SpectrumVisualizationView(const CRect& size)
+    : CView(size), drawingStyle(0), lastUpdateTime(0) {
+    // Initialize with empty spectrum data
+    spectrumData.resize(256, -60.0f);
+    frequencyBins.resize(256);
+    
+    // Initialize frequency bins (20Hz to 20kHz logarithmically)
+    const float log_min = std::log10(MIN_FREQ);
+    const float log_max = std::log10(MAX_FREQ);
+    const float log_range = log_max - log_min;
+    
+    for (size_t i = 0; i < frequencyBins.size(); ++i) {
+        float log_freq = log_min + (log_range * i) / (frequencyBins.size() - 1);
+        frequencyBins[i] = std::pow(10.0f, log_freq);
+    }
+    
+    // Initialize with quiet spectrum data - real data will be provided by the spectrum analyzer
+}
+
+SpectrumVisualizationView::~SpectrumVisualizationView() {
+}
+
+void SpectrumVisualizationView::draw(CDrawContext* context) {
+    CRect bounds = getViewSize();
+    
+    // Clear background
+    context->setFillColor(MyPluginEditor::kPanelColor);
+    context->drawRect(bounds, kDrawFilled);
+    
+    // Draw the spectrum and grid
+    drawGrid(context);
+    drawSpectrum(context);
+    
+    // Add a debug indicator to show the view is being drawn
+    context->setFrameColor(CColor(255, 0, 0, 50)); // Very faint red border
+    context->setLineWidth(1.0);
+    context->drawRect(bounds, kDrawStroked);
+}
+
+void SpectrumVisualizationView::drawGrid(CDrawContext* context) {
+    CRect bounds = getViewSize();
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(1.0);
+    context->setFrameColor(MyPluginEditor::kGridColor);
+    
+    // Draw frequency grid lines (logarithmic)
+    const float frequencies[] = {20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000};
+    const int num_freq_lines = sizeof(frequencies) / sizeof(frequencies[0]);
+    
+    for (int i = 0; i < num_freq_lines; ++i) {
+        float freq = frequencies[i];
+        float normalizedX = std::log10(freq / MIN_FREQ) / std::log10(MAX_FREQ / MIN_FREQ);
+        float x = bounds.left + normalizedX * bounds.getWidth();
+        
+        if (x >= bounds.left && x <= bounds.right) {
+            context->drawLine(CPoint(x, bounds.top), CPoint(x, bounds.bottom));
+        }
+    }
+    
+    // Draw magnitude grid lines  
+    const float magnitudes[] = {-60, -40, -20, 0};
+    const int num_mag_lines = sizeof(magnitudes) / sizeof(magnitudes[0]);
+    
+    for (int i = 0; i < num_mag_lines; ++i) {
+        float mag = magnitudes[i];
+        float normalizedY = (MAX_DB - mag) / (MAX_DB - MIN_DB);
+        float y = bounds.top + normalizedY * bounds.getHeight();
+        
+        if (y >= bounds.top && y <= bounds.bottom) {
+            context->drawLine(CPoint(bounds.left, y), CPoint(bounds.right, y));
+        }
+    }
+    
+    // Draw frequency labels at bottom
+    context->setFillColor(MyPluginEditor::kAccentColor);
+    context->setFont(new CFontDesc("Arial", 9));
+    
+    for (int i = 0; i < num_freq_lines; ++i) {
+        float freq = frequencies[i];
+        float normalizedX = std::log10(freq / MIN_FREQ) / std::log10(MAX_FREQ / MIN_FREQ);
+        float x = bounds.left + normalizedX * bounds.getWidth();
+        
+        if (x >= bounds.left && x <= bounds.right - 30) {
+            char freqStr[16];
+            if (freq >= 1000) {
+                snprintf(freqStr, sizeof(freqStr), "%.0fk", freq / 1000);
+            } else {
+                snprintf(freqStr, sizeof(freqStr), "%.0f", freq);
+            }
+            
+            CRect textRect(x - 15, bounds.bottom - 20, x + 15, bounds.bottom - 5);
+            context->drawString(freqStr, textRect, kCenterText);
+        }
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrum(CDrawContext* context) {
+    if (spectrumData.empty()) {
+        return;
+    }
+    
+    switch (drawingStyle) {
+        case 0: // STYLE_LINES
+            drawSpectrumAsLines(context);
+            break;
+        case 1: // STYLE_DOTS
+            drawSpectrumAsDots(context);
+            break;
+        case 2: // STYLE_BINS
+            drawSpectrumAsBins(context);
+            break;
+        case 3: // STYLE_FILLS
+            drawSpectrumAsFills(context);
+            break;
+        default:
+            drawSpectrumAsLines(context);
+            break;
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrumAsLines(CDrawContext* context) {
+    if (spectrumData.size() < 2) return;
+    
+    context->setLineStyle(kLineSolid);
+    context->setLineWidth(2.0);
+    context->setFrameColor(MyPluginEditor::kAccentColor);
+    
+    CGraphicsPath* path = context->createGraphicsPath();
+    
+    bool first = true;
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        
+        if (first) {
+            path->beginSubpath(point);
+            first = false;
+        } else {
+            path->addLine(point);
+        }
+    }
+    
+    context->drawGraphicsPath(path, CDrawContext::kPathStroked);
+    path->forget();
+}
+
+void SpectrumVisualizationView::drawSpectrumAsDots(CDrawContext* context) {
+    context->setFillColor(MyPluginEditor::kAccentColor);
+    
+    const float dotSize = 3.0f;
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        CRect dotRect(point.x - dotSize/2, point.y - dotSize/2, 
+                      point.x + dotSize/2, point.y + dotSize/2);
+        context->drawEllipse(dotRect, kDrawFilled);
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrumAsBins(CDrawContext* context) {
+    CRect bounds = getViewSize();
+    context->setFillColor(MyPluginEditor::kAccentColor);
+    
+    float binWidth = bounds.getWidth() / static_cast<float>(spectrumData.size());
+    
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        
+        float x = bounds.left + i * binWidth;
+        CRect binRect(x, point.y, x + binWidth * 0.8f, bounds.bottom);
+        context->drawRect(binRect, kDrawFilled);
+    }
+}
+
+void SpectrumVisualizationView::drawSpectrumAsFills(CDrawContext* context) {
+    if (spectrumData.size() < 2) return;
+    
+    CRect bounds = getViewSize();
+    context->setFillColor(CColor(MyPluginEditor::kAccentColor.red, 
+                                 MyPluginEditor::kAccentColor.green, 
+                                 MyPluginEditor::kAccentColor.blue, 100));
+    
+    CGraphicsPath* path = context->createGraphicsPath();
+    
+    // Start from bottom-left
+    path->beginSubpath(CPoint(bounds.left, bounds.bottom));
+    
+    // Draw the spectrum curve
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        CPoint point = frequencyToPosition(frequencyBins[i], spectrumData[i]);
+        path->addLine(point);
+    }
+    
+    // Close the path at bottom-right
+    path->addLine(CPoint(bounds.right, bounds.bottom));
+    path->closeSubpath();
+    
+    context->drawGraphicsPath(path, CDrawContext::kPathFilled);
+    path->forget();
+}
+
+CPoint SpectrumVisualizationView::frequencyToPosition(float freq, float magnitude) {
+    CRect bounds = getViewSize();
+    
+    // Convert frequency to logarithmic X position
+    float normalizedX = std::log10(freq / MIN_FREQ) / std::log10(MAX_FREQ / MIN_FREQ);
+    float x = bounds.left + normalizedX * bounds.getWidth();
+    
+    // Convert magnitude to Y position (higher magnitudes = lower Y values)
+    float normalizedY = (MAX_DB - magnitude) / (MAX_DB - MIN_DB);
+    float y = bounds.top + normalizedY * bounds.getHeight();
+    
+    // Clamp to bounds
+    x = std::max(static_cast<float>(bounds.left), std::min(static_cast<float>(bounds.right), x));
+    y = std::max(static_cast<float>(bounds.top), std::min(static_cast<float>(bounds.bottom), y));
+    
+    return CPoint(x, y);
+}
+
+void SpectrumVisualizationView::updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins) {
+    printf("GUI: updateSpectrumData called with %zu spectrum points\n", spectrum_data.size());
+    
+    if (!spectrum_data.empty()) {
+        spectrumData = spectrum_data;
+        
+        // Debug output to verify data is being received
+        float maxVal = -120.0f;
+        float avgVal = 0.0f;
+        size_t maxIdx = 0;
+        for (size_t i = 0; i < spectrumData.size(); ++i) {
+            if (spectrumData[i] > maxVal) {
+                maxVal = spectrumData[i];
+                maxIdx = i;
+            }
+            avgVal += spectrumData[i];
+        }
+        avgVal /= spectrumData.size();
+        
+        // Print debug info for significant energy or periodically
+        static int updateCounter = 0;
+        updateCounter++;
+        if (maxVal > -80.0f || updateCounter % 100 == 0) {
+            printf("Spectrum Update #%d: Peak %.1fdB at bin %zu, Avg %.1fdB\n", 
+                   updateCounter, maxVal, maxIdx, avgVal);
+        }
+    }
+    if (!frequency_bins.empty()) {
+        frequencyBins = frequency_bins;
+    }
+    
+    // Force immediate redraw - call multiple invalidation methods to ensure update
+    printf("GUI: Forcing spectrum view redraw\n");
+    invalid();
+    setDirty(true);
+    if (getParentView()) {
+        getParentView()->invalid();
+    }
+}
+
+void SpectrumVisualizationView::setDrawingStyle(int style) {
+    drawingStyle = style;
+    invalid(); // Trigger redraw
+}
+
+void SpectrumVisualizationView::updateTestData() {
+    // Create animated test data to show the spectrum is working
+    uint64_t time = static_cast<uint64_t>(clock());
+    float phase = (time % 10000) / 10000.0f * 2.0f * 3.14159f; // 2π over ~10 seconds
+    
+    // Add some base noise floor
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        spectrumData[i] = -70.0f + (rand() % 100) * 0.05f; // Random noise floor
+    }
+    
+    // Add animated peaks at specific frequencies
+    // 440Hz peak that oscillates
+    size_t bin440 = 50;  // Approximate 440Hz bin
+    if (bin440 < spectrumData.size()) {
+        spectrumData[bin440] = -30.0f + 15.0f * sin(phase);
+    }
+    
+    // 1kHz peak that pulses
+    size_t bin1k = 100;  // Approximate 1kHz bin
+    if (bin1k < spectrumData.size()) {
+        spectrumData[bin1k] = -25.0f + 10.0f * sin(phase * 2.0f);
+    }
+    
+    // 5kHz peak that fades in and out
+    size_t bin5k = 180;  // Approximate 5kHz bin
+    if (bin5k < spectrumData.size()) {
+        spectrumData[bin5k] = -35.0f + 20.0f * sin(phase * 0.5f);
+    }
+}
+
+//=============================================================================
 // MyPluginEditor Implementation
 //=============================================================================
 
@@ -299,6 +603,7 @@ MyPluginEditor::MyPluginEditor(const clap_host_t* host)
     , leftPanel(nullptr)
     , rightPanel(nullptr)
     , eqView(nullptr)
+    , spectrumView(nullptr)
     , cutoffKnob(nullptr)
     , resonanceKnob(nullptr)
     , driveKnob(nullptr)
@@ -323,6 +628,11 @@ MyPluginEditor::~MyPluginEditor() {
 }
 
 bool MyPluginEditor::isApiSupported(const char* api, bool isFloating) {
+    // Check for null API parameter
+    if (api == nullptr) {
+        return false;
+    }
+    
     // Support platform-specific APIs
 #ifdef __linux__
     if (strcmp(api, CLAP_WINDOW_API_X11) == 0) {
@@ -369,12 +679,17 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
     // Initialize VSTGUI if not already done
     if (!vstgui_initialized) {
         try {
-#ifdef __linux__
+#ifdef _WIN32
+            // Check if we're in a headless environment (common in CI)
+            if (!GetDesktopWindow()) {
+                std::cout << "MyPlugin GUI: Warning - No desktop window available (headless environment)" << std::endl;
+                return false;
+            }
+            VSTGUI::init(GetModuleHandle(nullptr));
+#elif defined(__linux__)
             VSTGUI::init(nullptr);
 #elif defined(__APPLE__)
             VSTGUI::init(CFBundleGetMainBundle());
-#elif defined(_WIN32)
-            VSTGUI::init(GetModuleHandle(nullptr));
 #else
             VSTGUI::init(nullptr);
 #endif
@@ -383,10 +698,21 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
         } catch (const std::exception& e) {
             std::cout << "MyPlugin GUI: Error initializing VSTGUI: " << e.what() << std::endl;
             return false;
+        } catch (...) {
+            std::cout << "MyPlugin GUI: Unknown error initializing VSTGUI" << std::endl;
+            return false;
         }
     }
     
     try {
+        // Check if we can create GUI in this environment
+#ifdef _WIN32
+        if (!IsWindow(GetDesktopWindow())) {
+            std::cout << "MyPlugin GUI: Warning - Cannot create GUI in headless environment" << std::endl;
+            return false;
+        }
+#endif
+        
         // Create VSTGUI frame with professional size
         CRect rect(0, 0, currentWidth, currentHeight);
         frame = new CFrame(rect, nullptr);
@@ -399,10 +725,15 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
             std::cout << "MyPlugin GUI: Professional GUI created successfully (" 
                       << currentWidth << "x" << currentHeight << ")" << std::endl;
             return true;
+        } else {
+            std::cout << "MyPlugin GUI: Error - Failed to create frame" << std::endl;
         }
     }
     catch (const std::exception& e) {
         std::cout << "MyPlugin GUI: Error creating GUI: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cout << "MyPlugin GUI: Unknown error creating GUI" << std::endl;
     }
     
     return false;
@@ -778,25 +1109,31 @@ void MyPluginEditor::createLeftPanel() {
 void MyPluginEditor::createRightPanel() {
     if (!frame) return;
     
-    // Right panel for EQ visualization
+    // Right panel for visualizations
     CRect rightRect(250, 0, currentWidth, currentHeight);
     rightPanel = new CViewContainer(rightRect);
     rightPanel->setBackgroundColor(kBackgroundColor);
     frame->addView(rightPanel);
     
-    // EQ section header
-    CRect eqHeaderRect(20, 20, rightRect.getWidth() - 20, 50);
-    auto eqHeaderLabel = new CTextLabel(eqHeaderRect, "DYNAMIC EQ VISUALIZATION");
-    eqHeaderLabel->setFontColor(kAccentColor);
-    eqHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
-    eqHeaderLabel->setFont(new CFontDesc("Arial", 14, kBoldFace));
-    eqHeaderLabel->setHoriAlign(kLeftText);
-    eqHeaderLabel->setStyle(eqHeaderLabel->getStyle() | CTextLabel::kNoFrame);
-    rightPanel->addView(eqHeaderLabel);
+    // Create a single visualization area where both EQ and spectrum are overlaid
+    CRect visualRect(20, 60, rightRect.getWidth() - 20, rightRect.getHeight() - 20);
     
-    // Main EQ visualization area
-    CRect eqRect(20, 60, rightRect.getWidth() - 20, rightRect.getHeight() - 60);
-    eqView = new EQVisualizationView(eqRect);
+    // Spectrum section header
+    CRect spectrumHeaderRect(20, 20, rightRect.getWidth() - 20, 50);
+    auto spectrumHeaderLabel = new CTextLabel(spectrumHeaderRect, "REAL-TIME SPECTRUM ANALYZER + EQ");
+    spectrumHeaderLabel->setFontColor(kAccentColor);
+    spectrumHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
+    spectrumHeaderLabel->setFont(new CFontDesc("Arial", 14, kBoldFace));
+    spectrumHeaderLabel->setHoriAlign(kLeftText);
+    spectrumHeaderLabel->setStyle(spectrumHeaderLabel->getStyle() | CTextLabel::kNoFrame);
+    rightPanel->addView(spectrumHeaderLabel);
+    
+    // Add spectrum visualization FIRST (so it's drawn behind the EQ)
+    spectrumView = new SpectrumVisualizationView(visualRect);
+    rightPanel->addView(spectrumView);
+    
+    // Add EQ visualization SECOND (so it's drawn on top of the spectrum)
+    eqView = new EQVisualizationView(visualRect);
     rightPanel->addView(eqView);
     
     // Update EQ view with current parameters
@@ -836,22 +1173,27 @@ void MyPluginEditor::updateParameter(int paramId, double value) {
     
     // Update GUI controls
     switch (paramId) {
-        case 0: // PARAM_CUTOFF
+        case 0: // PARAM_SPECTRUM_DRAWING_STYLE
+            if (spectrumView) {
+                spectrumView->setDrawingStyle(static_cast<int>(value));
+            }
+            break;
+        case 1: // PARAM_CUTOFF
             if (cutoffKnob) cutoffKnob->setValue(value);
             break;
-        case 1: // PARAM_RESONANCE
+        case 2: // PARAM_RESONANCE
             if (resonanceKnob) resonanceKnob->setValue(value);
             break;
-        case 2: // PARAM_DRIVE
+        case 3: // PARAM_DRIVE
             if (driveKnob) driveKnob->setValue(value);
             break;
-        case 3: // PARAM_OUTPUT
+        case 4: // PARAM_OUTPUT
             if (outputKnob) outputKnob->setValue(value);
             break;
-        case 4: // PARAM_MIX
+        case 5: // PARAM_MIX
             if (mixSlider) mixSlider->setValue(value * 100.0);
             break;
-        case 5: // PARAM_BYPASS
+        case 6: // PARAM_BYPASS
             if (bypassButton) {
                 bypassButton->setValue(value > 0.5 ? 1.0 : 0.0);
             }
@@ -873,4 +1215,14 @@ void MyPluginEditor::onParameterChanged(int paramId, double value) {
     // Here you would typically notify the host about parameter changes
     // This would require implementing the CLAP parameter extension
     std::cout << "Parameter " << paramId << " changed to " << value << std::endl;
+}
+
+void MyPluginEditor::updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins) {
+    if (spectrumView) {
+        spectrumView->updateSpectrumData(spectrum_data, frequency_bins);
+        
+        // Update drawing style from parameter (PARAM_SPECTRUM_DRAWING_STYLE = 0)
+        int drawingStyle = static_cast<int>(currentParams[0]);
+        spectrumView->setDrawingStyle(drawingStyle);
+    }
 }

@@ -58,6 +58,40 @@ private:
     int getNodeAtPosition(const CPoint& pos);
 };
 
+// Custom spectrum visualization view
+class SpectrumVisualizationView : public CView {
+public:
+    SpectrumVisualizationView(const CRect& size);
+    ~SpectrumVisualizationView();
+    
+    void draw(CDrawContext* context) override;
+    
+    // Update spectrum data
+    void updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins);
+    void setDrawingStyle(int style);
+    
+private:
+    std::vector<float> spectrumData;
+    std::vector<float> frequencyBins;
+    int drawingStyle;
+    uint64_t lastUpdateTime;
+    
+    void drawGrid(CDrawContext* context);
+    void drawSpectrum(CDrawContext* context);
+    void drawSpectrumAsLines(CDrawContext* context);
+    void drawSpectrumAsDots(CDrawContext* context);
+    void drawSpectrumAsBins(CDrawContext* context);
+    void drawSpectrumAsFills(CDrawContext* context);
+    CPoint frequencyToPosition(float freq, float magnitude);
+    void updateTestData();
+    
+    // Constants for display
+    static constexpr float MIN_FREQ = 20.0f;
+    static constexpr float MAX_FREQ = 20000.0f;
+    static constexpr float MIN_DB = -80.0f;
+    static constexpr float MAX_DB = 20.0f;
+};
+
 class MyPluginEditor {
 public:
     MyPluginEditor(const clap_host_t* host = nullptr);
@@ -82,6 +116,7 @@ public:
     
     // Parameter update methods
     void updateParameter(int paramId, double value);
+    void updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins);
     
     // Color scheme (public for EQ view access)
     static const CColor kBackgroundColor;
@@ -102,6 +137,7 @@ private:
     CViewContainer* leftPanel;
     CViewContainer* rightPanel;
     EQVisualizationView* eqView;
+    SpectrumVisualizationView* spectrumView;
     
     // Control references
     CKnob* cutoffKnob;

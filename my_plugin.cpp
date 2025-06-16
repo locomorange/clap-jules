@@ -1,13 +1,21 @@
 #include "my_plugin.h"
+#include "spectrum_analyzer.h"
+#include "spectrum_gui.h"
+
 #if VSTGUI_ENABLED
 #include "my_plugin_gui.h"
 #include <clap/ext/gui.h>
+#if defined(__linux__)
 #include "my_plugin_linux_extensions.h"
 #endif
+#endif
 #include <clap/plugin-features.h>
+#include <clap/ext/params.h>
+
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <new>      // For std::nothrow
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -21,20 +29,35 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
+// --- Plugin structure destructor implementation ---
+my_plugin_t::~my_plugin_t() {
+    // C++ destructors for unique_ptr will be called automatically
+}
+
+// --- Parameters extension functions ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin);
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info);
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value);
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size);
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value);
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out);
+
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor  
 static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
-    "com.example.soothe-pro", // id
-    "Soothe Pro - Dynamic EQ", // name
+    "com.example.spectrum-analyzer", // id
+    "Real-time Spectrum Analyzer", // name
+
     "Audio Innovations",       // vendor
     "https://example.com",     // url
     "https://example.com/manual", // manual_url
     "https://example.com/support", // support_url
     "1.0.0",                   // version
-    "Professional dynamic EQ and resonance control plugin with Soothe2-style interface.", // description
+    "Real-time spectrum analyzer with GUI support and parameter automation.", // description
+
     plugin_features, // features
 };
 
@@ -44,20 +67,32 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
+
+    // Initialize plugin state
+    self->sample_rate = 44100.0;
+    self->max_frames_count = 512;
+    
     // Initialize parameters with default values
+    self->params.spectrum_drawing_style = 0.0f; // STYLE_LINES
     self->params.cutoff = 1000.0;
     self->params.resonance = 1.0;
-    self->params.drive = 0.0;
-    self->params.output = 0.0;
+    self->params.drive = 1.0;
+    self->params.output = 1.0;
     self->params.mix = 1.0;
     self->params.bypass = false;
     
     for (int i = 0; i < 3; ++i) {
         self->params.eq_gain[i] = 0.0;
-        self->params.eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
+        self->params.eq_freq[i] = (i == 0) ? 100.0 : (i == 1) ? 1000.0 : 10000.0;
         self->params.eq_q[i] = 1.0;
     }
+
+    // Initialize spectrum analyzer
+    self->spectrum_analyzer = std::make_unique<SpectrumAnalyzer>();
     
+    // Initialize GUI
+    self->gui = std::make_unique<SpectrumGUI>(self);
+
     return true;
 }
 
@@ -71,12 +106,31 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
             self->gui_editor = nullptr;
         }
 #endif
-        free(self);
+        // Use delete instead of free for proper C++ object destruction
+        delete self;
     }
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
+    
+    // Validate sample rate - some hosts may provide invalid values
+    if (sample_rate <= 0.0 || sample_rate > 192000.0) {
+        printf("MyPlugin: WARNING - Invalid sample rate %.2f received, using default 44100 Hz\n", sample_rate);
+        sample_rate = 44100.0;  // Use reasonable default
+    }
+    
+    // Update sample rate and frame count
+    self->sample_rate = sample_rate;
+    self->max_frames_count = max_frames_count;
+    
+    // Initialize spectrum analyzer with validated sample rate
+    if (self->spectrum_analyzer) {
+        self->spectrum_analyzer->initialize(sample_rate);
+        printf("MyPlugin: Spectrum analyzer initialized with sample rate %.2f Hz\n", sample_rate);
+    }
+    
     // Allocate and prepare resources needed for processing (e.g., buffers)
     return true;
 }
@@ -101,45 +155,103 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Process input events for parameter changes
+    const uint32_t num_events = process->in_events->size(process->in_events);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
+            switch (hdr->type) {
+                case CLAP_EVENT_PARAM_VALUE: {
+                    const clap_event_param_value_t* pev = (const clap_event_param_value_t*)hdr;
+                    if (pev->param_id == PARAM_SPECTRUM_DRAWING_STYLE) {
+                        self->params.spectrum_drawing_style = (float)pev->value;
+                    }
+                    // Handle other parameter changes...
+                    break;
+                }
+            }
+        }
+    }
 
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
+    // Process audio from input to output (stereo) and analyze spectrum
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
 
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+        if (out_buf->channel_count >= 2 && in_buf->channel_count >= 2 && out_buf->data32 && in_buf->data32) {
+            // Copy input to output (passthrough)
+            for (uint32_t i = 0; i < process->frames_count; ++i) {
+                out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
+                out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
+            }
+            
+            // Analyze spectrum if analyzer is available
+            if (self->spectrum_analyzer) {
+                // Create mixed mono signal for analysis
+                std::vector<float> mono_samples(process->frames_count);
+                float max_sample = 0.0f;
+                for (uint32_t i = 0; i < process->frames_count; ++i) {
+                    mono_samples[i] = (in_buf->data32[0][i] + in_buf->data32[1][i]) * 0.5f;
+                    max_sample = std::max(max_sample, std::abs(mono_samples[i]));
+                }
+                
+                // Debug output for incoming audio levels
+                static int processCounter = 0;
+                processCounter++;
+                if (max_sample > 0.001f || processCounter % 1000 == 0) {
+                    printf("Audio Process #%d: Max sample level %.6f (%d frames)\n", 
+                           processCounter, max_sample, process->frames_count);
+                }
+                
+                // Process the audio through the spectrum analyzer
+                self->spectrum_analyzer->process_samples(mono_samples.data(), process->frames_count);
+                
+                // Update GUI with new spectrum data
+                if (self->spectrum_analyzer->has_new_data()) {
+#if VSTGUI_ENABLED
+                    if (self->gui_editor) {
+                        self->gui_editor->updateSpectrumData(
+                            self->spectrum_analyzer->get_spectrum_data(),
+                            self->spectrum_analyzer->get_frequency_bins()
+                        );
+                    }
+#endif
+                    // Also update the basic GUI for compatibility
+                    if (self->gui) {
+                        self->gui->update_spectrum_data();
+                    }
+                    
+                    self->spectrum_analyzer->acknowledge_data();
+                }
+            }
+        }
+    } else {
+        // Even if no audio I/O, process silent samples to keep spectrum analyzer alive
+        // This ensures the GUI shows the noise floor and test data
+        if (self->spectrum_analyzer) {
+            std::vector<float> silent_samples(process->frames_count, 0.0f);
+            self->spectrum_analyzer->process_samples(silent_samples.data(), process->frames_count);
+            
+            if (self->spectrum_analyzer->has_new_data()) {
+#if VSTGUI_ENABLED
+                if (self->gui_editor) {
+                    self->gui_editor->updateSpectrumData(
+                        self->spectrum_analyzer->get_spectrum_data(),
+                        self->spectrum_analyzer->get_frequency_bins()
+                    );
+                }
+#endif
+                if (self->gui) {
+                    self->gui->update_spectrum_data();
+                }
+                
+                self->spectrum_analyzer->acknowledge_data();
+            }
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 
@@ -282,13 +394,309 @@ static const clap_plugin_gui_t my_gui_extension = {
 };
 #endif // VSTGUI_ENABLED
 
+// --- Parameters Extension Implementation ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
+    return PARAM_COUNT;
+}
+
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info) {
+    switch (param_index) {
+        case PARAM_SPECTRUM_DRAWING_STYLE:
+            param_info->id = PARAM_SPECTRUM_DRAWING_STYLE;
+            strncpy(param_info->name, "Drawing Style", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Spectrum", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = STYLE_COUNT - 1;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_CUTOFF:
+            param_info->id = PARAM_CUTOFF;
+            strncpy(param_info->name, "Cutoff", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Filter", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 1000.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_RESONANCE:
+            param_info->id = PARAM_RESONANCE;
+            strncpy(param_info->name, "Resonance", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Filter", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_DRIVE:
+            param_info->id = PARAM_DRIVE;
+            strncpy(param_info->name, "Drive", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Distortion", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_OUTPUT:
+            param_info->id = PARAM_OUTPUT;
+            strncpy(param_info->name, "Output", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Main", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 2.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_MIX:
+            param_info->id = PARAM_MIX;
+            strncpy(param_info->name, "Mix", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Main", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 1.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_BYPASS:
+            param_info->id = PARAM_BYPASS;
+            strncpy(param_info->name, "Bypass", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Main", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 1.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_BYPASS;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_GAIN1:
+            param_info->id = PARAM_EQ_GAIN1;
+            strncpy(param_info->name, "EQ Gain 1", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = -24.0;
+            param_info->max_value = 24.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_FREQ1:
+            param_info->id = PARAM_EQ_FREQ1;
+            strncpy(param_info->name, "EQ Freq 1", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 100.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_Q1:
+            param_info->id = PARAM_EQ_Q1;
+            strncpy(param_info->name, "EQ Q 1", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_GAIN2:
+            param_info->id = PARAM_EQ_GAIN2;
+            strncpy(param_info->name, "EQ Gain 2", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = -24.0;
+            param_info->max_value = 24.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_FREQ2:
+            param_info->id = PARAM_EQ_FREQ2;
+            strncpy(param_info->name, "EQ Freq 2", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 1000.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_Q2:
+            param_info->id = PARAM_EQ_Q2;
+            strncpy(param_info->name, "EQ Q 2", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_GAIN3:
+            param_info->id = PARAM_EQ_GAIN3;
+            strncpy(param_info->name, "EQ Gain 3", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = -24.0;
+            param_info->max_value = 24.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_FREQ3:
+            param_info->id = PARAM_EQ_FREQ3;
+            strncpy(param_info->name, "EQ Freq 3", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 10000.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_Q3:
+            param_info->id = PARAM_EQ_Q3;
+            strncpy(param_info->name, "EQ Q 3", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    switch (param_id) {
+        case PARAM_SPECTRUM_DRAWING_STYLE:
+            *value = self->params.spectrum_drawing_style;
+            return true;
+        case PARAM_CUTOFF:
+            *value = self->params.cutoff;
+            return true;
+        case PARAM_RESONANCE:
+            *value = self->params.resonance;
+            return true;
+        case PARAM_DRIVE:
+            *value = self->params.drive;
+            return true;
+        case PARAM_OUTPUT:
+            *value = self->params.output;
+            return true;
+        case PARAM_MIX:
+            *value = self->params.mix;
+            return true;
+        case PARAM_BYPASS:
+            *value = self->params.bypass ? 1.0 : 0.0;
+            return true;
+        case PARAM_EQ_GAIN1:
+            *value = self->params.eq_gain[0];
+            return true;
+        case PARAM_EQ_FREQ1:
+            *value = self->params.eq_freq[0];
+            return true;
+        case PARAM_EQ_Q1:
+            *value = self->params.eq_q[0];
+            return true;
+        case PARAM_EQ_GAIN2:
+            *value = self->params.eq_gain[1];
+            return true;
+        case PARAM_EQ_FREQ2:
+            *value = self->params.eq_freq[1];
+            return true;
+        case PARAM_EQ_Q2:
+            *value = self->params.eq_q[1];
+            return true;
+        case PARAM_EQ_GAIN3:
+            *value = self->params.eq_gain[2];
+            return true;
+        case PARAM_EQ_FREQ3:
+            *value = self->params.eq_freq[2];
+            return true;
+        case PARAM_EQ_Q3:
+            *value = self->params.eq_q[2];
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size) {
+    // For simplicity and CLAP validator compatibility, we don't provide custom text conversion
+    // The host will use default numeric formatting for all parameters
+    return false;
+}
+
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value) {
+    // For simplicity and CLAP validator compatibility, we don't provide custom text conversion
+    // The host will handle text to value conversion using default numeric parsing
+    return false;
+}
+
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
+    // Handle parameter automation events
+    const uint32_t num_events = in->size(in);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t* hdr = in->get(in, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID && hdr->type == CLAP_EVENT_PARAM_VALUE) {
+            const clap_event_param_value_t* pev = (const clap_event_param_value_t*)hdr;
+            // Handle parameter value change
+        }
+    }
+}
+
+static const clap_plugin_params_t my_plugin_params_extension = {
+    my_plugin_params_count,
+    my_plugin_params_get_info,
+    my_plugin_params_get_value,
+    my_plugin_params_value_to_text,
+    my_plugin_params_text_to_value,
+    my_plugin_params_flush,
+};
 
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
     
+
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        return &my_plugin_params_extension;
+    }
+    
+
 #if VSTGUI_ENABLED
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
         return &my_gui_extension;
@@ -335,7 +743,8 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         return NULL;
     }
 
-    my_plugin_t *self = (my_plugin_t *)calloc(1, sizeof(my_plugin_t));
+    // Use new instead of calloc for proper C++ object construction
+    my_plugin_t *self = new(std::nothrow) my_plugin_t();
     if (!self) {
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
@@ -349,7 +758,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->gui_editor = new MyPluginEditor(host);
     if (!self->gui_editor) {
         fprintf(stderr, "MyPlugin: Error - failed to create GUI editor\n");
-        free(self);
+        delete self;
         return NULL;
     }
 #endif

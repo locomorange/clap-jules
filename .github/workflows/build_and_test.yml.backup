@@ -15,49 +15,42 @@ jobs:
     name: Build on ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             name: "Linux with GUI"
-            cmakeConfig: ""
           - os: windows-latest
             name: "Windows with GUI"
-            cmakeConfig: ""
           - os: macos-latest
             name: "macOS with GUI"
-            cmakeConfig: ""
           - os: ubuntu-latest
             name: "Linux without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: windows-latest
             name: "Windows without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: macos-latest
             name: "macOS without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      timeout-minutes: 5
       with:
         submodules: 'recursive'
 
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
-      timeout-minutes: 5
       uses: microsoft/setup-msbuild@v2
       with:
         vs-version: 'latest'
 
     - name: Install VSTGUI dependencies (Linux with GUI only)
       if: runner.os == 'Linux' && !contains(matrix.name, 'without GUI')
-      timeout-minutes: 3
+      timeout-minutes: 10
       run: |
-        export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get update -qq
-        sudo apt-get install -qq -y \
+        sudo apt update
+        sudo apt install -y \
           build-essential \
           pkg-config \
           libx11-dev \
@@ -71,10 +64,7 @@ jobs:
           libfreetype6-dev \
           libglib2.0-dev \
           libcairo2-dev \
-          libpango1.0-dev || {
-          echo "Failed to install GUI dependencies, allowing build to continue"
-          exit 0
-        }
+          libpango1.0-dev
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -93,24 +83,12 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      timeout-minutes: 25
-      shell: bash
-      run: |
-        echo "Starting CMake configuration on ${{ runner.os }} with config: ${{ matrix.cmakeConfig }}"
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          cmake . -B build -G "Visual Studio 17 2022" -A x64 ${{ matrix.cmakeConfig }}
-        else
-          cmake . -B build ${{ matrix.cmakeConfig }}
-        fi
-        echo "CMake configuration completed successfully"
+      timeout-minutes: 5
+      run: cmake . -B build ${{ matrix.cmakeConfig }}
 
     - name: Build project
-      timeout-minutes: 30
-      shell: bash
-      run: |
-        echo "Starting build on ${{ runner.os }}"
-        cmake --build build --config Release
-        echo "Build completed successfully"
+      run: cmake --build build --config Release
+      timeout-minutes: 15
 
     - name: Validate CLAP Plugin (Ubuntu only)
       if: runner.os == 'Linux'
@@ -228,44 +206,38 @@ jobs:
         include:
           - os: ubuntu-latest
             name: "Linux with GUI"
-            cmakeConfig: ""
           - os: windows-latest
             name: "Windows with GUI"
-            cmakeConfig: ""
           - os: macos-latest
             name: "macOS with GUI"
-            cmakeConfig: ""
           - os: ubuntu-latest
             name: "Linux without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: windows-latest
             name: "Windows without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: macos-latest
             name: "macOS without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      timeout-minutes: 5
       with:
         submodules: 'recursive'
 
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
-      timeout-minutes: 5
       uses: microsoft/setup-msbuild@v2
       with:
         vs-version: 'latest'
 
     - name: Install VSTGUI dependencies (Linux with GUI only)
       if: runner.os == 'Linux' && !contains(matrix.name, 'without GUI')
-      timeout-minutes: 3
+      timeout-minutes: 10
       run: |
-        export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get update -qq
-        sudo apt-get install -qq -y \
+        sudo apt update
+        sudo apt install -y \
           build-essential \
           pkg-config \
           libx11-dev \
@@ -279,10 +251,7 @@ jobs:
           libfreetype6-dev \
           libglib2.0-dev \
           libcairo2-dev \
-          libpango1.0-dev || {
-          echo "Failed to install GUI dependencies, allowing build to continue"
-          exit 0
-        }
+          libpango1.0-dev
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -301,24 +270,12 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      timeout-minutes: 25
-      shell: bash
-      run: |
-        echo "Starting CMake configuration on ${{ runner.os }} with config: ${{ matrix.cmakeConfig }}"
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          cmake . -B build -G "Visual Studio 17 2022" -A x64 ${{ matrix.cmakeConfig }}
-        else
-          cmake . -B build ${{ matrix.cmakeConfig }}
-        fi
-        echo "CMake configuration completed successfully"
+      timeout-minutes: 5
+      run: cmake . -B build ${{ matrix.cmakeConfig }}
 
     - name: Build project (including tests)
-      timeout-minutes: 30
-      shell: bash
-      run: |
-        echo "Starting build on ${{ runner.os }}"
-        cmake --build build --config Release
-        echo "Build completed successfully"
+      timeout-minutes: 15
+      run: cmake --build build --config Release
 
     - name: Run tests
       run: ctest --test-dir build -C Release --output-on-failure
