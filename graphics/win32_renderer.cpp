@@ -32,7 +32,7 @@ bool Win32Renderer::initialize(HWND parent_window, int width, int height) {
     height_ = height;
     
     // Create a child window within the parent
-    hwnd_ = CreateWindowEx(
+    hwnd_ = CreateWindowExW(
         0,                          // Extended window style
         L"STATIC",                  // Window class name
         L"CLAP Plugin Window",      // Window title
