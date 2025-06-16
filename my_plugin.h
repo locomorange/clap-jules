@@ -1,10 +1,14 @@
 #pragma once
 
 #include <clap/clap.h>
+
+#ifdef __cplusplus
+// C++ includes only when compiling as C++
 #include <complex>
 #include <vector>
 #include <atomic>
 #include <mutex>
+#endif
 
 // Forward declaration
 #if VSTGUI_ENABLED
@@ -47,17 +51,16 @@ enum SpectrumDrawStyle {
     SPECTRUM_STYLE_COUNT
 };
 
-// Spectrum analyzer data structure
-typedef struct {
-    std::vector<float> magnitudes;  // Frequency magnitudes (0-1 range)
-    std::vector<float> frequencies; // Corresponding frequencies in Hz
-    std::atomic<bool> data_ready;
-    std::mutex data_mutex;
-    SpectrumDrawStyle draw_style;
-    bool enabled;
-} spectrum_data_t;
+// Forward declaration of opaque C++ implementation
+#ifdef __cplusplus
+class SpectrumAnalyzer;
+class FFTProcessor;
+#else
+typedef struct SpectrumAnalyzer SpectrumAnalyzer;
+typedef struct FFTProcessor FFTProcessor;
+#endif
 
-// Plugin parameters structure
+// Plugin parameters structure (pure C)
 typedef struct {
     double cutoff;
     double resonance;
@@ -72,23 +75,13 @@ typedef struct {
     SpectrumDrawStyle spectrum_style;
 } plugin_params_t;
 
-// FFT and spectrum analysis data
-typedef struct {
-    std::vector<std::complex<float>> fft_buffer;
-    std::vector<float> window_function;
-    std::vector<float> input_buffer;
-    size_t buffer_index;
-    size_t frames_since_last_update;
-    double sample_rate;
-    spectrum_data_t spectrum_data;
-} fft_data_t;
-
-// Basic plugin structure
+// Basic plugin structure (pure C with opaque pointers)
 typedef struct {
     clap_plugin_t plugin;
     const clap_host_t* host;
     plugin_params_t params;
-    fft_data_t fft_data;
+    FFTProcessor* fft_processor;       // Opaque C++ object
+    SpectrumAnalyzer* spectrum_analyzer; // Opaque C++ object
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif
@@ -97,23 +90,42 @@ typedef struct {
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
 
-// Helper functions to access plugin data from GUI
+// C interface functions
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Function to get spectrum data from plugin (thread-safe)
-bool get_plugin_spectrum_data(const my_plugin_t* plugin, std::vector<float>& magnitudes, std::vector<float>& frequencies);
+// FFT Processor C interface functions
+FFTProcessor* fft_processor_create(double sample_rate);
+void fft_processor_destroy(FFTProcessor* processor);
+void fft_processor_process(FFTProcessor* processor, const float* input, size_t frame_count);
+void fft_processor_get_spectrum_data(FFTProcessor* processor, float* magnitudes, float* frequencies, size_t* count);
 
-// Function to update spectrum parameters
+// Spectrum Analyzer C interface functions  
+SpectrumAnalyzer* spectrum_analyzer_create(void);
+void spectrum_analyzer_destroy(SpectrumAnalyzer* analyzer);
+void spectrum_analyzer_update_data(SpectrumAnalyzer* analyzer, const float* magnitudes, const float* frequencies, size_t count);
+bool spectrum_analyzer_get_data(SpectrumAnalyzer* analyzer, float* magnitudes, float* frequencies, size_t* count);
+void spectrum_analyzer_set_enabled(SpectrumAnalyzer* analyzer, bool enabled);
+void spectrum_analyzer_set_style(SpectrumAnalyzer* analyzer, SpectrumDrawStyle style);
+
+// Plugin helper functions
+bool get_plugin_spectrum_data(const my_plugin_t* plugin, float* magnitudes, float* frequencies, size_t* count);
 void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled);
 void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style);
 
-// FFT and spectrum analysis functions (for testing)
-void init_fft_data(fft_data_t* fft_data, double sample_rate);
-void cleanup_fft_data(fft_data_t* fft_data);
-void generate_hann_window(std::vector<float>& window, size_t size);
-
 #ifdef __cplusplus
 }
+
+// C++ interface functions (only available when compiling as C++)
+#include <vector>
+
+// Legacy C++ interface for backwards compatibility
+bool get_plugin_spectrum_data(const my_plugin_t* plugin, std::vector<float>& magnitudes, std::vector<float>& frequencies);
+
+// Testing functions (C++ only)
+void init_fft_data(void* fft_data, double sample_rate);
+void cleanup_fft_data(void* fft_data);
+void generate_hann_window(std::vector<float>& window, size_t size);
+
 #endif

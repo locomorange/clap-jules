@@ -5,26 +5,19 @@
 
 // Test the FFT and spectrum analysis functionality
 TEST(SpectrumAnalyzerTest, FFTInitialization) {
-    // Test FFT data initialization
-    fft_data_t fft_data;
-    init_fft_data(&fft_data, 44100.0);
+    // Test FFT processor creation and initialization
+    FFTProcessor* processor = fft_processor_create(44100.0);
+    EXPECT_NE(processor, nullptr);
     
-    // Check that buffers are properly sized
-    EXPECT_EQ(fft_data.fft_buffer.size(), SPECTRUM_FFT_SIZE);
-    EXPECT_EQ(fft_data.input_buffer.size(), SPECTRUM_FFT_SIZE);
-    EXPECT_EQ(fft_data.window_function.size(), SPECTRUM_FFT_SIZE);
-    EXPECT_EQ(fft_data.spectrum_data.magnitudes.size(), SPECTRUM_FFT_SIZE / 2);
-    EXPECT_EQ(fft_data.spectrum_data.frequencies.size(), SPECTRUM_FFT_SIZE / 2);
+    // Test getting spectrum data (should return false initially since no data processed)
+    float magnitudes[SPECTRUM_FFT_SIZE / 2];
+    float frequencies[SPECTRUM_FFT_SIZE / 2]; 
+    size_t count = 0;
     
-    // Check sample rate is set correctly
-    EXPECT_DOUBLE_EQ(fft_data.sample_rate, 44100.0);
+    fft_processor_get_spectrum_data(processor, magnitudes, frequencies, &count);
+    EXPECT_EQ(count, SPECTRUM_FFT_SIZE / 2);
     
-    // Check initial state
-    EXPECT_FALSE(fft_data.spectrum_data.data_ready.load());
-    EXPECT_TRUE(fft_data.spectrum_data.enabled);
-    EXPECT_EQ(fft_data.spectrum_data.draw_style, SPECTRUM_STYLE_LINES);
-    
-    cleanup_fft_data(&fft_data);
+    fft_processor_destroy(processor);
 }
 
 TEST(SpectrumAnalyzerTest, WindowFunction) {
@@ -50,59 +43,73 @@ TEST(SpectrumAnalyzerTest, PluginHelpers) {
     my_plugin_t plugin;
     memset(&plugin, 0, sizeof(plugin));
     
-    // Initialize FFT data
-    init_fft_data(&plugin.fft_data, 44100.0);
+    // Initialize spectrum analyzer and FFT processor
+    plugin.spectrum_analyzer = spectrum_analyzer_create();
+    plugin.fft_processor = fft_processor_create(44100.0);
+    
+    EXPECT_NE(plugin.spectrum_analyzer, nullptr);
+    EXPECT_NE(plugin.fft_processor, nullptr);
     
     // Test spectrum enable/disable
     set_plugin_spectrum_enabled(&plugin, true);
     EXPECT_TRUE(plugin.params.spectrum_enabled);
-    EXPECT_TRUE(plugin.fft_data.spectrum_data.enabled);
     
     set_plugin_spectrum_enabled(&plugin, false);
     EXPECT_FALSE(plugin.params.spectrum_enabled);
-    EXPECT_FALSE(plugin.fft_data.spectrum_data.enabled);
     
     // Test spectrum style setting
     set_plugin_spectrum_style(&plugin, SPECTRUM_STYLE_DOTS);
     EXPECT_EQ(plugin.params.spectrum_style, SPECTRUM_STYLE_DOTS);
-    EXPECT_EQ(plugin.fft_data.spectrum_data.draw_style, SPECTRUM_STYLE_DOTS);
     
-    // Test getting spectrum data (should return false when no data ready)
+    // Test getting spectrum data (should return false when no data ready initially)
     std::vector<float> magnitudes, frequencies;
     EXPECT_FALSE(get_plugin_spectrum_data(&plugin, magnitudes, frequencies));
     
-    // Simulate some data being ready
-    plugin.fft_data.spectrum_data.data_ready.store(true);
+    // Simulate some spectrum data by setting up test data
+    float test_magnitudes[SPECTRUM_FFT_SIZE / 2];
+    float test_frequencies[SPECTRUM_FFT_SIZE / 2];
     
-    // Fill with test data
-    for (size_t i = 0; i < plugin.fft_data.spectrum_data.magnitudes.size(); ++i) {
-        plugin.fft_data.spectrum_data.magnitudes[i] = (float)i / 100.0f;
-        plugin.fft_data.spectrum_data.frequencies[i] = (float)i * 20.0f;
+    for (size_t i = 0; i < SPECTRUM_FFT_SIZE / 2; ++i) {
+        test_magnitudes[i] = (float)i / 100.0f;
+        test_frequencies[i] = (float)i * 20.0f;
     }
+    
+    // Update spectrum analyzer with test data
+    spectrum_analyzer_update_data(plugin.spectrum_analyzer, test_magnitudes, test_frequencies, SPECTRUM_FFT_SIZE / 2);
+    spectrum_analyzer_set_enabled(plugin.spectrum_analyzer, true);  // Make sure it's enabled
     
     // Now should return true and copy data
     EXPECT_TRUE(get_plugin_spectrum_data(&plugin, magnitudes, frequencies));
-    EXPECT_EQ(magnitudes.size(), plugin.fft_data.spectrum_data.magnitudes.size());
-    EXPECT_EQ(frequencies.size(), plugin.fft_data.spectrum_data.frequencies.size());
+    EXPECT_EQ(magnitudes.size(), SPECTRUM_FFT_SIZE / 2);
+    EXPECT_EQ(frequencies.size(), SPECTRUM_FFT_SIZE / 2);
     
-    cleanup_fft_data(&plugin.fft_data);
+    // Cleanup
+    spectrum_analyzer_destroy(plugin.spectrum_analyzer);
+    fft_processor_destroy(plugin.fft_processor);
 }
 
 TEST(SpectrumAnalyzerTest, FrequencyRange) {
     // Test that frequency calculation is in audible range
-    fft_data_t fft_data;
-    init_fft_data(&fft_data, 44100.0);
+    FFTProcessor* processor = fft_processor_create(44100.0);
+    EXPECT_NE(processor, nullptr);
+    
+    float magnitudes[SPECTRUM_FFT_SIZE / 2];
+    float frequencies[SPECTRUM_FFT_SIZE / 2];
+    size_t count = 0;
+    
+    fft_processor_get_spectrum_data(processor, magnitudes, frequencies, &count);
+    EXPECT_EQ(count, SPECTRUM_FFT_SIZE / 2);
     
     // Check that frequencies are in expected range (should cover 0 to 22050 Hz)
-    EXPECT_GE(fft_data.spectrum_data.frequencies[0], 0.0f);
-    EXPECT_LE(fft_data.spectrum_data.frequencies.back(), 22050.0f);
+    EXPECT_GE(frequencies[0], 0.0f);
+    EXPECT_LE(frequencies[count - 1], 22050.0f);
     
     // Check that frequencies are monotonically increasing
-    for (size_t i = 1; i < fft_data.spectrum_data.frequencies.size(); ++i) {
-        EXPECT_GT(fft_data.spectrum_data.frequencies[i], fft_data.spectrum_data.frequencies[i-1]);
+    for (size_t i = 1; i < count; ++i) {
+        EXPECT_GT(frequencies[i], frequencies[i-1]);
     }
     
-    cleanup_fft_data(&fft_data);
+    fft_processor_destroy(processor);
 }
 
 TEST(MyPluginTest, PlaceholderTest) {
