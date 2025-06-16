@@ -2,8 +2,10 @@
 
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+#include <clap/ext/params.h>
 #include <memory>
 #include "graphics/skia_graphics.h"
+#include "spectrum_analyzer.h"
 
 #if defined(__linux__) && defined(HAVE_X11)
 #include "graphics/x11_renderer.h"
@@ -13,9 +15,22 @@
 #include "graphics/win32_renderer.h"
 #endif
 
+// Parameter IDs
+enum {
+    PARAM_VISUALIZATION_TYPE = 0,
+    PARAM_COUNT
+};
+
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
+    
+    // Audio processing
+    double sample_rate = 44100.0;
+    bool is_processing = false;
+    
+    // Spectrum analyzer
+    std::unique_ptr<clap_jules::audio::SpectrumAnalyzer> spectrum_analyzer = nullptr;
     
     // GUI-related data
     bool gui_created = false;
@@ -42,6 +57,9 @@ typedef struct {
     
     // Render callback data
     bool needs_redraw = false;
+    
+    // Parameters
+    std::atomic<int> visualization_type_param = 0; // 0=Lines, 1=Dots, 2=Bins, 3=Fill
 } my_plugin_t;
 
 // Plugin factory ID

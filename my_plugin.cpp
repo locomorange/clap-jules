@@ -1,11 +1,13 @@
 #include "my_plugin.h"
 #include "graphics/skia_graphics.h"
+#include "spectrum_analyzer.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 #include <cmath>    // For sin/cos
 #include <memory>   // For std::make_unique, std::unique_ptr
 #include <clap/ext/gui.h>
+#include <clap/ext/params.h>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -40,6 +42,14 @@ static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char 
 static bool my_plugin_gui_show(const clap_plugin_t *plugin);
 static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
 
+// --- Parameters Extension Function Declarations ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin);
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info);
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value);
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size);
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value);
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out);
+
 // --- GUI Extension Implementation ---
 static const clap_plugin_gui_t my_plugin_gui = {
     my_plugin_gui_is_api_supported,
@@ -59,20 +69,30 @@ static const clap_plugin_gui_t my_plugin_gui = {
     my_plugin_gui_hide,
 };
 
+// --- Parameters Extension Implementation ---
+static const clap_plugin_params_t my_plugin_params = {
+    my_plugin_params_count,
+    my_plugin_params_get_info,
+    my_plugin_params_get_value,
+    my_plugin_params_value_to_text,
+    my_plugin_params_text_to_value,
+    my_plugin_params_flush,
+};
+
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, CLAP_PLUGIN_FEATURE_ANALYZER, nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
     "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
+    "Spectrum Analyzer", // name
     "My Company",           // vendor
     "https://example.com",  // url
     "https://example.com/bugtracker", // manual_url
     "https://example.com/support",    // support_url
     "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "A real-time spectrum analyzer CLAP audio plugin with multiple visualization modes.", // description
     plugin_features, // features
     // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
@@ -83,15 +103,24 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
+    // Initialize spectrum analyzer
+    self->spectrum_analyzer = std::make_unique<clap_jules::audio::SpectrumAnalyzer>(1024, 44100.0f);
+    
     // Initialize GUI state
     self->gui_created = false;
     self->gui_visible = false;
-    self->gui_width = 320;
-    self->gui_height = 240;
+    self->gui_width = 800;  // Larger size for spectrum display
+    self->gui_height = 600;
     self->gui_api = nullptr;
     self->gui_is_floating = false;
     self->native_window = nullptr;
     self->needs_redraw = true;
+    self->is_processing = false;
+    self->sample_rate = 44100.0;
+    
+    // Initialize parameters
+    self->visualization_type_param.store(0); // Default to Lines
+    
 #if defined(__linux__) && defined(HAVE_X11)
     self->x11_renderer = nullptr;
 #endif
@@ -132,7 +161,15 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    // Allocate and prepare resources needed for processing (e.g., buffers)
+    
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    self->sample_rate = sample_rate;
+    
+    // Update spectrum analyzer sample rate
+    if (self->spectrum_analyzer) {
+        self->spectrum_analyzer->setSampleRate(static_cast<float>(sample_rate));
+    }
+    
     return true;
 }
 
@@ -143,11 +180,15 @@ static void my_plugin_deactivate(const struct clap_plugin *plugin) {
 
 static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
     printf("MyPlugin: Starting processing\n");
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    self->is_processing = true;
     return true;
 }
 
 static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
     printf("MyPlugin: Stopping processing\n");
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    self->is_processing = false;
 }
 
 static void my_plugin_reset(const struct clap_plugin *plugin) {
@@ -156,45 +197,55 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->is_processing) {
+        return CLAP_PROCESS_CONTINUE;
+    }
+    
+    // Handle parameter changes
+    const uint32_t num_events = process->in_events->size(process->in_events);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
+            switch (hdr->type) {
+                case CLAP_EVENT_PARAM_VALUE: {
+                    const clap_event_param_value_t* ev = (const clap_event_param_value_t*)hdr;
+                    if (ev->param_id == PARAM_VISUALIZATION_TYPE) {
+                        self->visualization_type_param.store(static_cast<int>(ev->value));
+                        if (self->spectrum_analyzer) {
+                            self->spectrum_analyzer->setVisualizationType(
+                                static_cast<clap_jules::audio::SpectrumVisualizationType>(ev->value));
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
 
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
+    // Process audio and feed to spectrum analyzer
+    if (process->audio_inputs_count > 0 && process->audio_outputs_count > 0) {
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
 
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+        if (in_buf->data32 && out_buf->data32 && in_buf->channel_count > 0) {
+            // Feed audio to spectrum analyzer (use first channel)
+            if (self->spectrum_analyzer) {
+                self->spectrum_analyzer->processAudio(in_buf->data32[0], process->frames_count);
+            }
+            
+            // Pass audio through (simple passthrough for now)
+            for (uint32_t ch = 0; ch < std::min(in_buf->channel_count, out_buf->channel_count); ++ch) {
+                if (in_buf->data32[ch] && out_buf->data32[ch]) {
+                    for (uint32_t i = 0; i < process->frames_count; ++i) {
+                        out_buf->data32[ch][i] = in_buf->data32[ch][i];
+                    }
+                }
+            }
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 
@@ -206,8 +257,11 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
         return &my_plugin_gui;
     }
     
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        printf("MyPlugin: Returning Parameters extension\n");
+        return &my_plugin_params;
+    }
+    
     return NULL; // Extension not supported
 }
 
@@ -229,108 +283,52 @@ static void my_plugin_render_content(my_plugin_t *self) {
         return;
     }
     
-    // Render the plugin's GUI content
-    self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50)); // Dark blue-gray background
+    // Clear background
+    self->graphics_context->clear(clap_jules::graphics::Color(20, 20, 30)); // Dark background
     
-    // Animation counter
-    static int frame_counter = 0;
-    frame_counter++;
-    float time = frame_counter * 0.05f;
+    // Draw title
+    self->graphics_context->drawText("Real-time Spectrum Analyzer", 
+                                   clap_jules::graphics::Point(20, 30), 
+                                   clap_jules::graphics::Color(255, 255, 255), 16.0f);
     
-    // Draw a grid pattern in the background
-    for (int i = 0; i < self->gui_width; i += 40) {
-        self->graphics_context->drawLine(clap_jules::graphics::Point(i, 0), 
-                                       clap_jules::graphics::Point(i, self->gui_height),
-                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
-    }
-    for (int j = 0; j < self->gui_height; j += 40) {
-        self->graphics_context->drawLine(clap_jules::graphics::Point(0, j), 
-                                       clap_jules::graphics::Point(self->gui_width, j),
-                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
-    }
-    
-    // Draw various shapes for testing
-    // 1. Static blue rectangle (top-left)
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
-                                   clap_jules::graphics::Color(80, 120, 200));
-    
-    // 2. Pulsing green circle (center)
-    float pulse_radius = 40 + 15 * sin(time * 2.0f);
-    self->graphics_context->drawCircle(clap_jules::graphics::Point(self->gui_width/2, self->gui_height/2), 
-                                     pulse_radius, clap_jules::graphics::Color(120, 200, 120));
-    
-    // 3. Color-changing circles around the center
-    for (int i = 0; i < 6; i++) {
-        float angle = time + i * 3.14159f / 3.0f;
-        float orbit_x = self->gui_width/2 + 80 * cos(angle);
-        float orbit_y = self->gui_height/2 + 80 * sin(angle);
-        int r = (int)(127 + 127 * sin(time + i));
-        int g = (int)(127 + 127 * sin(time + i + 2.0f));
-        int b = (int)(127 + 127 * sin(time + i + 4.0f));
-        self->graphics_context->drawCircle(clap_jules::graphics::Point(orbit_x, orbit_y), 15, 
-                                         clap_jules::graphics::Color(r, g, b));
+    // Draw visualization type indicator
+    const char* vis_type_names[] = {"Lines", "Dots", "Bins", "Fill"};
+    int vis_type = self->visualization_type_param.load();
+    if (vis_type >= 0 && vis_type < 4) {
+        char text[64];
+        snprintf(text, sizeof(text), "Visualization: %s", vis_type_names[vis_type]);
+        self->graphics_context->drawText(text, 
+                                       clap_jules::graphics::Point(20, 50), 
+                                       clap_jules::graphics::Color(200, 200, 200), 12.0f);
     }
     
-    // 4. Animated rectangles with different colors (top-right corner)
-    for (int i = 0; i < 3; i++) {
-        float rect_x = self->gui_width - 150 + i * 20;
-        float rect_y = 20 + 15 * sin(time * 1.5f + i);
-        int color_intensity = (int)(100 + 100 * sin(time + i * 2.0f));
-        self->graphics_context->drawRect(clap_jules::graphics::Rect(rect_x, rect_y, 30, 50), 
-                                       clap_jules::graphics::Color(color_intensity, 255 - color_intensity, 150));
+    // Main spectrum display area
+    clap_jules::graphics::Rect spectrum_bounds(20, 80, self->gui_width - 40, self->gui_height - 120);
+    
+    // Draw spectrum border
+    self->graphics_context->drawRect(spectrum_bounds, clap_jules::graphics::Color(100, 100, 100));
+    
+    // Render spectrum analyzer if available
+    if (self->spectrum_analyzer) {
+        self->spectrum_analyzer->render(self->graphics_context.get(), spectrum_bounds);
     }
     
-    // 5. Moving purple line
-    float line_y = self->gui_height - 80 + 20 * sin(time);
-    self->graphics_context->drawLine(clap_jules::graphics::Point(20, line_y), 
-                                   clap_jules::graphics::Point(self->gui_width - 20, line_y),
-                                   clap_jules::graphics::Color(200, 100, 255), 3.0f);
+    // Draw frequency scale labels (simplified)
+    float sample_rate = static_cast<float>(self->sample_rate);
+    self->graphics_context->drawText("0Hz", 
+                                   clap_jules::graphics::Point(spectrum_bounds.x, spectrum_bounds.y + spectrum_bounds.height + 15), 
+                                   clap_jules::graphics::Color(150, 150, 150), 10.0f);
     
-    // 6. Bouncing animated squares
-    float bounce_x = 50 + 30 * sin(time * 2.0f);
-    float bounce_y = 80 + 20 * cos(time * 1.8f);
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x, bounce_y, 20, 20), 
-                                   clap_jules::graphics::Color(255, 200, 100));
+    char freq_text[32];
+    snprintf(freq_text, sizeof(freq_text), "%.0fHz", sample_rate / 4);
+    self->graphics_context->drawText(freq_text, 
+                                   clap_jules::graphics::Point(spectrum_bounds.x + spectrum_bounds.width / 2, spectrum_bounds.y + spectrum_bounds.height + 15), 
+                                   clap_jules::graphics::Color(150, 150, 150), 10.0f);
     
-    // Another bouncing square with different pattern
-    float bounce_x2 = self->gui_width - 80 + 25 * cos(time * 1.3f);
-    float bounce_y2 = self->gui_height - 120 + 30 * sin(time * 1.7f);
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x2, bounce_y2, 25, 25), 
-                                   clap_jules::graphics::Color(255, 100, 200));
-    
-    // 7. Text with different sizes and colors
-    self->graphics_context->drawText("CLAP-Jules", clap_jules::graphics::Point(20, 30), 
-                                   clap_jules::graphics::Color(255, 255, 255), 24.0f);
-    self->graphics_context->drawText("Graphics Test", clap_jules::graphics::Point(20, 55), 
-                                   clap_jules::graphics::Color(255, 255, 100), 16.0f);
-    
-    // 8. Frame counter display
-    char frame_text[64];
-    snprintf(frame_text, sizeof(frame_text), "Frame: %d", frame_counter);
-    self->graphics_context->drawText(frame_text, clap_jules::graphics::Point(self->gui_width - 120, 30), 
-                                   clap_jules::graphics::Color(100, 255, 100), 14.0f);
-    
-    // 9. Drawing some lines to create a star pattern (bottom-left)
-    float star_center_x = 80;
-    float star_center_y = self->gui_height - 80;
-    for (int i = 0; i < 8; i++) {
-        float angle = i * 3.14159f / 4.0f + time * 0.5f;
-        float end_x = star_center_x + 30 * cos(angle);
-        float end_y = star_center_y + 30 * sin(angle);
-        int line_color = (int)(150 + 100 * sin(time + i));
-        self->graphics_context->drawLine(clap_jules::graphics::Point(star_center_x, star_center_y),
-                                       clap_jules::graphics::Point(end_x, end_y),
-                                       clap_jules::graphics::Color(line_color, 200, 255 - line_color), 2.0f);
-    }
-    
-    // 10. Status text at bottom
-    self->graphics_context->drawText("GUI Active & Rendering", clap_jules::graphics::Point(20, self->gui_height - 20), 
-                                   clap_jules::graphics::Color(255, 255, 255), 18.0f);
-    
-    // Finalize rendering
-    self->graphics_context->present();
-    
-    printf("MyPlugin: Rendered frame %d at size %ux%u\n", frame_counter, self->gui_width, self->gui_height);
+    snprintf(freq_text, sizeof(freq_text), "%.0fHz", sample_rate / 2);
+    self->graphics_context->drawText(freq_text, 
+                                   clap_jules::graphics::Point(spectrum_bounds.x + spectrum_bounds.width - 40, spectrum_bounds.y + spectrum_bounds.height + 15), 
+                                   clap_jules::graphics::Color(150, 150, 150), 10.0f);
 }
 
 static bool my_plugin_present_graphics(my_plugin_t *self) {
@@ -665,6 +663,100 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     self->gui_visible = false;
     printf("MyPlugin: GUI - Window is now hidden\n");
     return true;
+}
+
+// --- Parameters Extension Implementation ---
+
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
+    return PARAM_COUNT;
+}
+
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info) {
+    if (param_index >= PARAM_COUNT) {
+        return false;
+    }
+    
+    switch (param_index) {
+        case PARAM_VISUALIZATION_TYPE:
+            param_info->id = PARAM_VISUALIZATION_TYPE;
+            strncpy(param_info->name, "Visualization Type", sizeof(param_info->name));
+            strncpy(param_info->module, "Display", sizeof(param_info->module));
+            param_info->min_value = 0.0;
+            param_info->max_value = 3.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM;
+            param_info->cookie = nullptr;
+            return true;
+    }
+    
+    return false;
+}
+
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    switch (param_id) {
+        case PARAM_VISUALIZATION_TYPE:
+            *value = static_cast<double>(self->visualization_type_param.load());
+            return true;
+    }
+    
+    return false;
+}
+
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size) {
+    switch (param_id) {
+        case PARAM_VISUALIZATION_TYPE: {
+            const char* names[] = {"Lines", "Dots", "Bins", "Fill"};
+            int index = static_cast<int>(value);
+            if (index >= 0 && index < 4) {
+                strncpy(display, names[index], size);
+                return true;
+            }
+            break;
+        }
+    }
+    
+    return false;
+}
+
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value) {
+    switch (param_id) {
+        case PARAM_VISUALIZATION_TYPE: {
+            const char* names[] = {"Lines", "Dots", "Bins", "Fill"};
+            for (int i = 0; i < 4; ++i) {
+                if (strcmp(display, names[i]) == 0) {
+                    *value = static_cast<double>(i);
+                    return true;
+                }
+            }
+            break;
+        }
+    }
+    
+    return false;
+}
+
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
+    // Handle parameter changes from the input events
+    if (!in) return;
+    
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    const uint32_t num_events = in->size(in);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t* hdr = in->get(in, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID && hdr->type == CLAP_EVENT_PARAM_VALUE) {
+            const clap_event_param_value_t* ev = (const clap_event_param_value_t*)hdr;
+            if (ev->param_id == PARAM_VISUALIZATION_TYPE) {
+                self->visualization_type_param.store(static_cast<int>(ev->value));
+                if (self->spectrum_analyzer) {
+                    self->spectrum_analyzer->setVisualizationType(
+                        static_cast<clap_jules::audio::SpectrumVisualizationType>(ev->value));
+                }
+            }
+        }
+    }
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
