@@ -121,7 +121,7 @@ CLAP_EXPORT void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyl
 #include <vector>
 
 // Legacy C++ interface for backwards compatibility
-bool get_plugin_spectrum_data(const my_plugin_t* plugin, std::vector<float>& magnitudes, std::vector<float>& frequencies);
+CLAP_EXPORT bool get_plugin_spectrum_data(const my_plugin_t* plugin, std::vector<float>& magnitudes, std::vector<float>& frequencies);
 
 // Testing functions (C++ only)
 CLAP_EXPORT void init_fft_data(void* fft_data, double sample_rate);
