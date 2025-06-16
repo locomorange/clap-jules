@@ -158,13 +158,39 @@ message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstC
 add_subdirectory(libs/googletest)
 enable_testing()
 
+# Create a static library for testing to avoid Windows DLL export/import issues
+add_library(my_plugin_static STATIC ${PLUGIN_SOURCES})
+target_link_libraries(my_plugin_static PRIVATE clap)
+
+# Apply same configuration as the shared library
+if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
+    target_link_libraries(my_plugin_static PRIVATE vstgui)
+    target_include_directories(my_plugin_static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/vstgui)
+    target_compile_definitions(my_plugin_static PRIVATE VSTGUI_ENABLED=1)
+    target_compile_definitions(my_plugin_static PRIVATE ${VSTGUI_COMPILE_DEFINITIONS})
+else()
+    target_compile_definitions(my_plugin_static PRIVATE VSTGUI_ENABLED=0)
+endif()
+
+# Platform-specific settings for static lib (same as shared lib)
+if(APPLE)
+    target_compile_definitions(my_plugin_static PRIVATE IS_MAC=1)
+    target_link_libraries(my_plugin_static PRIVATE "-framework CoreFoundation" "-framework AppKit" "-framework CoreGraphics")
+elseif(UNIX)
+    target_compile_definitions(my_plugin_static PRIVATE IS_LINUX=1)
+elseif(WIN32)
+    target_compile_definitions(my_plugin_static PRIVATE IS_WIN=1)
+endif()
+
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
-target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin clap)
+target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_plugin_static clap)
 target_include_directories(my_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Ensure test has same VSTGUI definition as plugin
 if (${CLAP_INCLUDE_GUI} AND VSTGUI_BUILD_ENABLED)
     target_compile_definitions(my_plugin_tests PRIVATE VSTGUI_ENABLED=1)
+else()
+    target_compile_definitions(my_plugin_tests PRIVATE VSTGUI_ENABLED=0)
 endif()
 
 include(GoogleTest)
