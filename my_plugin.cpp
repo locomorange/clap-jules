@@ -115,13 +115,20 @@ static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_r
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
     
+    // Validate sample rate - some hosts may provide invalid values
+    if (sample_rate <= 0.0 || sample_rate > 192000.0) {
+        printf("MyPlugin: WARNING - Invalid sample rate %.2f received, using default 44100 Hz\n", sample_rate);
+        sample_rate = 44100.0;  // Use reasonable default
+    }
+    
     // Update sample rate and frame count
     self->sample_rate = sample_rate;
     self->max_frames_count = max_frames_count;
     
-    // Initialize spectrum analyzer with sample rate
+    // Initialize spectrum analyzer with validated sample rate
     if (self->spectrum_analyzer) {
         self->spectrum_analyzer->initialize(sample_rate);
+        printf("MyPlugin: Spectrum analyzer initialized with sample rate %.2f Hz\n", sample_rate);
     }
     
     // Allocate and prepare resources needed for processing (e.g., buffers)

@@ -20,6 +20,12 @@ SpectrumAnalyzer::SpectrumAnalyzer()
 }
 
 void SpectrumAnalyzer::initialize(double sample_rate) {
+    // Validate sample rate
+    if (sample_rate <= 0.0) {
+        printf("SpectrumAnalyzer: ERROR - Invalid sample rate %.2f, using default 44100 Hz\n", sample_rate);
+        sample_rate = 44100.0;
+    }
+    
     sample_rate_ = sample_rate;
     input_buffer_pos_ = 0;
     samples_since_last_fft_ = 0;
@@ -42,6 +48,8 @@ void SpectrumAnalyzer::initialize(double sample_rate) {
     
     // Create logarithmic frequency bins
     create_logarithmic_bins();
+    
+    printf("SpectrumAnalyzer: Initialized with sample rate: %.2f Hz\n", sample_rate_);
 }
 
 void SpectrumAnalyzer::process_samples(const float* samples, size_t num_samples) {
@@ -106,6 +114,12 @@ void SpectrumAnalyzer::create_logarithmic_bins() {
 }
 
 void SpectrumAnalyzer::update_display_spectrum() {
+    // Safety check for sample rate
+    if (sample_rate_ <= 0.0) {
+        printf("SpectrumAnalyzer: ERROR - Invalid sample rate in update_display_spectrum: %.2f\n", sample_rate_);
+        return;
+    }
+    
     const float freq_per_bin = static_cast<float>(sample_rate_) / FFT_SIZE;
     
     for (size_t i = 0; i < DISPLAY_BINS; ++i) {
