@@ -130,7 +130,7 @@ add_subdirectory(libs/googletest)
 enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
-target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin clap)
 
 # Add Skia-specific tests if Skia is enabled
 if(ENABLE_SKIA)

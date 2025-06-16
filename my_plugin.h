@@ -1,11 +1,17 @@
 #pragma once
 
 #include <clap/clap.h>
+#include <clap/ext/gui.h>
+
+// Forward declaration for GUI data
+typedef struct gui_data gui_data_t;
 
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
-    // Add any other plugin-specific data here
+    
+    // GUI-related data
+    gui_data_t *gui_data;
 } my_plugin_t;
 
 // Plugin factory ID
