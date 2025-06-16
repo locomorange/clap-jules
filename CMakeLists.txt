@@ -39,9 +39,82 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Skia integration (optional)
+option(ENABLE_SKIA "Enable Skia graphics support" OFF)
+set(SKIA_FOUND FALSE)
+
+if(ENABLE_SKIA)
+    # Try to find Skia installation
+    if(DEFINED ENV{SKIA_PATH})
+        set(SKIA_PATH $ENV{SKIA_PATH})
+    elseif(DEFINED SKIA_PATH)
+        # SKIA_PATH is already set (e.g. by cmake -DSKIA_PATH=...)
+    else()
+        # Try a default location
+        set(SKIA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia")
+    endif()
+
+    # Check for Skia headers and libraries
+    if(EXISTS "${SKIA_PATH}/include/core/SkCanvas.h")
+        message(STATUS "Found Skia headers in ${SKIA_PATH}/include")
+        
+        # Set up Skia include directories
+        set(SKIA_INCLUDE_DIRS 
+            "${SKIA_PATH}/include/core"
+            "${SKIA_PATH}/include/effects"
+            "${SKIA_PATH}/include/gpu"
+            "${SKIA_PATH}/include/utils"
+            "${SKIA_PATH}/include/config"
+        )
+        
+        # Look for Skia libraries
+        if(WIN32)
+            set(SKIA_LIB_NAMES "skia.lib" "skia.dll.lib")
+            set(SKIA_LIB_DIRS "${SKIA_PATH}/lib" "${SKIA_PATH}/bin")
+        else()
+            set(SKIA_LIB_NAMES "libskia.a" "libskia.so")
+            set(SKIA_LIB_DIRS "${SKIA_PATH}/lib" "${SKIA_PATH}/lib64")
+        endif()
+        
+        foreach(lib_dir ${SKIA_LIB_DIRS})
+            foreach(lib_name ${SKIA_LIB_NAMES})
+                if(EXISTS "${lib_dir}/${lib_name}")
+                    set(SKIA_LIBRARIES "${lib_dir}/${lib_name}")
+                    set(SKIA_FOUND TRUE)
+                    message(STATUS "Found Skia library: ${SKIA_LIBRARIES}")
+                    break()
+                endif()
+            endforeach()
+            if(SKIA_FOUND)
+                break()
+            endif()
+        endforeach()
+        
+        if(NOT SKIA_FOUND)
+            message(WARNING "Skia headers found but no libraries found in ${SKIA_LIB_DIRS}")
+        endif()
+    else()
+        message(WARNING "Skia headers not found in ${SKIA_PATH}/include. Set SKIA_PATH to point to Skia installation directory.")
+    endif()
+endif()
+
+if(SKIA_FOUND)
+    message(STATUS "Skia integration enabled")
+    add_compile_definitions(HAVE_SKIA=1)
+else()
+    message(STATUS "Skia integration disabled")
+endif()
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp graphics_wrapper.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Add Skia support to the plugin if available
+if(SKIA_FOUND)
+    target_include_directories(my_clap_plugin PRIVATE ${SKIA_INCLUDE_DIRS})
+    target_link_libraries(my_clap_plugin PRIVATE ${SKIA_LIBRARIES})
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_SKIA=1)
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -72,3 +145,15 @@ target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+
+# Optional Skia example executable
+option(BUILD_SKIA_EXAMPLE "Build the Skia graphics example" OFF)
+if(BUILD_SKIA_EXAMPLE)
+    add_executable(skia_example skia_example.cpp graphics_wrapper.cpp)
+    if(SKIA_FOUND)
+        target_include_directories(skia_example PRIVATE ${SKIA_INCLUDE_DIRS})
+        target_link_libraries(skia_example PRIVATE ${SKIA_LIBRARIES})
+        target_compile_definitions(skia_example PRIVATE HAVE_SKIA=1)
+    endif()
+    message(STATUS "Skia example executable will be built")
+endif()

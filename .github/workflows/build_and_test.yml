@@ -50,6 +50,16 @@ jobs:
     - name: Build project
       run: cmake --build build --config Release
 
+    - name: Test Skia Integration (Software Fallback)
+      if: runner.os == 'Linux'
+      run: |
+        # Test with Skia enabled but no Skia installation (should use software fallback)
+        echo "Testing Skia integration with software fallback..."
+        rm -rf build-skia
+        cmake . -B build-skia -DENABLE_SKIA=ON
+        cmake --build build-skia --config Release
+        echo "Skia integration test completed"
+
     - name: Validate CLAP Plugin (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -127,6 +137,17 @@ jobs:
 
     - name: Run tests
       run: ctest --test-dir build -C Release --output-on-failure
+
+    - name: Test Skia Integration (Software Fallback)
+      if: runner.os == 'Linux'
+      run: |
+        # Test with Skia enabled but no Skia installation (should use software fallback)
+        echo "Testing Skia integration with software fallback..."
+        rm -rf build-skia
+        cmake . -B build-skia -DENABLE_SKIA=ON
+        cmake --build build-skia --config Release
+        ctest --test-dir build-skia -C Release --output-on-failure
+        echo "Skia integration test completed"
 
     - name: Validate CLAP Plugin (Ubuntu only)
       if: runner.os == 'Linux'

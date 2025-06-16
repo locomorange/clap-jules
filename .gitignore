@@ -44,3 +44,6 @@ clap-info
 clap-info.zip
 clap-validator
 clap-validator.tar.gz
+
+# Skia example output files
+example_output.ppm

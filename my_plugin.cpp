@@ -1,4 +1,5 @@
 #include "my_plugin.h"
+#include "graphics_wrapper.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -38,6 +39,24 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 static bool my_plugin_init(const struct clap_plugin *plugin) {
     // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
+    
+    // Demonstrate Skia integration
+    printf("MyPlugin: Skia support %s\n", 
+           clap_jules::GraphicsContext::isSkiaAvailable() ? "enabled" : "disabled (using software fallback)");
+    
+    // Create a simple graphics test
+    try {
+        clap_jules::GraphicsContext graphics(100, 100);
+        graphics.clear(0xFF1E1E1E);  // Dark gray background
+        graphics.drawRect(10, 10, 80, 80, 0xFF4169E1);  // Royal blue rectangle
+        graphics.drawCircle(50, 50, 20, 0xFFFFD700);    // Gold circle
+        graphics.drawLine(0, 0, 99, 99, 0xFFFF0000);    // Red diagonal line
+        
+        printf("MyPlugin: Graphics test completed successfully\n");
+    } catch (...) {
+        printf("MyPlugin: Graphics test failed\n");
+    }
+    
     // Initialize your plugin state here
     return true;
 }
