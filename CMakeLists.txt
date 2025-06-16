@@ -92,7 +92,13 @@ target_link_libraries(my_clap_plugin PRIVATE clap)
 if (TARGET glfw)
     target_link_libraries(my_clap_plugin PRIVATE glfw)
     target_compile_definitions(my_clap_plugin PRIVATE HAVE_GLFW=1)
-    message(STATUS "GLFW support enabled")
+    
+    # Link OpenGL for rendering
+    find_package(OpenGL REQUIRED)
+    target_link_libraries(my_clap_plugin PRIVATE ${OPENGL_LIBRARIES})
+    target_include_directories(my_clap_plugin PRIVATE ${OPENGL_INCLUDE_DIRS})
+    
+    message(STATUS "GLFW support enabled with OpenGL")
 endif()
 
 if (USE_SKIA AND TARGET skia)
@@ -125,7 +131,7 @@ message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstC
 add_subdirectory(libs/googletest)
 enable_testing()
 
-add_executable(my_plugin_tests test/test_my_plugin.cpp)
+add_executable(my_plugin_tests test/test_my_plugin.cpp test/test_gui.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 # Add include directories for the test target
@@ -137,6 +143,9 @@ target_include_directories(my_plugin_tests PRIVATE
 # Add GLFW include directories if available
 if (TARGET glfw)
     target_include_directories(my_plugin_tests PRIVATE libs/glfw/include)
+    # Also link OpenGL to tests
+    find_package(OpenGL REQUIRED)
+    target_link_libraries(my_plugin_tests PRIVATE ${OPENGL_LIBRARIES})
 endif()
 
 # Add compile definitions for graphics libraries to tests
@@ -150,3 +159,17 @@ endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+
+# Add GUI test executable (only if GLFW is available)
+if (TARGET glfw)
+    add_executable(test_gui test_gui.cpp)
+    target_link_libraries(test_gui PRIVATE my_clap_plugin clap glfw ${OPENGL_LIBRARIES})
+    target_include_directories(test_gui PRIVATE 
+        ${CLAP_PATH}/include
+        libs/clap/include
+        libs/glfw/include
+        ${OPENGL_INCLUDE_DIRS}
+    )
+    target_compile_definitions(test_gui PRIVATE HAVE_GLFW=1)
+    message(STATUS "GUI test executable added")
+endif()
