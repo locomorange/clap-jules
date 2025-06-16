@@ -48,20 +48,17 @@ enum SpectrumDrawStyle {
 };
 
 // Spectrum analyzer data structure
-struct spectrum_data_t {
+typedef struct {
     std::vector<float> magnitudes;  // Frequency magnitudes (0-1 range)
     std::vector<float> frequencies; // Corresponding frequencies in Hz
     std::atomic<bool> data_ready;
     std::mutex data_mutex;
     SpectrumDrawStyle draw_style;
     bool enabled;
-    
-    // Constructor
-    spectrum_data_t() : data_ready(false), draw_style(SPECTRUM_STYLE_LINES), enabled(true) {}
-};
+} spectrum_data_t;
 
 // Plugin parameters structure
-struct plugin_params_t {
+typedef struct {
     double cutoff;
     double resonance;
     double drive;
@@ -73,21 +70,10 @@ struct plugin_params_t {
     double eq_q[3];
     bool spectrum_enabled;
     SpectrumDrawStyle spectrum_style;
-    
-    // Constructor with default values
-    plugin_params_t() : cutoff(1000.0), resonance(1.0), drive(0.0), output(0.0), 
-                        mix(1.0), bypass(false), spectrum_enabled(true), 
-                        spectrum_style(SPECTRUM_STYLE_LINES) {
-        for (int i = 0; i < 3; ++i) {
-            eq_gain[i] = 0.0;
-            eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
-            eq_q[i] = 1.0;
-        }
-    }
-};
+} plugin_params_t;
 
 // FFT and spectrum analysis data
-struct fft_data_t {
+typedef struct {
     std::vector<std::complex<float>> fft_buffer;
     std::vector<float> window_function;
     std::vector<float> input_buffer;
@@ -95,13 +81,10 @@ struct fft_data_t {
     size_t frames_since_last_update;
     double sample_rate;
     spectrum_data_t spectrum_data;
-    
-    // Constructor
-    fft_data_t() : buffer_index(0), frames_since_last_update(0), sample_rate(48000.0) {}
-};
+} fft_data_t;
 
 // Basic plugin structure
-struct my_plugin_t {
+typedef struct {
     clap_plugin_t plugin;
     const clap_host_t* host;
     plugin_params_t params;
@@ -109,14 +92,7 @@ struct my_plugin_t {
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif
-    
-    // Constructor
-    my_plugin_t() : host(nullptr) {
-#if VSTGUI_ENABLED
-        gui_editor = nullptr;
-#endif
-    }
-};
+} my_plugin_t;
 
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;

@@ -99,8 +99,10 @@ void init_fft_data(fft_data_t* fft_data, double sample_rate) {
         fft_data->spectrum_data.magnitudes[i] = 0.0f;
     }
     
-    // Constructor already initializes these, but we can explicitly set them
+    // Initialize spectrum data settings
     fft_data->spectrum_data.data_ready.store(false);
+    fft_data->spectrum_data.draw_style = SPECTRUM_STYLE_LINES;
+    fft_data->spectrum_data.enabled = true;
 }
 
 void cleanup_fft_data(fft_data_t* fft_data) {
@@ -254,8 +256,29 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
-    // Default values are set by constructors, no need to manually initialize
-    // unless we want to override specific values here
+    // Initialize parameters with default values
+    self->params.cutoff = 1000.0;
+    self->params.resonance = 1.0;
+    self->params.drive = 0.0;
+    self->params.output = 0.0;
+    self->params.mix = 1.0;
+    self->params.bypass = false;
+    self->params.spectrum_enabled = true;
+    self->params.spectrum_style = SPECTRUM_STYLE_LINES;
+    
+    for (int i = 0; i < 3; ++i) {
+        self->params.eq_gain[i] = 0.0;
+        self->params.eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
+        self->params.eq_q[i] = 1.0;
+    }
+    
+    // Initialize host pointer
+    self->host = nullptr;
+    
+    // Initialize GUI editor pointer
+#if VSTGUI_ENABLED
+    self->gui_editor = nullptr;
+#endif
     
     return true;
 }
