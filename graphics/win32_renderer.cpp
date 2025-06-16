@@ -3,6 +3,7 @@
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #include <iostream>
 #include <cstring>
+#include <memory>
 
 namespace clap_jules {
 namespace graphics {

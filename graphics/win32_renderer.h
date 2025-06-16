@@ -1,14 +1,21 @@
 #pragma once
 
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+
+// Prevent Windows.h from defining min/max macros
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <windows.h>
+
+// Include standard headers before Windows headers to avoid conflicts
 #include <cstdint>
+#include <memory>
+
+// Now include Windows headers
+#include <windows.h>
 
 namespace clap_jules {
 namespace graphics {

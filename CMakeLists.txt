@@ -114,8 +114,10 @@ elseif(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
         graphics/win32_renderer.cpp
         graphics/win32_renderer.h
     )
-    # Link with Win32 GDI libraries
-    target_link_libraries(clap_jules_graphics PRIVATE gdi32 user32)
+    # Link with Win32 GDI libraries - specify full library names for better compatibility
+    target_link_libraries(clap_jules_graphics PRIVATE gdi32.lib user32.lib)
+    # Add Windows-specific compile definitions
+    target_compile_definitions(clap_jules_graphics PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
 
 target_include_directories(clap_jules_graphics PUBLIC 
