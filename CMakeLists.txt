@@ -88,6 +88,10 @@ endif()
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
+# Add threading support
+find_package(Threads REQUIRED)
+target_link_libraries(my_clap_plugin PRIVATE Threads::Threads)
+
 # Link with optional dependencies
 if (TARGET glfw)
     target_link_libraries(my_clap_plugin PRIVATE glfw)
@@ -132,7 +136,7 @@ add_subdirectory(libs/googletest)
 enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp test/test_gui.cpp)
-target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin Threads::Threads)
 
 # Add include directories for the test target
 target_include_directories(my_plugin_tests PRIVATE 
@@ -163,7 +167,7 @@ gtest_discover_tests(my_plugin_tests)
 # Add GUI test executable (only if GLFW is available)
 if (TARGET glfw)
     add_executable(test_gui test_gui.cpp)
-    target_link_libraries(test_gui PRIVATE my_clap_plugin clap glfw ${OPENGL_LIBRARIES})
+    target_link_libraries(test_gui PRIVATE my_clap_plugin clap glfw ${OPENGL_LIBRARIES} Threads::Threads)
     target_include_directories(test_gui PRIVATE 
         ${CLAP_PATH}/include
         libs/clap/include

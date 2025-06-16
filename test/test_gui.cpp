@@ -20,7 +20,7 @@ protected:
         host_instance.host.request_callback = [](const clap_host_t* host) {};
         
         // Create plugin instance
-        const clap_plugin_factory* factory = &my_plugin_factory;
+        const clap_plugin_factory* factory = get_plugin_factory();
         plugin = factory->create_plugin(factory, &host_instance.host, "com.example.myplugin");
         ASSERT_NE(plugin, nullptr);
         

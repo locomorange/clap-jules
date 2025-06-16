@@ -34,5 +34,5 @@ typedef struct {
 extern const clap_plugin_gui_t my_plugin_gui;
 #endif
 
-// Plugin factory ID
-extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
+// Plugin factory access
+CLAP_EXPORT const struct clap_plugin_factory* get_plugin_factory();
