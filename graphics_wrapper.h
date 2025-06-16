@@ -43,9 +43,10 @@ private:
 #ifdef HAVE_SKIA
     sk_sp<SkSurface> surface_;
     SkCanvas* canvas_;
-#else
-    std::unique_ptr<uint32_t[]> pixels_;
 #endif
+    
+    // Software fallback pixels (always available)
+    std::unique_ptr<uint32_t[]> pixels_;
     
     void initializeGraphics();
     void cleanup();

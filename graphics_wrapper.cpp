@@ -38,6 +38,7 @@ void GraphicsContext::cleanup() {
     canvas_ = nullptr;
     surface_.reset();
 #endif
+    // Always cleanup pixels since it's always available now
     pixels_.reset();
 }
 
