@@ -732,19 +732,11 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
                 return false;
             }
             
-            // For now, on Linux, we'll return true to indicate we can handle the parent
-            // but won't actually call frame->open() to prevent crashes in headless environments
-            // TODO: Implement proper VSTGUI event loop integration like clap-saw-demo
-            std::cout << "MyPlugin GUI: Simulating successful parent embedding (GUI would embed in real X11 environment)" << std::endl;
-            return true;
-            
-            /* DISABLED FOR NOW - causes crashes without proper event loop integration
-            // Try to open the frame - this is where crashes can occur
-            // We need proper VSTGUI event loop integration for this to work reliably
+            // Try to open the frame and embed it in the host window
             try {
                 bool result = frame->open((void*)(window->x11));
                 if (result) {
-                    std::cout << "MyPlugin GUI: Frame opened successfully" << std::endl;
+                    std::cout << "MyPlugin GUI: Frame opened and embedded successfully in X11 window (ID: " << window->x11 << ")" << std::endl;
                 } else {
                     std::cout << "MyPlugin GUI: Failed to open frame (VSTGUI returned false)" << std::endl;
                 }
@@ -756,7 +748,6 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
                 std::cout << "MyPlugin GUI: Unknown exception opening frame" << std::endl;
                 return false;
             }
-            */
         }
 #elif defined(__APPLE__)
         if (window->api && strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
