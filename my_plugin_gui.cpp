@@ -676,12 +676,17 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
     // Initialize VSTGUI if not already done
     if (!vstgui_initialized) {
         try {
-#ifdef __linux__
+#ifdef _WIN32
+            // Check if we're in a headless environment (common in CI)
+            if (!GetDesktopWindow()) {
+                std::cout << "MyPlugin GUI: Warning - No desktop window available (headless environment)" << std::endl;
+                return false;
+            }
+            VSTGUI::init(GetModuleHandle(nullptr));
+#elif defined(__linux__)
             VSTGUI::init(nullptr);
 #elif defined(__APPLE__)
             VSTGUI::init(CFBundleGetMainBundle());
-#elif defined(_WIN32)
-            VSTGUI::init(GetModuleHandle(nullptr));
 #else
             VSTGUI::init(nullptr);
 #endif
@@ -690,10 +695,21 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
         } catch (const std::exception& e) {
             std::cout << "MyPlugin GUI: Error initializing VSTGUI: " << e.what() << std::endl;
             return false;
+        } catch (...) {
+            std::cout << "MyPlugin GUI: Unknown error initializing VSTGUI" << std::endl;
+            return false;
         }
     }
     
     try {
+        // Check if we can create GUI in this environment
+#ifdef _WIN32
+        if (!IsWindow(GetDesktopWindow())) {
+            std::cout << "MyPlugin GUI: Warning - Cannot create GUI in headless environment" << std::endl;
+            return false;
+        }
+#endif
+        
         // Create VSTGUI frame with professional size
         CRect rect(0, 0, currentWidth, currentHeight);
         frame = new CFrame(rect, nullptr);
@@ -706,10 +722,15 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
             std::cout << "MyPlugin GUI: Professional GUI created successfully (" 
                       << currentWidth << "x" << currentHeight << ")" << std::endl;
             return true;
+        } else {
+            std::cout << "MyPlugin GUI: Error - Failed to create frame" << std::endl;
         }
     }
     catch (const std::exception& e) {
         std::cout << "MyPlugin GUI: Error creating GUI: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cout << "MyPlugin GUI: Unknown error creating GUI" << std::endl;
     }
     
     return false;
