@@ -1,5 +1,0 @@
-if(EXISTS "/home/runner/work/clap-jules/clap-jules/build-skia/my_plugin_tests[1]_tests.cmake")
-  include("/home/runner/work/clap-jules/clap-jules/build-skia/my_plugin_tests[1]_tests.cmake")
-else()
-  add_test(my_plugin_tests_NOT_BUILT my_plugin_tests_NOT_BUILT)
-endif()
