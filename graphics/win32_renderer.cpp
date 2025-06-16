@@ -14,7 +14,7 @@ static std::map<HWND, Win32Renderer*> window_renderer_map;
 
 Win32Renderer::Win32Renderer() 
     : hwnd_(nullptr), hdc_(nullptr), mem_dc_(nullptr), bitmap_(nullptr),
-      pixel_buffer_(nullptr), width_(0), height_(0), initialized_(false) {
+      pixel_buffer_(nullptr), width_(0), height_(0), initialized_(false), last_resize_time_(0) {
     std::memset(&bitmap_info_, 0, sizeof(bitmap_info_));
 }
 
@@ -47,8 +47,11 @@ LRESULT CALLBACK Win32Renderer::WindowProcedure(HWND hwnd, UINT msg, WPARAM wpar
                 if (renderer && renderer->redraw_callback_) {
                     renderer->redraw_callback_();
                 }
-                // Force window to repaint
-                InvalidateRect(hwnd, nullptr, FALSE);
+                // Only invalidate if not currently resizing (100ms grace period)
+                DWORD current_time = GetTickCount();
+                if (!renderer || current_time - renderer->last_resize_time_ > 100) {
+                    InvalidateRect(hwnd, nullptr, FALSE);
+                }
                 return 0;
             }
             break;
@@ -59,10 +62,18 @@ LRESULT CALLBACK Win32Renderer::WindowProcedure(HWND hwnd, UINT msg, WPARAM wpar
                 int new_width = rect.right - rect.left;
                 int new_height = rect.bottom - rect.top;
                 if (renderer && (new_width != renderer->width_ || new_height != renderer->height_)) {
+                    // Track resize timing to reduce flicker
+                    renderer->last_resize_time_ = GetTickCount();
+                    
+                    // Update renderer size without full recreation
+                    renderer->resizeBitmap(new_width, new_height);
                     // Trigger redraw after resize
                     if (renderer->redraw_callback_) {
                         renderer->redraw_callback_();
                     }
+                    // Immediate refresh after resize
+                    InvalidateRect(hwnd, nullptr, FALSE);
+                    UpdateWindow(hwnd);
                 }
             }
             break;
@@ -259,16 +270,9 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
         return false;
     }
     
-    // If size changed, reinitialize
+    // If size changed, resize bitmap without recreating window
     if (width != width_ || height != height_) {
-        HWND parent = hwnd_ ? GetParent(hwnd_) : nullptr;
-        if (!parent) {
-            std::cerr << "Win32Renderer: No parent window available for resize\n";
-            return false;
-        }
-        if (!initialize(parent, width, height)) {
-            return false;
-        }
+        resizeBitmap(width, height);
     }
     
     // Copy pixel data to DIB section
@@ -295,9 +299,6 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
         return false;
     }
     
-    // Force window to update
-    InvalidateRect(hwnd_, nullptr, FALSE);
-    
     return true;
 }
 
@@ -306,6 +307,62 @@ void Win32Renderer::invalidate() {
         InvalidateRect(hwnd_, nullptr, FALSE);
         UpdateWindow(hwnd_);
     }
+}
+
+void Win32Renderer::resizeBitmap(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Win32Renderer: Invalid resize dimensions: " << width << "x" << height << "\n";
+        return;
+    }
+    
+    if (width == width_ && height == height_) {
+        return;
+    }
+    
+    if (!initialized_) {
+        return;
+    }
+    
+    // Clean up old bitmap resources
+    if (bitmap_) {
+        DeleteObject(bitmap_);
+        bitmap_ = nullptr;
+    }
+    
+    // Update dimensions
+    width_ = width;
+    height_ = height;
+    
+    // Resize the child window
+    if (hwnd_) {
+        SetWindowPos(hwnd_, nullptr, 0, 0, width, height, SWP_NOZORDER | SWP_NOMOVE);
+    }
+    
+    // Update bitmap info structure
+    bitmap_info_.bmiHeader.biWidth = width;
+    bitmap_info_.bmiHeader.biHeight = -height; // Negative for top-down bitmap
+    
+    // Create new DIB section with updated size
+    bitmap_ = CreateDIBSection(mem_dc_, &bitmap_info_, DIB_RGB_COLORS, &pixel_buffer_, nullptr, 0);
+    if (!bitmap_) {
+        DWORD error = GetLastError();
+        std::cerr << "Win32Renderer: Failed to create DIB section during resize (error: " << error << ")\n";
+        return;
+    }
+    
+    // Select new bitmap into memory DC
+    SelectObject(mem_dc_, bitmap_);
+    
+    // Clear the new buffer with default content
+    if (pixel_buffer_) {
+        uint32_t* pixels = static_cast<uint32_t*>(pixel_buffer_);
+        uint32_t dark_gray = 0xFF404040; // Dark gray in ARGB format
+        for (int i = 0; i < width * height; ++i) {
+            pixels[i] = dark_gray;
+        }
+    }
+    
+    std::cout << "Win32Renderer: Bitmap resized to " << width << "x" << height << "\n";
 }
 
 void Win32Renderer::resize(int width, int height) {
@@ -318,14 +375,8 @@ void Win32Renderer::resize(int width, int height) {
         return;
     }
     
-    // Reinitialize with new size
-    if (initialized_) {
-        HWND parent = hwnd_ ? GetParent(hwnd_) : nullptr;
-        cleanup();
-        if (parent) {
-            initialize(parent, width, height);
-        }
-    }
+    // Use bitmap resize for better performance
+    resizeBitmap(width, height);
 }
 
 } // namespace graphics

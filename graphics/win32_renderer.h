@@ -33,6 +33,7 @@ private:
     int width_, height_;
     bool initialized_;
     std::function<void()> redraw_callback_;
+    DWORD last_resize_time_;  // Track when last resize happened
     
     // Timer for animations
     static const UINT_PTR TIMER_ID = 1;
@@ -48,6 +49,7 @@ public:
     
     bool presentPixelBuffer(const uint32_t* pixels, int width, int height);
     void resize(int width, int height);
+    void resizeBitmap(int width, int height);  // Internal resize without window recreation
     
     bool isInitialized() const { return initialized_; }
     
