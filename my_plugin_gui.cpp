@@ -628,9 +628,9 @@ bool MyPluginEditor::create(const char* api, bool isFloating) {
             VSTGUI::init(CFBundleGetMainBundle());
             std::cout << "MyPlugin GUI: VSTGUI initialized for macOS" << std::endl;
 #elif defined(_WIN32)
-            HMODULE hModule = GetModuleHandle(nullptr);
-            std::cout << "MyPlugin GUI: Module handle: " << hModule << std::endl;
-            VSTGUI::init(hModule);
+            // Simplified Windows initialization
+            std::cout << "MyPlugin GUI: Initializing VSTGUI for Windows (simplified)" << std::endl;
+            VSTGUI::init(GetModuleHandle(nullptr));
             std::cout << "MyPlugin GUI: VSTGUI initialized for Windows" << std::endl;
 #else
             VSTGUI::init(nullptr);
@@ -735,93 +735,99 @@ bool MyPluginEditor::setSize(uint32_t width, uint32_t height) {
 
 bool MyPluginEditor::setParent(const clap_window_t* window) {
     if (!isCreated || !frame || !window) {
+        std::cout << "MyPlugin GUI: setParent called with invalid state - isCreated=" << isCreated 
+                  << ", frame=" << (frame ? "valid" : "null") << ", window=" << (window ? "valid" : "null") << std::endl;
         return false;
     }
     
-    try {
-        std::cout << "MyPlugin GUI: Setting parent window" << std::endl;
-        
-#ifdef __linux__
-        // Embed into X11 window
-        if (window->api && strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
-            std::cout << "MyPlugin GUI: Request to embed in X11 parent (ID: " << window->x11 << ")" << std::endl;
-            
-            // Add safety check for valid window ID
-            if (window->x11 == 0) {
-                std::cout << "MyPlugin GUI: Invalid window ID (0)" << std::endl;
-                return false;
-            }
-            
-            // Try to open the frame and embed it in the host window
-            try {
-                bool result = frame->open((void*)(window->x11));
-                if (result) {
-                    std::cout << "MyPlugin GUI: Frame opened and embedded successfully in X11 window (ID: " << window->x11 << ")" << std::endl;
-                } else {
-                    std::cout << "MyPlugin GUI: Failed to open frame (VSTGUI returned false)" << std::endl;
-                }
-                return result;
-            } catch (const std::exception& e) {
-                std::cout << "MyPlugin GUI: Exception opening frame: " << e.what() << std::endl;
-                return false;
-            } catch (...) {
-                std::cout << "MyPlugin GUI: Unknown exception opening frame" << std::endl;
-                return false;
-            }
-        }
-#elif defined(__APPLE__)
-        if (window->api && strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
-            return frame->open(window->cocoa);
-        }
-#elif defined(_WIN32)
-        if (window->api && strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
-            std::cout << "MyPlugin GUI: Request to embed in Windows parent (HWND: " << window->win32 << ")" << std::endl;
-            
-            // Add safety check for valid window handle
-            if (window->win32 == NULL) {
-                std::cout << "MyPlugin GUI: Invalid window handle (NULL)" << std::endl;
-                return false;
-            }
-            
-            // Verify the window handle is valid using Windows API
-            if (!IsWindow((HWND)window->win32)) {
-                std::cout << "MyPlugin GUI: Invalid window handle - not a valid window (HWND: " << window->win32 << ")" << std::endl;
-                return false;
-            }
-            
-            // Get additional window information for debugging
-            RECT windowRect;
-            if (GetWindowRect((HWND)window->win32, &windowRect)) {
-                std::cout << "MyPlugin GUI: Host window rect: " << windowRect.left << "," << windowRect.top 
-                          << " to " << windowRect.right << "," << windowRect.bottom << std::endl;
-            } else {
-                std::cout << "MyPlugin GUI: Warning: Could not get host window rect" << std::endl;
-            }
-            
-            // Try to open the frame and embed it in the host window
-            try {
-                bool result = frame->open(window->win32);
-                if (result) {
-                    std::cout << "MyPlugin GUI: Frame opened and embedded successfully in Windows window (HWND: " << window->win32 << ")" << std::endl;
-                } else {
-                    std::cout << "MyPlugin GUI: Failed to open frame (VSTGUI returned false)" << std::endl;
-                }
-                return result;
-            } catch (const std::exception& e) {
-                std::cout << "MyPlugin GUI: Exception opening frame: " << e.what() << std::endl;
-                return false;
-            } catch (...) {
-                std::cout << "MyPlugin GUI: Unknown exception opening frame" << std::endl;
-                return false;
-            }
-        }
-#endif
-        std::cout << "MyPlugin GUI: Unsupported window API: " << (window->api ? window->api : "null") << std::endl;
-    }
-    catch (const std::exception& e) {
-        std::cout << "MyPlugin GUI: Error setting parent: " << e.what() << std::endl;
-    }
+    std::cout << "MyPlugin GUI: Setting parent window with API: " << (window->api ? window->api : "null") << std::endl;
     
+#ifdef __linux__
+    if (window->api && strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
+        std::cout << "MyPlugin GUI: X11 embedding (ID: " << window->x11 << ")" << std::endl;
+        if (window->x11 == 0) {
+            std::cout << "MyPlugin GUI: Invalid X11 window ID" << std::endl;
+            return false;
+        }
+        
+        bool result = frame->open((void*)(window->x11));
+        std::cout << "MyPlugin GUI: X11 frame->open() result: " << (result ? "SUCCESS" : "FAILED") << std::endl;
+        return result;
+    }
+#elif defined(__APPLE__)
+    if (window->api && strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
+        std::cout << "MyPlugin GUI: Cocoa embedding" << std::endl;
+        bool result = frame->open(window->cocoa);
+        std::cout << "MyPlugin GUI: Cocoa frame->open() result: " << (result ? "SUCCESS" : "FAILED") << std::endl;
+        return result;
+    }
+#elif defined(_WIN32)
+    if (window->api && strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
+        std::cout << "MyPlugin GUI: Windows embedding (HWND: " << window->win32 << ")" << std::endl;
+        
+        if (window->win32 == NULL) {
+            std::cout << "MyPlugin GUI: NULL window handle" << std::endl;
+            return false;
+        }
+        
+        if (!IsWindow((HWND)window->win32)) {
+            std::cout << "MyPlugin GUI: Invalid window handle" << std::endl;
+            return false;
+        }
+        
+        // Force the frame to be visible before opening
+        frame->setVisible(true);
+        
+        // Try opening with the parent window
+        bool result = frame->open(window->win32);
+        std::cout << "MyPlugin GUI: Windows frame->open() result: " << (result ? "SUCCESS" : "FAILED") << std::endl;
+        
+        if (result) {
+            // Additional step for Windows: ensure the frame is properly shown
+            std::cout << "MyPlugin GUI: Setting frame visible after successful open" << std::endl;
+            frame->setVisible(true);
+            
+            // Force a redraw
+            frame->invalid();
+            
+            // Try to resize the frame to fit the parent window
+            RECT parentRect;
+            if (GetClientRect((HWND)window->win32, &parentRect)) {
+                int width = parentRect.right - parentRect.left;
+                int height = parentRect.bottom - parentRect.top;
+                std::cout << "MyPlugin GUI: Parent client area: " << width << "x" << height << std::endl;
+                
+                // Resize our frame to fit the parent
+                if (width > 0 && height > 0) {
+                    CRect newSize(0, 0, width, height);
+                    frame->setSize(newSize);
+                    std::cout << "MyPlugin GUI: Resized frame to: " << width << "x" << height << std::endl;
+                }
+            }
+            
+            // Get the native window handle and try to show it explicitly
+            void* platformFrame = frame->getPlatformFrame();
+            if (platformFrame) {
+                std::cout << "MyPlugin GUI: Got platform frame, attempting to show window" << std::endl;
+                HWND frameHwnd = (HWND)platformFrame;
+                if (IsWindow(frameHwnd)) {
+                    ShowWindow(frameHwnd, SW_SHOW);
+                    UpdateWindow(frameHwnd);
+                    SetFocus(frameHwnd);
+                    std::cout << "MyPlugin GUI: Called ShowWindow, UpdateWindow, and SetFocus on frame" << std::endl;
+                } else {
+                    std::cout << "MyPlugin GUI: Platform frame is not a valid window handle" << std::endl;
+                }
+            } else {
+                std::cout << "MyPlugin GUI: Could not get platform frame" << std::endl;
+            }
+        }
+        
+        return result;
+    }
+#endif
+    
+    std::cout << "MyPlugin GUI: Unsupported or unknown window API" << std::endl;
     return false;
 }
 
@@ -845,6 +851,29 @@ bool MyPluginEditor::show() {
     try {
         std::cout << "MyPlugin GUI: Setting frame visible..." << std::endl;
         frame->setVisible(true);
+        
+        // Force a redraw to ensure the GUI is painted
+        frame->invalid();
+        
+#ifdef _WIN32
+        // On Windows, also try to explicitly show the native window
+        void* platformFrame = frame->getPlatformFrame();
+        if (platformFrame) {
+            std::cout << "MyPlugin GUI: Attempting to show Windows native window" << std::endl;
+            HWND frameHwnd = (HWND)platformFrame;
+            if (IsWindow(frameHwnd)) {
+                ShowWindow(frameHwnd, SW_SHOW);
+                UpdateWindow(frameHwnd);
+                BringWindowToTop(frameHwnd);
+                std::cout << "MyPlugin GUI: Windows native window show commands executed" << std::endl;
+            } else {
+                std::cout << "MyPlugin GUI: Platform frame is not a valid window" << std::endl;
+            }
+        } else {
+            std::cout << "MyPlugin GUI: Could not get platform frame for Windows" << std::endl;
+        }
+#endif
+        
         isVisible = true;
         std::cout << "MyPlugin GUI: Frame set to visible, isVisible=" << isVisible << std::endl;
         return true;
