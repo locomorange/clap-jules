@@ -799,8 +799,7 @@ bool MyPluginEditor::setParent(const clap_window_t* window) {
                 
                 // Resize our frame to fit the parent
                 if (width > 0 && height > 0) {
-                    CRect newSize(0, 0, width, height);
-                    frame->setSize(newSize);
+                    frame->setSize(width, height);
                     std::cout << "MyPlugin GUI: Resized frame to: " << width << "x" << height << std::endl;
                 }
             }
