@@ -150,7 +150,7 @@ public:
     }
     
     void drawLine(const Point& start, const Point& end, const Color& color, float width) override {
-        // Simple line implementation using Bresenham's algorithm
+        // Line implementation using Bresenham's algorithm with stroke width
         int x0 = static_cast<int>(start.x);
         int y0 = static_cast<int>(start.y);
         int x1 = static_cast<int>(end.x);
