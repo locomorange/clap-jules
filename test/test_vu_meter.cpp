@@ -3,6 +3,10 @@
 #include <memory>
 #include "../my_plugin.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 class VUMeterTest : public ::testing::Test {
 protected:
     void SetUp() override {

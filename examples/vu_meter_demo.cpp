@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include "my_plugin.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 int main() {
     std::cout << "=== CLAP-Jules VU Meter Demo ===" << std::endl;
     
