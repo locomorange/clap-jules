@@ -48,17 +48,20 @@ enum SpectrumDrawStyle {
 };
 
 // Spectrum analyzer data structure
-typedef struct {
+struct spectrum_data_t {
     std::vector<float> magnitudes;  // Frequency magnitudes (0-1 range)
     std::vector<float> frequencies; // Corresponding frequencies in Hz
     std::atomic<bool> data_ready;
     std::mutex data_mutex;
     SpectrumDrawStyle draw_style;
     bool enabled;
-} spectrum_data_t;
+    
+    // Constructor
+    spectrum_data_t() : data_ready(false), draw_style(SPECTRUM_STYLE_LINES), enabled(true) {}
+};
 
 // Plugin parameters structure
-typedef struct {
+struct plugin_params_t {
     double cutoff;
     double resonance;
     double drive;
@@ -70,10 +73,21 @@ typedef struct {
     double eq_q[3];
     bool spectrum_enabled;
     SpectrumDrawStyle spectrum_style;
-} plugin_params_t;
+    
+    // Constructor with default values
+    plugin_params_t() : cutoff(1000.0), resonance(1.0), drive(0.0), output(0.0), 
+                        mix(1.0), bypass(false), spectrum_enabled(true), 
+                        spectrum_style(SPECTRUM_STYLE_LINES) {
+        for (int i = 0; i < 3; ++i) {
+            eq_gain[i] = 0.0;
+            eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
+            eq_q[i] = 1.0;
+        }
+    }
+};
 
 // FFT and spectrum analysis data
-typedef struct {
+struct fft_data_t {
     std::vector<std::complex<float>> fft_buffer;
     std::vector<float> window_function;
     std::vector<float> input_buffer;
@@ -81,10 +95,13 @@ typedef struct {
     size_t frames_since_last_update;
     double sample_rate;
     spectrum_data_t spectrum_data;
-} fft_data_t;
+    
+    // Constructor
+    fft_data_t() : buffer_index(0), frames_since_last_update(0), sample_rate(48000.0) {}
+};
 
 // Basic plugin structure
-typedef struct {
+struct my_plugin_t {
     clap_plugin_t plugin;
     const clap_host_t* host;
     plugin_params_t params;
@@ -92,8 +109,14 @@ typedef struct {
 #if VSTGUI_ENABLED
     MyPluginEditor* gui_editor;
 #endif
-    // Add any other plugin-specific data here
-} my_plugin_t;
+    
+    // Constructor
+    my_plugin_t() : host(nullptr) {
+#if VSTGUI_ENABLED
+        gui_editor = nullptr;
+#endif
+    }
+};
 
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;

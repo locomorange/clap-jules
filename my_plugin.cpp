@@ -99,9 +99,8 @@ void init_fft_data(fft_data_t* fft_data, double sample_rate) {
         fft_data->spectrum_data.magnitudes[i] = 0.0f;
     }
     
+    // Constructor already initializes these, but we can explicitly set them
     fft_data->spectrum_data.data_ready.store(false);
-    fft_data->spectrum_data.draw_style = SPECTRUM_STYLE_LINES;
-    fft_data->spectrum_data.enabled = true;
 }
 
 void cleanup_fft_data(fft_data_t* fft_data) {
@@ -127,35 +126,56 @@ void generate_hann_window(std::vector<float>& window, size_t size) {
     }
 }
 
-// Simple Cooley-Tukey FFT implementation
+// Simple Cooley-Tukey FFT implementation with safety checks
 static void perform_fft(std::vector<std::complex<float>>& data) {
     const size_t N = data.size();
     if (N <= 1) return;
     
-    // Bit-reversal permutation
-    for (size_t i = 1, j = 0; i < N; ++i) {
-        size_t bit = N >> 1;
+    // Safety check: ensure N is a power of 2
+    if ((N & (N - 1)) != 0) {
+        // If not a power of 2, resize to nearest power of 2
+        size_t power = 1;
+        while (power < N) power <<= 1;
+        data.resize(power);
+        // Fill new elements with zeros
+        for (size_t i = N; i < power; ++i) {
+            data[i] = std::complex<float>(0.0f, 0.0f);
+        }
+    }
+    
+    const size_t size = data.size();
+    if (size <= 1) return;
+    
+    // Bit-reversal permutation with bounds checking
+    for (size_t i = 1, j = 0; i < size; ++i) {
+        size_t bit = size >> 1;
         for (; j & bit; bit >>= 1) {
             j ^= bit;
         }
         j ^= bit;
-        if (i < j) {
+        if (i < j && j < size) {  // Added bounds check
             std::swap(data[i], data[j]);
         }
     }
     
-    // Cooley-Tukey FFT
-    for (size_t len = 2; len <= N; len <<= 1) {
+    // Cooley-Tukey FFT with safety checks
+    for (size_t len = 2; len <= size; len <<= 1) {
         double angle = 2.0 * M_PI / static_cast<double>(len);
         std::complex<float> wlen(static_cast<float>(std::cos(angle)), static_cast<float>(std::sin(angle)));
         
-        for (size_t i = 0; i < N; i += len) {
+        for (size_t i = 0; i < size; i += len) {
             std::complex<float> w(1.0f, 0.0f);
             for (size_t j = 0; j < len / 2; ++j) {
-                std::complex<float> u = data[i + j];
-                std::complex<float> v = data[i + j + len / 2] * w;
-                data[i + j] = u + v;
-                data[i + j + len / 2] = u - v;
+                size_t idx1 = i + j;
+                size_t idx2 = i + j + len / 2;
+                
+                // Bounds checking to prevent out-of-range access
+                if (idx1 >= size || idx2 >= size) break;
+                
+                std::complex<float> u = data[idx1];
+                std::complex<float> v = data[idx2] * w;
+                data[idx1] = u + v;
+                data[idx2] = u - v;
                 w *= wlen;
             }
         }
@@ -163,13 +183,20 @@ static void perform_fft(std::vector<std::complex<float>>& data) {
 }
 
 static void process_spectrum_analysis(my_plugin_t* self, const float* audio_data, uint32_t frame_count) {
-    if (!self->fft_data.spectrum_data.enabled) {
+    if (!self || !audio_data || !self->fft_data.spectrum_data.enabled) {
+        return;
+    }
+    
+    // Safety check for buffer size
+    if (self->fft_data.input_buffer.size() != SPECTRUM_FFT_SIZE) {
         return;
     }
     
     for (uint32_t i = 0; i < frame_count; ++i) {
-        // Fill input buffer
-        self->fft_data.input_buffer[self->fft_data.buffer_index] = audio_data[i];
+        // Fill input buffer with bounds checking
+        if (self->fft_data.buffer_index < SPECTRUM_FFT_SIZE) {
+            self->fft_data.input_buffer[self->fft_data.buffer_index] = audio_data[i];
+        }
         self->fft_data.buffer_index = (self->fft_data.buffer_index + 1) % SPECTRUM_FFT_SIZE;
         
         // Check if it's time to update spectrum
@@ -184,6 +211,12 @@ static void process_spectrum_analysis(my_plugin_t* self, const float* audio_data
 }
 
 static void update_spectrum_data(fft_data_t* fft_data) {
+    if (!fft_data || fft_data->fft_buffer.size() != SPECTRUM_FFT_SIZE || 
+        fft_data->input_buffer.size() != SPECTRUM_FFT_SIZE ||
+        fft_data->window_function.size() != SPECTRUM_FFT_SIZE) {
+        return;
+    }
+    
     // Copy input buffer and apply window function
     for (size_t i = 0; i < SPECTRUM_FFT_SIZE; ++i) {
         size_t idx = (fft_data->buffer_index + i) % SPECTRUM_FFT_SIZE;
@@ -221,21 +254,8 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
-    // Initialize parameters with default values
-    self->params.cutoff = 1000.0;
-    self->params.resonance = 1.0;
-    self->params.drive = 0.0;
-    self->params.output = 0.0;
-    self->params.mix = 1.0;
-    self->params.bypass = false;
-    self->params.spectrum_enabled = true;
-    self->params.spectrum_style = SPECTRUM_STYLE_LINES;
-    
-    for (int i = 0; i < 3; ++i) {
-        self->params.eq_gain[i] = 0.0;
-        self->params.eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
-        self->params.eq_q[i] = 1.0;
-    }
+    // Default values are set by constructors, no need to manually initialize
+    // unless we want to override specific values here
     
     return true;
 }
