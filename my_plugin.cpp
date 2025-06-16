@@ -216,17 +216,17 @@ const void * CLAP_ABI plugin_entry_get_factory(const char *factory_id) {
     return NULL;
 }
 
-} // extern "C"
-
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
 // Must follow CLAP specification exactly for proper export on all platforms
-extern "C" CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
+CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
     plugin_entry_init,
     plugin_entry_deinit,
     plugin_entry_get_factory
 };
+
+} // extern "C"
 
 // --- C++ Graphics Implementation ---
 namespace clap_jules {
