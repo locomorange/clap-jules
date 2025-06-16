@@ -77,14 +77,14 @@ namespace {
 }
 
 // --- Forward declarations of plugin functions ---
-static bool my_plugin_init(const struct clap_plugin *plugin);
-static void my_plugin_destroy(const struct clap_plugin *plugin);
-static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
+bool my_plugin_init(const struct clap_plugin *plugin);
+void my_plugin_destroy(const struct clap_plugin *plugin);
+bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
 static void my_plugin_deactivate(const struct clap_plugin *plugin);
 static bool my_plugin_start_processing(const struct clap_plugin *plugin);
 static void my_plugin_stop_processing(const struct clap_plugin *plugin);
 static void my_plugin_reset(const struct clap_plugin *plugin);
-static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
+clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
@@ -130,25 +130,24 @@ static const clap_plugin_gui_t my_plugin_gui = {
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio-effect", "analyzer", nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
     "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
+    "FFT Spectrum Analyzer", // name
     "My Company",           // vendor
     "https://example.com",  // url
     "https://example.com/bugtracker", // manual_url
     "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "0.1.0",                // version
+    "Real-time FFT spectrum analyzer with 4 drawing modes (lines, dots, bins, fill).", // description
     plugin_features, // features
-    // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
 
 
 // --- Plugin Implementation ---
-static bool my_plugin_init(const struct clap_plugin *plugin) {
+bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
@@ -186,12 +185,12 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     return true;
 }
 
-static void my_plugin_destroy(const struct clap_plugin *plugin) {
+void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
     // Free any resources allocated in init
 }
 
-static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
     
@@ -221,7 +220,7 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
     // Reset plugin state (e.g., clear buffers, reset parameters)
 }
 
-static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
+clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
     // Process audio from input to output (pass-through)

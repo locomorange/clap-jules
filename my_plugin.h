@@ -74,3 +74,9 @@ typedef struct {
 
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
+
+// Forward declarations for functions needed by tests
+extern bool my_plugin_init(const struct clap_plugin *plugin);
+extern void my_plugin_destroy(const struct clap_plugin *plugin);
+extern bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
+extern clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
