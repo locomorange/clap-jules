@@ -283,14 +283,9 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
         return false;
     }
     
-    for (int i = 0; i < width * height; ++i) {
-        uint32_t rgba = pixels[i];
-        uint32_t r = (rgba >> 0) & 0xFF;
-        uint32_t g = (rgba >> 8) & 0xFF;
-        uint32_t b = (rgba >> 16) & 0xFF;
-        uint32_t a = (rgba >> 24) & 0xFF;
-        dest[i] = (a << 24) | (r << 16) | (g << 8) | b; // ARGB format for Win32
-    }
+    // Copy pixel data to DIB section
+    // Both input and Win32 DIB use ARGB format, so we can copy directly
+    std::memcpy(dest, pixels, width * height * sizeof(uint32_t));
     
     // Blit from memory DC to window DC
     if (!BitBlt(hdc_, 0, 0, width_, height_, mem_dc_, 0, 0, SRCCOPY)) {

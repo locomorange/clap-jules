@@ -242,6 +242,9 @@ public:
     void addComponent(std::unique_ptr<UIComponent> component);
     void removeComponent(UIComponent* component);
     void clearComponents();
+    
+    // Graphics context access (for platform integration)
+    graphics::GraphicsContext* getGraphicsContext() const { return graphics_context_.get(); }
 
 private:
     std::unique_ptr<graphics::GraphicsContext> graphics_context_;

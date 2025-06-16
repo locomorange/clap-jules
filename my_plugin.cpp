@@ -341,9 +341,46 @@ static void my_plugin_render_content(my_plugin_t *self) {
 }
 
 static bool my_plugin_present_graphics(my_plugin_t *self) {
-    // If we have a plugin GUI, use its present method
+    // If we have a plugin GUI, render it first then present to platform renderer
     if (self->plugin_gui) {
-        self->plugin_gui->present();
+        // First render the GUI to its graphics context
+        self->plugin_gui->render();
+        
+        // Get the rendered pixel data from the GUI's graphics context
+        auto* gui_graphics = self->plugin_gui->getGraphicsContext();
+        if (!gui_graphics) {
+            printf("MyPlugin: Plugin GUI has no graphics context\n");
+            return false;
+        }
+        
+        const void* pixel_data = gui_graphics->getPixelData();
+        if (!pixel_data) {
+            printf("MyPlugin: Plugin GUI graphics context has no pixel data\n");
+            return false;
+        }
+        
+        int width = gui_graphics->getWidth();
+        int height = gui_graphics->getHeight();
+        
+        printf("MyPlugin: Presenting PluginGUI %ux%u buffer to window\n", width, height);
+        
+#if defined(__linux__) && defined(HAVE_X11)
+        // Use X11 renderer if available
+        if (self->x11_renderer && self->x11_renderer->isInitialized()) {
+            const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
+            return self->x11_renderer->presentPixelBuffer(pixels, width, height);
+        }
+#endif
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+        // Use Win32 renderer if available
+        if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+            const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
+            return self->win32_renderer->presentPixelBuffer(pixels, width, height);
+        }
+#endif
+        
+        printf("MyPlugin: PluginGUI rendered but no platform renderer available\n");
         return true;
     }
     
@@ -361,7 +398,7 @@ static bool my_plugin_present_graphics(my_plugin_t *self) {
     int width = self->graphics_context->getWidth();
     int height = self->graphics_context->getHeight();
     
-    printf("MyPlugin: Presenting %ux%u graphics buffer to window\n", width, height);
+    printf("MyPlugin: Presenting fallback %ux%u graphics buffer to window\n", width, height);
     
 #if defined(__linux__) && defined(HAVE_X11)
     // Use X11 renderer if available
@@ -611,9 +648,17 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         
         // Set up redraw callback to trigger rendering
         self->win32_renderer->setRedrawCallback([self]() {
-            if (self && self->gui_created && self->gui_visible && self->graphics_context) {
-                my_plugin_render_content(self);
-                my_plugin_present_graphics(self);
+            if (self && self->gui_created && self->gui_visible) {
+                // Use PluginGUI if available, otherwise fallback to old rendering
+                if (self->plugin_gui) {
+                    // Render and present the PluginGUI
+                    self->plugin_gui->render();
+                    my_plugin_present_graphics(self);
+                } else if (self->graphics_context) {
+                    // Fallback to old rendering system
+                    my_plugin_render_content(self);
+                    my_plugin_present_graphics(self);
+                }
             }
         });
         
@@ -674,8 +719,15 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     }
     
     // Render and present graphics when showing
-    my_plugin_render_content(self);
-    my_plugin_present_graphics(self);
+    if (self->plugin_gui) {
+        // Use PluginGUI rendering
+        self->plugin_gui->render();
+        my_plugin_present_graphics(self);
+    } else if (self->graphics_context) {
+        // Fallback to old rendering system
+        my_plugin_render_content(self);
+        my_plugin_present_graphics(self);
+    }
     
     // Force immediate refresh for all platforms
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
