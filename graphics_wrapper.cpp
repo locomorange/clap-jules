@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <memory>
 
 namespace clap_jules {
 
@@ -153,8 +154,8 @@ void GraphicsContext::drawLine(int x1, int y1, int x2, int y2, uint32_t color) {
     // Software fallback - simple line drawing using Bresenham's algorithm
     if (!pixels_) return;
     
-    int dx = abs(x2 - x1);
-    int dy = abs(y2 - y1);
+    int dx = std::abs(x2 - x1);
+    int dy = std::abs(y2 - y1);
     int sx = x1 < x2 ? 1 : -1;
     int sy = y1 < y2 ? 1 : -1;
     int err = dx - dy;
