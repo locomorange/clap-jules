@@ -90,6 +90,7 @@ jobs:
 
     - name: Configure CMake
       timeout-minutes: 5
+      shell: bash
       run: |
         echo "Starting CMake configuration..."
         cmake . -B build ${{ matrix.cmakeConfig }} || {
@@ -293,6 +294,7 @@ jobs:
 
     - name: Configure CMake
       timeout-minutes: 5
+      shell: bash
       run: |
         echo "Starting CMake configuration..."
         cmake . -B build ${{ matrix.cmakeConfig }} || {
