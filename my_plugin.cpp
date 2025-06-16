@@ -7,6 +7,7 @@
 #include <memory>   // For std::make_unique, std::unique_ptr
 #include <algorithm> // For std::min, std::max
 #include <clap/ext/gui.h>
+#include <clap/ext/audio-ports.h>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -41,6 +42,10 @@ static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char 
 static bool my_plugin_gui_show(const clap_plugin_t *plugin);
 static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
 
+// --- Audio Ports Extension Function Declarations ---
+static uint32_t my_plugin_audio_ports_count(const clap_plugin_t *plugin, bool is_input);
+static bool my_plugin_audio_ports_get(const clap_plugin_t *plugin, uint32_t index, bool is_input, clap_audio_port_info_t *info);
+
 // --- GUI Extension Implementation ---
 static const clap_plugin_gui_t my_plugin_gui = {
     my_plugin_gui_is_api_supported,
@@ -58,6 +63,12 @@ static const clap_plugin_gui_t my_plugin_gui = {
     my_plugin_gui_suggest_title,
     my_plugin_gui_show,
     my_plugin_gui_hide,
+};
+
+// --- Audio Ports Extension Implementation ---
+static const clap_plugin_audio_ports_t my_plugin_audio_ports = {
+    my_plugin_audio_ports_count,
+    my_plugin_audio_ports_get,
 };
 
 // --- Plugin Descriptor ---
@@ -216,9 +227,23 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
             self->current_level = std::min(1.0f, self->current_level);
             self->peak_level = std::min(1.0f, self->peak_level);
             
-            // Mark for GUI redraw if GUI is active
+            // Mark for GUI redraw if GUI is active and request main thread callback
             if (self->gui_created && self->gui_visible) {
-                self->needs_redraw = true;
+                // Only request callback if levels have changed significantly
+                const float change_threshold = 0.001f;
+                bool level_changed = (std::abs(self->current_level - self->prev_current_level) > change_threshold) ||
+                                   (std::abs(self->peak_level - self->prev_peak_level) > change_threshold);
+                
+                if (level_changed) {
+                    self->needs_redraw = true;
+                    self->prev_current_level = self->current_level;
+                    self->prev_peak_level = self->peak_level;
+                    
+                    // Request main thread callback from host for GUI update
+                    if (self->host && self->host->request_callback) {
+                        self->host->request_callback(self->host);
+                    }
+                }
             }
         }
     }
@@ -234,7 +259,11 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
         return &my_plugin_gui;
     }
     
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
+    if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) {
+        printf("MyPlugin: Returning audio ports extension\n");
+        return &my_plugin_audio_ports;
+    }
+    
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     return NULL; // Extension not supported
 }
@@ -682,6 +711,11 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     my_plugin_render_content(self);
     my_plugin_present_graphics(self);
     
+    // Request regular callbacks for GUI updates
+    if (self->host && self->host->request_callback) {
+        self->host->request_callback(self->host);
+    }
+    
     // Force immediate refresh for all platforms
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     if (self->win32_renderer && self->win32_renderer->isInitialized()) {
@@ -703,6 +737,43 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     
     self->gui_visible = false;
     printf("MyPlugin: GUI - Window is now hidden\n");
+    return true;
+}
+
+// --- Audio Ports Extension Implementation ---
+
+static uint32_t my_plugin_audio_ports_count(const clap_plugin_t *plugin, bool is_input) {
+    printf("MyPlugin: Audio ports - Count requested (input: %s)\n", is_input ? "yes" : "no");
+    // We have one input port and one output port
+    return 1;
+}
+
+static bool my_plugin_audio_ports_get(const clap_plugin_t *plugin, uint32_t index, bool is_input, clap_audio_port_info_t *info) {
+    printf("MyPlugin: Audio ports - Info requested (index: %u, input: %s)\n", index, is_input ? "yes" : "no");
+    
+    if (index > 0) {
+        return false; // Only one port for input and output
+    }
+    
+    if (is_input) {
+        // Audio input port
+        info->id = 0;
+        strcpy(info->name, "Audio Input");
+        info->channel_count = 2;  // Stereo
+        info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+        info->port_type = CLAP_PORT_STEREO;
+        info->in_place_pair = 0;  // Paired with output port 0
+    } else {
+        // Audio output port
+        info->id = 0;
+        strcpy(info->name, "Audio Output");
+        info->channel_count = 2;  // Stereo
+        info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+        info->port_type = CLAP_PORT_STEREO;
+        info->in_place_pair = 0;  // Paired with input port 0
+    }
+    
+    printf("MyPlugin: Audio port configured - %s (channels: %u)\n", info->name, info->channel_count);
     return true;
 }
 
@@ -735,6 +806,9 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
     }
+
+    // Store host reference for callbacks
+    self->host = host;
 
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context

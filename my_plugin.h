@@ -2,6 +2,7 @@
 
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+#include <clap/ext/audio-ports.h>
 #include <memory>
 #include "graphics/skia_graphics.h"
 
@@ -16,6 +17,9 @@
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
+    
+    // Host reference for callbacks
+    const clap_host_t* host = nullptr;
     
     // GUI-related data
     bool gui_created = false;
@@ -48,6 +52,10 @@ typedef struct {
     float peak_level = 0.0f;         // Peak level (0.0 to 1.0)
     float decay_rate = 0.95f;        // Decay rate for peak meter
     uint32_t sample_rate = 44100;    // Current sample rate
+    
+    // Previous levels for change detection
+    float prev_current_level = 0.0f;
+    float prev_peak_level = 0.0f;
 } my_plugin_t;
 
 // Plugin factory ID
