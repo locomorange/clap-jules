@@ -313,8 +313,7 @@ SpectrumVisualizationView::SpectrumVisualizationView(const CRect& size)
         frequencyBins[i] = std::pow(10.0f, log_freq);
     }
     
-    // Add some animated test data to show that the view is working
-    updateTestData();
+    // Initialize with quiet spectrum data - real data will be provided by the spectrum analyzer
 }
 
 SpectrumVisualizationView::~SpectrumVisualizationView() {
@@ -327,13 +326,7 @@ void SpectrumVisualizationView::draw(CDrawContext* context) {
     context->setFillColor(MyPluginEditor::kPanelColor);
     context->drawRect(bounds, kDrawFilled);
     
-    // Update test data periodically to show animation
-    uint64_t currentTime = static_cast<uint64_t>(time(nullptr) * 10); // 10Hz update rate
-    if (currentTime != lastUpdateTime) {
-        updateTestData();
-        lastUpdateTime = currentTime;
-    }
-    
+    // Draw the spectrum and grid
     drawGrid(context);
     drawSpectrum(context);
     
@@ -527,17 +520,23 @@ void SpectrumVisualizationView::updateSpectrumData(const std::vector<float>& spe
         
         // Debug output to verify data is being received
         float maxVal = -120.0f;
+        float avgVal = 0.0f;
         size_t maxIdx = 0;
         for (size_t i = 0; i < spectrumData.size(); ++i) {
             if (spectrumData[i] > maxVal) {
                 maxVal = spectrumData[i];
                 maxIdx = i;
             }
+            avgVal += spectrumData[i];
         }
+        avgVal /= spectrumData.size();
         
-        // Only print if there's significant energy
-        if (maxVal > -80.0f) {
-            printf("Spectrum GUI Update: Peak %.1fdB at bin %zu\n", maxVal, maxIdx);
+        // Print debug info for significant energy or periodically
+        static int updateCounter = 0;
+        updateCounter++;
+        if (maxVal > -80.0f || updateCounter % 100 == 0) {
+            printf("Spectrum Update #%d: Peak %.1fdB at bin %zu, Avg %.1fdB\n", 
+                   updateCounter, maxVal, maxIdx, avgVal);
         }
     }
     if (!frequency_bins.empty()) {

@@ -184,8 +184,18 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
             if (self->spectrum_analyzer) {
                 // Create mixed mono signal for analysis
                 std::vector<float> mono_samples(process->frames_count);
+                float max_sample = 0.0f;
                 for (uint32_t i = 0; i < process->frames_count; ++i) {
                     mono_samples[i] = (in_buf->data32[0][i] + in_buf->data32[1][i]) * 0.5f;
+                    max_sample = std::max(max_sample, std::abs(mono_samples[i]));
+                }
+                
+                // Debug output for incoming audio levels
+                static int processCounter = 0;
+                processCounter++;
+                if (max_sample > 0.001f || processCounter % 1000 == 0) {
+                    printf("Audio Process #%d: Max sample level %.6f (%d frames)\n", 
+                           processCounter, max_sample, process->frames_count);
                 }
                 
                 // Process the audio through the spectrum analyzer

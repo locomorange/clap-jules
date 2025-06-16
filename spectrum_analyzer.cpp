@@ -12,7 +12,7 @@ SpectrumAnalyzer::SpectrumAnalyzer()
     : sample_rate_(44100.0)
     , input_buffer_pos_(0)
     , has_new_data_(false)
-    , smoothing_factor_(0.7f)
+    , smoothing_factor_(0.3f)  // Reduced for more responsive real-time updates
 {
 }
 
@@ -99,10 +99,11 @@ void SpectrumAnalyzer::update_display_spectrum() {
         if (fft_bin < NUM_BINS) {
             float current_value = magnitude_spectrum_[fft_bin];
             
-            // Ensure we have a visible noise floor for testing
-            // This helps users see that the spectrum analyzer is working
-            float noise_floor = -80.0f + (rand() % 10) * 0.1f; // Small random variation
-            current_value = std::max(current_value, noise_floor);
+            // Only apply noise floor if the signal is extremely quiet
+            // This allows real audio to show through while providing visibility when silent  
+            if (current_value < -100.0f) {
+                current_value = -90.0f; // Static noise floor, no random variation
+            }
             
             // Apply smoothing
             display_spectrum_[i] = smoothing_factor_ * previous_spectrum_[i] + 
