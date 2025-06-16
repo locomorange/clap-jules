@@ -53,6 +53,8 @@ private:
     
     double sample_rate_;
     size_t input_buffer_pos_;
+    size_t samples_since_last_fft_;
+    size_t total_samples_processed_;
     bool has_new_data_;
     float smoothing_factor_;
     

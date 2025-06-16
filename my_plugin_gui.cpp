@@ -515,6 +515,8 @@ CPoint SpectrumVisualizationView::frequencyToPosition(float freq, float magnitud
 }
 
 void SpectrumVisualizationView::updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins) {
+    printf("GUI: updateSpectrumData called with %zu spectrum points\n", spectrum_data.size());
+    
     if (!spectrum_data.empty()) {
         spectrumData = spectrum_data;
         
@@ -544,6 +546,7 @@ void SpectrumVisualizationView::updateSpectrumData(const std::vector<float>& spe
     }
     
     // Force immediate redraw - call multiple invalidation methods to ensure update
+    printf("GUI: Forcing spectrum view redraw\n");
     invalid();
     setDirty(true);
     if (getParentView()) {

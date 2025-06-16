@@ -11,14 +11,18 @@
 SpectrumAnalyzer::SpectrumAnalyzer()
     : sample_rate_(44100.0)
     , input_buffer_pos_(0)
+    , samples_since_last_fft_(0)
+    , total_samples_processed_(0)
     , has_new_data_(false)
-    , smoothing_factor_(0.3f)  // Reduced for more responsive real-time updates
+    , smoothing_factor_(0.1f)  // Reduced for more responsive real-time updates
 {
 }
 
 void SpectrumAnalyzer::initialize(double sample_rate) {
     sample_rate_ = sample_rate;
     input_buffer_pos_ = 0;
+    samples_since_last_fft_ = 0;
+    total_samples_processed_ = 0;
     has_new_data_ = false;
     
     // Initialize buffers
@@ -43,13 +47,24 @@ void SpectrumAnalyzer::process_samples(const float* samples, size_t num_samples)
     for (size_t i = 0; i < num_samples; ++i) {
         input_buffer_[input_buffer_pos_] = samples[i];
         input_buffer_pos_ = (input_buffer_pos_ + 1) % FFT_SIZE;
+        samples_since_last_fft_++;
+        total_samples_processed_++;
         
-        // Process FFT when we have enough samples
-        if (input_buffer_pos_ % HOP_SIZE == 0) {
+        // Only start FFT processing after we have filled the buffer at least once
+        // and then every HOP_SIZE samples
+        if (total_samples_processed_ >= FFT_SIZE && samples_since_last_fft_ >= HOP_SIZE) {
             perform_fft();
             convert_to_magnitude_spectrum();
             update_display_spectrum();
             has_new_data_ = true;
+            samples_since_last_fft_ = 0;  // Reset counter
+            
+            // Debug output for spectrum updates
+            static int fftCounter = 0;
+            fftCounter++;
+            if (fftCounter % 10 == 0) {  // Log every 10th FFT
+                printf("Spectrum FFT #%d: Updated spectrum data\n", fftCounter);
+            }
         }
     }
 }
@@ -99,13 +114,7 @@ void SpectrumAnalyzer::update_display_spectrum() {
         if (fft_bin < NUM_BINS) {
             float current_value = magnitude_spectrum_[fft_bin];
             
-            // Only apply noise floor if the signal is extremely quiet
-            // This allows real audio to show through while providing visibility when silent  
-            if (current_value < -100.0f) {
-                current_value = -90.0f; // Static noise floor, no random variation
-            }
-            
-            // Apply smoothing
+            // Apply minimal smoothing for responsive updates
             display_spectrum_[i] = smoothing_factor_ * previous_spectrum_[i] + 
                                    (1.0f - smoothing_factor_) * current_value;
             
