@@ -96,23 +96,23 @@ extern "C" {
 #endif
 
 // FFT Processor C interface functions
-FFTProcessor* fft_processor_create(double sample_rate);
-void fft_processor_destroy(FFTProcessor* processor);
-void fft_processor_process(FFTProcessor* processor, const float* input, size_t frame_count);
-void fft_processor_get_spectrum_data(FFTProcessor* processor, float* magnitudes, float* frequencies, size_t* count);
+CLAP_EXPORT FFTProcessor* fft_processor_create(double sample_rate);
+CLAP_EXPORT void fft_processor_destroy(FFTProcessor* processor);
+CLAP_EXPORT void fft_processor_process(FFTProcessor* processor, const float* input, size_t frame_count);
+CLAP_EXPORT void fft_processor_get_spectrum_data(FFTProcessor* processor, float* magnitudes, float* frequencies, size_t* count);
 
 // Spectrum Analyzer C interface functions  
-SpectrumAnalyzer* spectrum_analyzer_create(void);
-void spectrum_analyzer_destroy(SpectrumAnalyzer* analyzer);
-void spectrum_analyzer_update_data(SpectrumAnalyzer* analyzer, const float* magnitudes, const float* frequencies, size_t count);
-bool spectrum_analyzer_get_data(SpectrumAnalyzer* analyzer, float* magnitudes, float* frequencies, size_t* count);
-void spectrum_analyzer_set_enabled(SpectrumAnalyzer* analyzer, bool enabled);
-void spectrum_analyzer_set_style(SpectrumAnalyzer* analyzer, SpectrumDrawStyle style);
+CLAP_EXPORT SpectrumAnalyzer* spectrum_analyzer_create(void);
+CLAP_EXPORT void spectrum_analyzer_destroy(SpectrumAnalyzer* analyzer);
+CLAP_EXPORT void spectrum_analyzer_update_data(SpectrumAnalyzer* analyzer, const float* magnitudes, const float* frequencies, size_t count);
+CLAP_EXPORT bool spectrum_analyzer_get_data(SpectrumAnalyzer* analyzer, float* magnitudes, float* frequencies, size_t* count);
+CLAP_EXPORT void spectrum_analyzer_set_enabled(SpectrumAnalyzer* analyzer, bool enabled);
+CLAP_EXPORT void spectrum_analyzer_set_style(SpectrumAnalyzer* analyzer, SpectrumDrawStyle style);
 
 // Plugin helper functions
-bool get_plugin_spectrum_data(const my_plugin_t* plugin, float* magnitudes, float* frequencies, size_t* count);
-void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled);
-void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style);
+CLAP_EXPORT bool get_plugin_spectrum_data(const my_plugin_t* plugin, float* magnitudes, float* frequencies, size_t* count);
+CLAP_EXPORT void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled);
+CLAP_EXPORT void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style);
 
 #ifdef __cplusplus
 }
@@ -124,8 +124,8 @@ void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style);
 bool get_plugin_spectrum_data(const my_plugin_t* plugin, std::vector<float>& magnitudes, std::vector<float>& frequencies);
 
 // Testing functions (C++ only)
-void init_fft_data(void* fft_data, double sample_rate);
-void cleanup_fft_data(void* fft_data);
-void generate_hann_window(std::vector<float>& window, size_t size);
+CLAP_EXPORT void init_fft_data(void* fft_data, double sample_rate);
+CLAP_EXPORT void cleanup_fft_data(void* fft_data);
+CLAP_EXPORT void generate_hann_window(std::vector<float>& window, size_t size);
 
 #endif

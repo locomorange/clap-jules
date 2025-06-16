@@ -340,21 +340,21 @@ void SpectrumAnalyzer::set_style(SpectrumDrawStyle new_style) {
 // C Interface Functions  
 //=============================================================================
 
-FFTProcessor* fft_processor_create(double sample_rate) {
+CLAP_EXPORT FFTProcessor* fft_processor_create(double sample_rate) {
     return new FFTProcessor(sample_rate);
 }
 
-void fft_processor_destroy(FFTProcessor* processor) {
+CLAP_EXPORT void fft_processor_destroy(FFTProcessor* processor) {
     delete processor;
 }
 
-void fft_processor_process(FFTProcessor* processor, const float* input, size_t frame_count) {
+CLAP_EXPORT void fft_processor_process(FFTProcessor* processor, const float* input, size_t frame_count) {
     if (processor) {
         processor->process(input, frame_count);
     }
 }
 
-void fft_processor_get_spectrum_data(FFTProcessor* processor, float* magnitudes, float* frequencies, size_t* count) {
+CLAP_EXPORT void fft_processor_get_spectrum_data(FFTProcessor* processor, float* magnitudes, float* frequencies, size_t* count) {
     if (processor) {
         processor->get_spectrum_data(magnitudes, frequencies, count);
     } else {
@@ -362,21 +362,21 @@ void fft_processor_get_spectrum_data(FFTProcessor* processor, float* magnitudes,
     }
 }
 
-SpectrumAnalyzer* spectrum_analyzer_create(void) {
+CLAP_EXPORT SpectrumAnalyzer* spectrum_analyzer_create(void) {
     return new SpectrumAnalyzer();
 }
 
-void spectrum_analyzer_destroy(SpectrumAnalyzer* analyzer) {
+CLAP_EXPORT void spectrum_analyzer_destroy(SpectrumAnalyzer* analyzer) {
     delete analyzer;
 }
 
-void spectrum_analyzer_update_data(SpectrumAnalyzer* analyzer, const float* magnitudes, const float* frequencies, size_t count) {
+CLAP_EXPORT void spectrum_analyzer_update_data(SpectrumAnalyzer* analyzer, const float* magnitudes, const float* frequencies, size_t count) {
     if (analyzer) {
         analyzer->update_data(magnitudes, frequencies, count);
     }
 }
 
-bool spectrum_analyzer_get_data(SpectrumAnalyzer* analyzer, float* magnitudes, float* frequencies, size_t* count) {
+CLAP_EXPORT bool spectrum_analyzer_get_data(SpectrumAnalyzer* analyzer, float* magnitudes, float* frequencies, size_t* count) {
     if (analyzer) {
         return analyzer->get_data(magnitudes, frequencies, count);
     }
@@ -384,13 +384,13 @@ bool spectrum_analyzer_get_data(SpectrumAnalyzer* analyzer, float* magnitudes, f
     return false;
 }
 
-void spectrum_analyzer_set_enabled(SpectrumAnalyzer* analyzer, bool enabled) {
+CLAP_EXPORT void spectrum_analyzer_set_enabled(SpectrumAnalyzer* analyzer, bool enabled) {
     if (analyzer) {
         analyzer->set_enabled(enabled);
     }
 }
 
-void spectrum_analyzer_set_style(SpectrumAnalyzer* analyzer, SpectrumDrawStyle style) {
+CLAP_EXPORT void spectrum_analyzer_set_style(SpectrumAnalyzer* analyzer, SpectrumDrawStyle style) {
     if (analyzer) {
         analyzer->set_style(style);
     }
@@ -400,15 +400,15 @@ void spectrum_analyzer_set_style(SpectrumAnalyzer* analyzer, SpectrumDrawStyle s
 // Legacy compatibility functions (for testing)
 //=============================================================================
 
-void init_fft_data(void* fft_data, double sample_rate) {
+CLAP_EXPORT void init_fft_data(void* fft_data, double sample_rate) {
     // Legacy function for testing compatibility
 }
 
-void cleanup_fft_data(void* fft_data) {
+CLAP_EXPORT void cleanup_fft_data(void* fft_data) {
     // Legacy function for testing compatibility  
 }
 
-void generate_hann_window(std::vector<float>& window, size_t size) {
+CLAP_EXPORT void generate_hann_window(std::vector<float>& window, size_t size) {
 #ifdef __cplusplus
     if (size <= 1) {
         if (size == 1) {
@@ -805,7 +805,7 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
 //=============================================================================
 
 // C interface helper functions
-bool get_plugin_spectrum_data(const my_plugin_t* plugin, float* magnitudes, float* frequencies, size_t* count) {
+CLAP_EXPORT bool get_plugin_spectrum_data(const my_plugin_t* plugin, float* magnitudes, float* frequencies, size_t* count) {
     if (!plugin || !plugin->spectrum_analyzer) {
         *count = 0;
         return false;
@@ -814,7 +814,7 @@ bool get_plugin_spectrum_data(const my_plugin_t* plugin, float* magnitudes, floa
     return spectrum_analyzer_get_data(plugin->spectrum_analyzer, magnitudes, frequencies, count);
 }
 
-void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled) {
+CLAP_EXPORT void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled) {
     if (plugin) {
         plugin->params.spectrum_enabled = enabled;
         if (plugin->spectrum_analyzer) {
@@ -823,7 +823,7 @@ void set_plugin_spectrum_enabled(my_plugin_t* plugin, bool enabled) {
     }
 }
 
-void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style) {
+CLAP_EXPORT void set_plugin_spectrum_style(my_plugin_t* plugin, SpectrumDrawStyle style) {
     if (plugin) {
         plugin->params.spectrum_style = style;
         if (plugin->spectrum_analyzer) {
