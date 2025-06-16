@@ -96,7 +96,6 @@ endif()
 # Graphics library
 add_library(clap_jules_graphics STATIC 
     graphics/skia_graphics.cpp
-    graphics/skia_graphics.h
 )
 
 # Add platform-specific graphics files
