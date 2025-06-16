@@ -39,9 +39,67 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add GLFW if available
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
+    message(STATUS "Found GLFW, adding as subdirectory")
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW docs")
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
+    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW with Wayland support")
+    set(GLFW_BUILD_X11 OFF CACHE BOOL "Don't build GLFW with X11 support")
+    add_subdirectory(libs/glfw)
+endif()
+
+# Add Skia support (optional, requires pre-built Skia)
+option(USE_SKIA "Enable Skia graphics support" OFF)
+if(USE_SKIA)
+    # Look for pre-built Skia
+    find_path(SKIA_INCLUDE_DIR 
+        NAMES skia/core/SkCanvas.h
+        PATHS 
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/include"
+            /usr/local/include
+            /usr/include
+        DOC "Path to Skia include directory"
+    )
+    
+    find_library(SKIA_LIBRARY
+        NAMES skia
+        PATHS
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/out/Release"
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/out/Debug"
+            /usr/local/lib
+            /usr/lib
+        DOC "Path to Skia library"
+    )
+    
+    if(SKIA_INCLUDE_DIR AND SKIA_LIBRARY)
+        message(STATUS "Found Skia: ${SKIA_LIBRARY}")
+        add_library(skia INTERFACE)
+        target_include_directories(skia INTERFACE ${SKIA_INCLUDE_DIR})
+        target_link_libraries(skia INTERFACE ${SKIA_LIBRARY})
+    else()
+        message(WARNING "Skia not found. Please build Skia first or set SKIA_INCLUDE_DIR and SKIA_LIBRARY. See README for instructions.")
+        set(USE_SKIA OFF)
+    endif()
+endif()
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link with optional dependencies
+if (TARGET glfw)
+    target_link_libraries(my_clap_plugin PRIVATE glfw)
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_GLFW=1)
+    message(STATUS "GLFW support enabled")
+endif()
+
+if (USE_SKIA AND TARGET skia)
+    target_link_libraries(my_clap_plugin PRIVATE skia)
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_SKIA=1)
+    message(STATUS "Skia support enabled")
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")

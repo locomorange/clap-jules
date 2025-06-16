@@ -36,15 +36,48 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize graphics libraries if available
+#ifdef HAVE_GLFW
+    if (glfwInit()) {
+        printf("MyPlugin: GLFW initialized successfully\n");
+        // Note: Window creation is optional and typically done when GUI is needed
+        self->window = nullptr;
+    } else {
+        printf("MyPlugin: Warning - GLFW initialization failed\n");
+    }
+#endif
+
+#ifdef HAVE_SKIA
+    printf("MyPlugin: Skia support is available\n");
+    self->surface = nullptr;
+#endif
+
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    // Cleanup graphics resources
+#ifdef HAVE_GLFW
+    if (self->window) {
+        glfwDestroyWindow(self->window);
+        self->window = nullptr;
+    }
+    glfwTerminate();
+    printf("MyPlugin: GLFW terminated\n");
+#endif
+
+#ifdef HAVE_SKIA
+    if (self->surface) {
+        self->surface.reset();
+    }
+    printf("MyPlugin: Skia resources cleaned up\n");
+#endif
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
