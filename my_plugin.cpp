@@ -500,7 +500,7 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
 
 // --- Plugin Instance Creation ---
 // Function used by the factory to create plugin instances
-const clap_plugin_t *create_my_plugin_instance(const clap_host_t *host, const char *plugin_id) {
+CLAP_EXPORT const clap_plugin_t *create_my_plugin_instance(const clap_host_t *host, const char *plugin_id) {
     my_plugin_t *self = (my_plugin_t *)calloc(1, sizeof(my_plugin_t));
     if (!self) {
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");

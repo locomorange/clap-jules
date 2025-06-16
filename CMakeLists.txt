@@ -99,6 +99,11 @@ endif()
 add_library(my_clap_plugin SHARED my_plugin.cpp plugin_factory.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
+# Define macro for DLL export on Windows
+if(WIN32)
+    target_compile_definitions(my_clap_plugin PRIVATE BUILDING_MY_CLAP_PLUGIN)
+endif()
+
 # Link Skia if enabled
 if(ENABLE_SKIA)
     target_link_libraries(my_clap_plugin PRIVATE skia)

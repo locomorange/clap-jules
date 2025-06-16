@@ -6,7 +6,7 @@
 // Plugin descriptor definition (moved from my_plugin.cpp)
 static const char *const plugin_features[] = {"audio-effect", nullptr};
 
-const clap_plugin_descriptor_t my_plugin_descriptor = {
+CLAP_EXPORT const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
     "com.example.myplugin", // id
     "My First CLAP Plugin", // name
