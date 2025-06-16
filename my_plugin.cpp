@@ -86,8 +86,8 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     // Initialize GUI state
     self->gui_created = false;
     self->gui_visible = false;
-    self->gui_width = 320;
-    self->gui_height = 240;
+    self->gui_width = 800;
+    self->gui_height = 600;
     self->gui_api = nullptr;
     self->gui_is_floating = false;
     self->native_window = nullptr;
@@ -225,6 +225,13 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
 // --- Plugin-specific rendering functions ---
 
 static void my_plugin_render_content(my_plugin_t *self) {
+    // If we have a plugin GUI, use it
+    if (self->plugin_gui) {
+        self->plugin_gui->render();
+        return;
+    }
+    
+    // Fallback to old rendering if plugin GUI is not available
     if (!self->graphics_context) {
         return;
     }
@@ -334,6 +341,13 @@ static void my_plugin_render_content(my_plugin_t *self) {
 }
 
 static bool my_plugin_present_graphics(my_plugin_t *self) {
+    // If we have a plugin GUI, use its present method
+    if (self->plugin_gui) {
+        self->plugin_gui->present();
+        return true;
+    }
+    
+    // Fallback to old method
     if (!self->graphics_context || !self->gui_created) {
         return false;
     }
@@ -417,15 +431,19 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     self->gui_api = api;
     self->gui_is_floating = is_floating;
     
-    // Create graphics context for the GUI
-    self->graphics_context = clap_jules::graphics::createGraphicsContext(self->gui_width, self->gui_height);
-    if (!self->graphics_context) {
-        printf("MyPlugin: GUI - Failed to create graphics context\n");
+    // Create the plugin GUI
+    self->plugin_gui = std::make_unique<clap_jules::gui::PluginGUI>(self->gui_width, self->gui_height);
+    if (!self->plugin_gui) {
+        printf("MyPlugin: GUI - Failed to create plugin GUI\n");
         return false;
     }
     
-    // Render initial content
-    my_plugin_render_content(self);
+    // Initialize the GUI
+    if (!self->plugin_gui->create(api, is_floating)) {
+        printf("MyPlugin: GUI - Failed to initialize plugin GUI\n");
+        self->plugin_gui.reset();
+        return false;
+    }
     
     self->gui_created = true;
     self->needs_redraw = true;
@@ -439,6 +457,12 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     
     if (!self->gui_created) {
         return;
+    }
+    
+    // Clean up plugin GUI
+    if (self->plugin_gui) {
+        self->plugin_gui->destroy();
+        self->plugin_gui.reset();
     }
     
     // Clean up graphics context
@@ -511,6 +535,11 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
     
     self->gui_width = width;
     self->gui_height = height;
+    
+    // Update plugin GUI size
+    if (self->plugin_gui) {
+        self->plugin_gui->setSize(width, height);
+    }
     
     // Resize Win32 renderer if available
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
@@ -639,6 +668,11 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     
     self->gui_visible = true;
     
+    // Show plugin GUI
+    if (self->plugin_gui) {
+        self->plugin_gui->show();
+    }
+    
     // Render and present graphics when showing
     my_plugin_render_content(self);
     my_plugin_present_graphics(self);
@@ -663,6 +697,12 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     }
     
     self->gui_visible = false;
+    
+    // Hide plugin GUI
+    if (self->plugin_gui) {
+        self->plugin_gui->hide();
+    }
+    
     printf("MyPlugin: GUI - Window is now hidden\n");
     return true;
 }

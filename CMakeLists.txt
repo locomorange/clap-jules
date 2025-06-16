@@ -96,6 +96,7 @@ endif()
 # Graphics library
 add_library(clap_jules_graphics STATIC 
     graphics/skia_graphics.cpp
+    graphics/plugin_gui.cpp
 )
 
 # Add platform-specific graphics files
@@ -169,14 +170,21 @@ target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 add_executable(graphics_tests test/test_graphics.cpp)
 target_link_libraries(graphics_tests PRIVATE gtest gtest_main clap_jules_graphics)
 
+add_executable(plugin_gui_tests test/test_plugin_gui.cpp)
+target_link_libraries(plugin_gui_tests PRIVATE gtest gtest_main clap_jules_graphics)
+
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
 gtest_discover_tests(graphics_tests)
+gtest_discover_tests(plugin_gui_tests)
 
 # Graphics examples
 if(CLAP_JULES_BUILD_GRAPHICS_EXAMPLES)
     add_executable(graphics_demo examples/graphics_demo.cpp)
     target_link_libraries(graphics_demo PRIVATE clap_jules_graphics)
+    
+    add_executable(soothe2_gui_demo examples/soothe2_gui_demo.cpp)
+    target_link_libraries(soothe2_gui_demo PRIVATE clap_jules_graphics)
     
     # GUI test executable (Unix/Linux only - uses dlopen/dlsym)
     if(NOT WIN32)
@@ -185,6 +193,7 @@ if(CLAP_JULES_BUILD_GRAPHICS_EXAMPLES)
     endif()
     
     message(STATUS "Graphics demo built: run with './build/graphics_demo'")
+    message(STATUS "Soothe2 GUI demo built: run with './build/soothe2_gui_demo'")
     if(NOT WIN32)
         message(STATUS "GUI test built: run with './build/gui_test'")
     endif()

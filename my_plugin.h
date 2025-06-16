@@ -4,6 +4,7 @@
 #include <clap/ext/gui.h>
 #include <memory>
 #include "graphics/skia_graphics.h"
+#include "graphics/plugin_gui.h"
 
 #if defined(__linux__) && defined(HAVE_X11)
 #include "graphics/x11_renderer.h"
@@ -20,10 +21,13 @@ typedef struct {
     // GUI-related data
     bool gui_created = false;
     bool gui_visible = false;
-    uint32_t gui_width = 0;
-    uint32_t gui_height = 0;
+    uint32_t gui_width = 800;
+    uint32_t gui_height = 600;
     const char* gui_api = nullptr;
     bool gui_is_floating = false;
+    
+    // Main plugin GUI instance
+    std::unique_ptr<clap_jules::gui::PluginGUI> plugin_gui = nullptr;
     
     // Graphics context for rendering
     std::unique_ptr<clap_jules::graphics::GraphicsContext> graphics_context = nullptr;
