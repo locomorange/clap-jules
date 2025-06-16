@@ -508,8 +508,8 @@ CPoint SpectrumVisualizationView::frequencyToPosition(float freq, float magnitud
     float y = bounds.top + normalizedY * bounds.getHeight();
     
     // Clamp to bounds
-    x = std::max(bounds.left, std::min(bounds.right, x));
-    y = std::max(bounds.top, std::min(bounds.bottom, y));
+    x = std::max(static_cast<float>(bounds.left), std::min(static_cast<float>(bounds.right), x));
+    y = std::max(static_cast<float>(bounds.top), std::min(static_cast<float>(bounds.bottom), y));
     
     return CPoint(x, y);
 }
