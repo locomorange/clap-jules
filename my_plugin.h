@@ -15,4 +15,7 @@ typedef struct {
 } my_plugin_t;
 
 // Plugin factory ID
-extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
+extern CLAP_EXPORT const struct clap_plugin_factory my_plugin_factory;
+
+// CLAP entry point
+extern CLAP_EXPORT const clap_plugin_entry_t clap_entry;

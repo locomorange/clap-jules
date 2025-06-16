@@ -532,8 +532,17 @@ static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const st
 }
 
 static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_factory *factory, const clap_host_t *host, const char *plugin_id) {
+    // Validate inputs
+    if (!factory || !host || !plugin_id) {
+        fprintf(stderr, "MyPlugin: Error - null parameters passed to create_plugin\n");
+        return NULL;
+    }
+    
+    printf("MyPlugin: Creating plugin with ID: %s (expected: %s)\n", plugin_id, my_plugin_descriptor.id);
+    
     if (strcmp(plugin_id, my_plugin_descriptor.id) != 0) {
-        fprintf(stderr, "MyPlugin: Error - incorrect plugin ID requested: %s\n", plugin_id);
+        fprintf(stderr, "MyPlugin: Error - incorrect plugin ID requested: %s (expected: %s)\n", 
+                plugin_id, my_plugin_descriptor.id);
         return NULL;
     }
 
@@ -560,7 +569,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     return &self->plugin;
 }
 
-const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
+CLAP_EXPORT const struct clap_plugin_factory my_plugin_factory = {
     my_factory_get_plugin_count,
     my_factory_get_plugin_descriptor,
     my_factory_create_plugin,
@@ -583,14 +592,20 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     },
     // get_factory: Returns a factory based on its ID.
     [](const char *factory_id) -> const void * {
-        printf("MyPlugin: clap_entry.get_factory called (ID: %s)\n", factory_id);
+        if (!factory_id) {
+            fprintf(stderr, "MyPlugin: Error - null factory ID requested\n");
+            return NULL;
+        }
+        
+        printf("MyPlugin: clap_entry.get_factory called (ID: %s, expected: %s)\n", 
+               factory_id, CLAP_PLUGIN_FACTORY_ID);
+        
         if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_ID) == 0) {
             return &my_plugin_factory;
         }
-        // To support other factory types, check their specific IDs here.
-        // For example, CLAP_PLUGIN_VOICE_INFO_FACTORY_ID for voice info.
-        // Or CLAP_PLUGIN_REMOTABLE_CONTROLS_FACTORY_ID for remotable controls.
-        fprintf(stderr, "MyPlugin: Unknown factory ID requested: %s\n", factory_id);
+        
+        // Log warning for unknown factory IDs but don't treat as fatal error
+        fprintf(stderr, "MyPlugin: Warning - unknown factory ID requested: %s\n", factory_id);
         return NULL;
     }
 };

@@ -79,7 +79,7 @@ jobs:
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: MyFirstClapPlugin-windows-${{ github.sha }}
+        name: MyFirstClapPlugin-windows-${{ matrix.skia && 'skia-' || '' }}${{ github.sha }}-${{ github.run_id }}
         path: build/Release/MyFirstClapPlugin.clap
         retention-days: 10
 
@@ -87,7 +87,7 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
-        name: MyFirstClapPlugin-linux-${{ github.sha }}
+        name: MyFirstClapPlugin-linux-${{ matrix.skia && 'skia-' || '' }}${{ github.sha }}-${{ github.run_id }}
         path: build/MyFirstClapPlugin.so
         retention-days: 10
 
@@ -95,7 +95,7 @@ jobs:
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
-        name: MyFirstClapPlugin-macos-${{ github.sha }}
+        name: MyFirstClapPlugin-macos-${{ matrix.skia && 'skia-' || '' }}${{ github.sha }}-${{ github.run_id }}
         path: build/MyFirstClapPlugin.dylib
         retention-days: 10
 
