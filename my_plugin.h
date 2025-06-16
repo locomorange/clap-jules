@@ -42,6 +42,12 @@ typedef struct {
     
     // Render callback data
     bool needs_redraw = false;
+    
+    // VU meter data
+    float current_level = 0.0f;      // Current RMS level (0.0 to 1.0)
+    float peak_level = 0.0f;         // Peak level (0.0 to 1.0)
+    float decay_rate = 0.95f;        // Decay rate for peak meter
+    uint32_t sample_rate = 44100;    // Current sample rate
 } my_plugin_t;
 
 // Plugin factory ID
