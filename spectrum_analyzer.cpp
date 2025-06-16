@@ -118,8 +118,9 @@ void SpectrumAnalyzer::render(graphics::GraphicsContext* graphics, const graphic
     }
     
     std::vector<float> spectrum;
-    if (!getMagnitudeSpectrum(spectrum)) {
-        return; // No new data to render
+    {
+        std::lock_guard<std::mutex> lock(spectrum_mutex_);
+        spectrum = smoothed_spectrum_; // Always use current spectrum data
     }
     
     // Clear background

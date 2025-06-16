@@ -117,6 +117,8 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->needs_redraw = true;
     self->is_processing = false;
     self->sample_rate = 44100.0;
+    self->total_samples_processed = 0;
+    self->last_gui_update_samples = 0;
     
     // Initialize parameters
     self->visualization_type_param.store(0); // Default to Lines
@@ -235,6 +237,18 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
                 self->spectrum_analyzer->processAudio(in_buf->data32[0], process->frames_count);
             }
             
+            // Update sample counter
+            self->total_samples_processed += process->frames_count;
+            
+            // Request main thread callback for GUI update at a reasonable rate
+            if (self->gui_visible && self->host && self->host->request_callback &&
+                (self->total_samples_processed - self->last_gui_update_samples) >= GUI_UPDATE_INTERVAL_SAMPLES) {
+                self->host->request_callback(self->host);
+                self->last_gui_update_samples = self->total_samples_processed;
+                printf("MyPlugin: Requested GUI callback at sample %llu\n", 
+                       (unsigned long long)self->total_samples_processed);
+            }
+            
             // Pass audio through (simple passthrough for now)
             for (uint32_t ch = 0; ch < std::min(in_buf->channel_count, out_buf->channel_count); ++ch) {
                 if (in_buf->data32[ch] && out_buf->data32[ch]) {
@@ -269,10 +283,13 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
+    printf("MyPlugin: Main thread callback received\n");
+    
     // If GUI is visible, update the rendering
     if (self->gui_created && self->gui_visible && self->graphics_context) {
         my_plugin_render_content(self);
         my_plugin_present_graphics(self);
+        printf("MyPlugin: GUI updated in main thread callback\n");
     }
 }
 
@@ -801,6 +818,9 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->plugin.process = my_plugin_process;
     self->plugin.get_extension = my_plugin_get_extension;
     self->plugin.on_main_thread = my_plugin_on_main_thread;
+    
+    // Store host reference for callbacks
+    self->host = host;
 
     printf("MyPlugin: Plugin instance created successfully.\n");
     return &self->plugin;

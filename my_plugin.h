@@ -21,13 +21,20 @@ enum {
     PARAM_COUNT
 };
 
+// GUI update timing constant
+static constexpr uint64_t GUI_UPDATE_INTERVAL_SAMPLES = 1024; // Update every ~23ms at 44.1kHz
+
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
     
+    // Host reference for callbacks
+    const clap_host_t* host = nullptr;
+    
     // Audio processing
     double sample_rate = 44100.0;
     bool is_processing = false;
+    uint64_t total_samples_processed = 0;
     
     // Spectrum analyzer
     std::unique_ptr<clap_jules::audio::SpectrumAnalyzer> spectrum_analyzer = nullptr;
@@ -57,6 +64,9 @@ typedef struct {
     
     // Render callback data
     bool needs_redraw = false;
+    
+    // GUI update timing (to limit callback frequency)
+    uint64_t last_gui_update_samples = 0;
     
     // Parameters
     std::atomic<int> visualization_type_param = 0; // 0=Lines, 1=Dots, 2=Bins, 3=Fill
