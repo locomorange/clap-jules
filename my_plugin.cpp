@@ -1,4 +1,5 @@
 #include "my_plugin.h"
+#include "graphics/skia_graphics.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -38,6 +39,29 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 static bool my_plugin_init(const struct clap_plugin *plugin) {
     // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
+    
+    // Initialize graphics system and demonstrate basic usage
+    printf("MyPlugin: Graphics backend - %s\n", clap_jules::graphics::getGraphicsBackendInfo().c_str());
+    printf("MyPlugin: Skia available - %s\n", clap_jules::graphics::isSkiaAvailable() ? "Yes" : "No");
+    
+    // Create a test graphics context
+    auto graphics = clap_jules::graphics::createGraphicsContext(320, 240);
+    if (graphics) {
+        // Demonstrate basic graphics operations
+        graphics->clear(clap_jules::graphics::Color(50, 50, 50)); // Dark gray background
+        graphics->drawRect(clap_jules::graphics::Rect(10, 10, 100, 50), 
+                          clap_jules::graphics::Color(255, 100, 100)); // Red rectangle
+        graphics->drawCircle(clap_jules::graphics::Point(200, 120), 30, 
+                           clap_jules::graphics::Color(100, 255, 100)); // Green circle
+        graphics->drawLine(clap_jules::graphics::Point(50, 200), 
+                          clap_jules::graphics::Point(250, 200),
+                          clap_jules::graphics::Color(100, 100, 255), 3.0f); // Blue line
+        graphics->drawText("CLAP-Jules", clap_jules::graphics::Point(50, 150), 
+                          clap_jules::graphics::Color(255, 255, 255), 16.0f); // White text
+        
+        printf("MyPlugin: Graphics context created and test drawing performed\n");
+    }
+    
     // Initialize your plugin state here
     return true;
 }
