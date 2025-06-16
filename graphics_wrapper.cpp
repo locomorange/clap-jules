@@ -1,5 +1,6 @@
 #include "graphics_wrapper.h"
 #include <cstring>
+#include <cstdlib>
 #include <algorithm>
 
 namespace clap_jules {
