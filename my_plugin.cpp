@@ -94,7 +94,7 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
 #if defined(__linux__) && defined(HAVE_X11)
     self->x11_renderer = nullptr;
 #endif
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     self->win32_renderer = nullptr;
 #endif
     
@@ -282,7 +282,7 @@ static bool my_plugin_present_graphics(my_plugin_t *self) {
     }
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     // Use Win32 renderer if available
     if (self->win32_renderer && self->win32_renderer->isInitialized()) {
         const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
@@ -374,7 +374,7 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     self->x11_renderer.reset();
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     // Clean up Win32 renderer
     self->win32_renderer.reset();
 #endif
@@ -487,7 +487,7 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         self->native_window = window->win32;
         printf("MyPlugin: GUI - Win32 window handle set\n");
         
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
         // Initialize Win32 renderer
         self->win32_renderer = std::make_unique<clap_jules::graphics::Win32Renderer>();
         if (!self->win32_renderer->initialize((HWND)window->win32, self->gui_width, self->gui_height)) {

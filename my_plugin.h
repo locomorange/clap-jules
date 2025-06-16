@@ -8,7 +8,7 @@
 #include "graphics/x11_renderer.h"
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #include "graphics/win32_renderer.h"
 #endif
 
@@ -35,7 +35,7 @@ typedef struct {
     std::unique_ptr<clap_jules::graphics::X11Renderer> x11_renderer;
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     std::unique_ptr<clap_jules::graphics::Win32Renderer> win32_renderer;
 #endif
     

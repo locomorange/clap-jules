@@ -1,6 +1,12 @@
 #pragma once
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <cstdint>
 
@@ -35,4 +41,4 @@ public:
 } // namespace graphics
 } // namespace clap_jules
 
-#endif // _WIN32
+#endif // _WIN32 || __WIN32__ || WIN32

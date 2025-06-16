@@ -109,7 +109,7 @@ if(UNIX AND NOT APPLE)
         target_include_directories(clap_jules_graphics PRIVATE ${X11_INCLUDE_DIR})
         target_compile_definitions(clap_jules_graphics PRIVATE HAVE_X11)
     endif()
-elseif(WIN32)
+elseif(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(clap_jules_graphics PRIVATE
         graphics/win32_renderer.cpp
         graphics/win32_renderer.h

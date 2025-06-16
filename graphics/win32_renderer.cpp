@@ -1,6 +1,6 @@
 #include "win32_renderer.h"
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #include <iostream>
 #include <cstring>
 
@@ -10,7 +10,7 @@ namespace graphics {
 Win32Renderer::Win32Renderer() 
     : hwnd_(nullptr), hdc_(nullptr), mem_dc_(nullptr), bitmap_(nullptr),
       pixel_buffer_(nullptr), width_(0), height_(0), initialized_(false) {
-    memset(&bitmap_info_, 0, sizeof(bitmap_info_));
+    std::memset(&bitmap_info_, 0, sizeof(bitmap_info_));
 }
 
 Win32Renderer::~Win32Renderer() {
@@ -20,6 +20,11 @@ Win32Renderer::~Win32Renderer() {
 bool Win32Renderer::initialize(HWND parent_window, int width, int height) {
     if (initialized_) {
         cleanup();
+    }
+    
+    if (!parent_window || width <= 0 || height <= 0) {
+        std::cerr << "Win32Renderer: Invalid parameters for initialization\n";
+        return false;
     }
     
     width_ = width;
@@ -39,14 +44,16 @@ bool Win32Renderer::initialize(HWND parent_window, int width, int height) {
     );
     
     if (!hwnd_) {
-        std::cerr << "Win32Renderer: Failed to create child window\n";
+        DWORD error = GetLastError();
+        std::cerr << "Win32Renderer: Failed to create child window (error: " << error << ")\n";
         return false;
     }
     
     // Get device context for the window
     hdc_ = GetDC(hwnd_);
     if (!hdc_) {
-        std::cerr << "Win32Renderer: Failed to get device context\n";
+        DWORD error = GetLastError();
+        std::cerr << "Win32Renderer: Failed to get device context (error: " << error << ")\n";
         DestroyWindow(hwnd_);
         hwnd_ = nullptr;
         return false;
@@ -55,7 +62,8 @@ bool Win32Renderer::initialize(HWND parent_window, int width, int height) {
     // Create memory device context
     mem_dc_ = CreateCompatibleDC(hdc_);
     if (!mem_dc_) {
-        std::cerr << "Win32Renderer: Failed to create memory device context\n";
+        DWORD error = GetLastError();
+        std::cerr << "Win32Renderer: Failed to create memory device context (error: " << error << ")\n";
         ReleaseDC(hwnd_, hdc_);
         DestroyWindow(hwnd_);
         hwnd_ = nullptr;
@@ -79,7 +87,8 @@ bool Win32Renderer::initialize(HWND parent_window, int width, int height) {
     // Create DIB section
     bitmap_ = CreateDIBSection(mem_dc_, &bitmap_info_, DIB_RGB_COLORS, &pixel_buffer_, nullptr, 0);
     if (!bitmap_) {
-        std::cerr << "Win32Renderer: Failed to create DIB section\n";
+        DWORD error = GetLastError();
+        std::cerr << "Win32Renderer: Failed to create DIB section (error: " << error << ")\n";
         DeleteDC(mem_dc_);
         ReleaseDC(hwnd_, hdc_);
         DestroyWindow(hwnd_);
@@ -127,9 +136,19 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
         return false;
     }
     
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Win32Renderer: Invalid dimensions: " << width << "x" << height << "\n";
+        return false;
+    }
+    
     // If size changed, reinitialize
     if (width != width_ || height != height_) {
-        if (!initialize(GetParent(hwnd_), width, height)) {
+        HWND parent = hwnd_ ? GetParent(hwnd_) : nullptr;
+        if (!parent) {
+            std::cerr << "Win32Renderer: No parent window available for resize\n";
+            return false;
+        }
+        if (!initialize(parent, width, height)) {
             return false;
         }
     }
@@ -137,18 +156,24 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
     // Copy pixel data to DIB section
     // Convert from RGBA to BGRA (Win32 expects BGRA)
     uint32_t* dest = static_cast<uint32_t*>(pixel_buffer_);
+    if (!dest) {
+        std::cerr << "Win32Renderer: Invalid pixel buffer pointer\n";
+        return false;
+    }
+    
     for (int i = 0; i < width * height; ++i) {
         uint32_t rgba = pixels[i];
-        uint32_t r = (rgba >> 16) & 0xFF;
+        uint32_t r = (rgba >> 0) & 0xFF;
         uint32_t g = (rgba >> 8) & 0xFF;
-        uint32_t b = rgba & 0xFF;
+        uint32_t b = (rgba >> 16) & 0xFF;
         uint32_t a = (rgba >> 24) & 0xFF;
         dest[i] = (a << 24) | (r << 16) | (g << 8) | b; // ARGB format for Win32
     }
     
     // Blit from memory DC to window DC
     if (!BitBlt(hdc_, 0, 0, width_, height_, mem_dc_, 0, 0, SRCCOPY)) {
-        std::cerr << "Win32Renderer: BitBlt failed\n";
+        DWORD error = GetLastError();
+        std::cerr << "Win32Renderer: BitBlt failed (error: " << error << ")\n";
         return false;
     }
     
@@ -156,19 +181,26 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
 }
 
 void Win32Renderer::resize(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Win32Renderer: Invalid resize dimensions: " << width << "x" << height << "\n";
+        return;
+    }
+    
     if (width == width_ && height == height_) {
         return;
     }
     
     // Reinitialize with new size
     if (initialized_) {
-        HWND parent = GetParent(hwnd_);
+        HWND parent = hwnd_ ? GetParent(hwnd_) : nullptr;
         cleanup();
-        initialize(parent, width, height);
+        if (parent) {
+            initialize(parent, width, height);
+        }
     }
 }
 
 } // namespace graphics
 } // namespace clap_jules
 
-#endif // _WIN32
+#endif // _WIN32 || __WIN32__ || WIN32
