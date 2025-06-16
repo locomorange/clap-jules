@@ -203,6 +203,29 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
                 }
             }
         }
+    } else {
+        // Even if no audio I/O, process silent samples to keep spectrum analyzer alive
+        // This ensures the GUI shows the noise floor and test data
+        if (self->spectrum_analyzer) {
+            std::vector<float> silent_samples(process->frames_count, 0.0f);
+            self->spectrum_analyzer->process_samples(silent_samples.data(), process->frames_count);
+            
+            if (self->spectrum_analyzer->has_new_data()) {
+#if VSTGUI_ENABLED
+                if (self->gui_editor) {
+                    self->gui_editor->updateSpectrumData(
+                        self->spectrum_analyzer->get_spectrum_data(),
+                        self->spectrum_analyzer->get_frequency_bins()
+                    );
+                }
+#endif
+                if (self->gui) {
+                    self->gui->update_spectrum_data();
+                }
+                
+                self->spectrum_analyzer->acknowledge_data();
+            }
+        }
     }
     
     return CLAP_PROCESS_CONTINUE;
