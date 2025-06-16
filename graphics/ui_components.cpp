@@ -1,4 +1,5 @@
 #include "ui_components.h"
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <algorithm>
 

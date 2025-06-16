@@ -5,7 +5,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Find threading libraries
-find_package(Threads REQUIRED)
+# On Windows, we may not need explicit threading libraries as Windows has native support
+if(WIN32)
+    # Windows has native threading support
+    set(CMAKE_THREAD_LIBS_INIT "")
+    set(CMAKE_HAVE_THREADS_LIBRARY TRUE)
+    set(CMAKE_USE_WIN32_THREADS_INIT TRUE)
+    set(Threads_FOUND TRUE)
+else()
+    find_package(Threads REQUIRED)
+endif()
 
 # Graphics support options
 option(CLAP_JULES_USE_SKIA "Enable Skia 2D graphics support" OFF)
@@ -139,7 +148,11 @@ endif()
 
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap clap_jules_graphics Threads::Threads)
+if(WIN32)
+    target_link_libraries(my_clap_plugin PRIVATE clap clap_jules_graphics)
+else()
+    target_link_libraries(my_clap_plugin PRIVATE clap clap_jules_graphics Threads::Threads)
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
