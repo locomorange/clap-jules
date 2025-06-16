@@ -17,6 +17,9 @@
 typedef struct {
     clap_plugin_t plugin;
     
+    // Host reference for callbacks
+    const clap_host_t* host = nullptr;
+    
     // GUI-related data
     bool gui_created = false;
     bool gui_visible = false;

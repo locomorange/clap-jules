@@ -234,6 +234,11 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
                 // Trigger GUI redraw if there's significant level change
                 if (self->gui_created && self->gui_visible) {
                     self->needs_redraw = true;
+                    
+                    // Request main thread callback from host for GUI updates
+                    if (self->host && self->host->request_callback) {
+                        self->host->request_callback(self->host);
+                    }
                 }
             }
         }
@@ -250,6 +255,15 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
             self->peak_hold_counter_right--;
         } else {
             self->peak_level_right *= 0.99f;
+        }
+        
+        // Request GUI updates even during decay for smooth animation
+        if (self->gui_created && self->gui_visible) {
+            self->needs_redraw = true;
+            
+            if (self->host && self->host->request_callback) {
+                self->host->request_callback(self->host);
+            }
         }
     }
     
@@ -279,6 +293,16 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
         my_plugin_render_content(self);
         my_plugin_present_graphics(self);
         self->needs_redraw = false;
+        
+        // For debugging: log level updates periodically
+        static int debug_counter = 0;
+        if (++debug_counter % 30 == 0) { // Log every 30 calls
+            printf("MyPlugin: VU Levels - L: %.2fdB (%.3f), R: %.2fdB (%.3f)\n",
+                   20.0f * log10f(fmaxf(self->current_level_left, 1e-6f)),
+                   self->current_level_left,
+                   20.0f * log10f(fmaxf(self->current_level_right, 1e-6f)),
+                   self->current_level_right);
+        }
     }
 }
 
@@ -767,6 +791,9 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         return NULL;
     }
 
+    // Store host reference for callbacks
+    self->host = host;
+    
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
     self->plugin.init = my_plugin_init;
