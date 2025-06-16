@@ -126,5 +126,12 @@ enable_testing()
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
+# Add Skia-specific tests if Skia is enabled
+if(ENABLE_SKIA)
+    add_executable(skia_integration_tests test/test_skia_integration.cpp)
+    target_link_libraries(skia_integration_tests PRIVATE gtest gtest_main skia)
+    gtest_discover_tests(skia_integration_tests)
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
