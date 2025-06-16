@@ -3,6 +3,7 @@
 #include "spectrum_analyzer.h"
 #include <cstring>
 #include <cmath>
+#include <cstdio>  // For printf()
 #include <algorithm>
 
 SpectrumGUI::SpectrumGUI(void* plugin_data)

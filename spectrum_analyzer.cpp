@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cmath>
 #include <cstdlib> // For rand()
+#include <cstdio>  // For printf()
 
 // Define M_PI if not already defined (Windows compatibility)
 #ifndef M_PI
