@@ -512,6 +512,13 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
     self->gui_width = width;
     self->gui_height = height;
     
+    // Resize Win32 renderer if available
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+        self->win32_renderer->resize(width, height);
+    }
+#endif
+    
     // Resize X11 renderer if available
 #if defined(__linux__) && defined(HAVE_X11)
     if (self->x11_renderer && self->x11_renderer->isInitialized()) {
@@ -527,6 +534,13 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
             my_plugin_render_content(self);
             my_plugin_present_graphics(self);
             self->needs_redraw = true;
+            
+            // Force immediate refresh for Win32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+            if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+                self->win32_renderer->invalidate();
+            }
+#endif
         }
     }
     
@@ -565,6 +579,15 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
         // Initialize Win32 renderer
         self->win32_renderer = std::make_unique<clap_jules::graphics::Win32Renderer>();
+        
+        // Set up redraw callback to trigger rendering
+        self->win32_renderer->setRedrawCallback([self]() {
+            if (self && self->gui_created && self->gui_visible && self->graphics_context) {
+                my_plugin_render_content(self);
+                my_plugin_present_graphics(self);
+            }
+        });
+        
         if (!self->win32_renderer->initialize((HWND)window->win32, self->gui_width, self->gui_height)) {
             printf("MyPlugin: GUI - Failed to initialize Win32 renderer\n");
             self->win32_renderer.reset();
@@ -581,6 +604,13 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
     if (self->gui_created) {
         my_plugin_render_content(self);
         my_plugin_present_graphics(self);
+        
+        // Force immediate refresh for Win32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+        if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+            self->win32_renderer->invalidate();
+        }
+#endif
     }
     
     printf("MyPlugin: GUI - Parent window set and initial render performed\n");
@@ -612,6 +642,13 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     // Render and present graphics when showing
     my_plugin_render_content(self);
     my_plugin_present_graphics(self);
+    
+    // Force immediate refresh for all platforms
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+        self->win32_renderer->invalidate();
+    }
+#endif
     
     printf("MyPlugin: GUI - Window is now visible with rendered content\n");
     return true;

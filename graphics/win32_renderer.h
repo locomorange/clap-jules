@@ -13,6 +13,7 @@
 // Include standard headers before Windows headers to avoid conflicts
 #include <cstdint>
 #include <memory>
+#include <functional>
 
 // Now include Windows headers
 #include <windows.h>
@@ -31,6 +32,12 @@ private:
     void* pixel_buffer_;
     int width_, height_;
     bool initialized_;
+    std::function<void()> redraw_callback_;
+    
+    // Timer for animations
+    static const UINT_PTR TIMER_ID = 1;
+    
+    static LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
     
 public:
     Win32Renderer();
@@ -43,7 +50,15 @@ public:
     void resize(int width, int height);
     
     bool isInitialized() const { return initialized_; }
-};
+    
+    // Set callback for when window needs redraw
+    void setRedrawCallback(std::function<void()> callback) { redraw_callback_ = callback; }
+    
+    // Force window to repaint
+    void invalidate();
+    
+    // Get the child window handle
+    HWND getChildWindow() const { return hwnd_; }
 
 } // namespace graphics
 } // namespace clap_jules
