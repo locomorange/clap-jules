@@ -14,6 +14,7 @@
 #include <vstgui/lib/cgraphicspath.h>
 #include <iostream>
 #include <cmath>
+#include <cstdio> // For snprintf
 
 #ifdef __linux__
 #include <vstgui/lib/platform/platform_x11.h>
@@ -307,6 +308,13 @@ SpectrumVisualizationView::SpectrumVisualizationView(const CRect& size)
         float log_freq = log_min + (log_range * i) / (frequencyBins.size() - 1);
         frequencyBins[i] = std::pow(10.0f, log_freq);
     }
+    
+    // Add some test data to show that the view is working
+    // Add a small peak at 1kHz for visual confirmation
+    size_t testBin = 128; // Approximate 1kHz bin
+    if (testBin < spectrumData.size()) {
+        spectrumData[testBin] = -20.0f; // Visible level
+    }
 }
 
 SpectrumVisualizationView::~SpectrumVisualizationView() {
@@ -321,6 +329,11 @@ void SpectrumVisualizationView::draw(CDrawContext* context) {
     
     drawGrid(context);
     drawSpectrum(context);
+    
+    // Add a debug indicator to show the view is being drawn
+    context->setFrameColor(CColor(255, 0, 0, 100)); // Semi-transparent red
+    context->setLineWidth(1.0);
+    context->drawRect(bounds, kDrawStroked);
 }
 
 void SpectrumVisualizationView::drawGrid(CDrawContext* context) {
@@ -354,6 +367,28 @@ void SpectrumVisualizationView::drawGrid(CDrawContext* context) {
         
         if (y >= bounds.top && y <= bounds.bottom) {
             context->drawLine(CPoint(bounds.left, y), CPoint(bounds.right, y));
+        }
+    }
+    
+    // Draw frequency labels at bottom
+    context->setFillColor(MyPluginEditor::kAccentColor);
+    context->setFont(new CFontDesc("Arial", 9));
+    
+    for (int i = 0; i < num_freq_lines; ++i) {
+        float freq = frequencies[i];
+        float normalizedX = std::log10(freq / MIN_FREQ) / std::log10(MAX_FREQ / MIN_FREQ);
+        float x = bounds.left + normalizedX * bounds.getWidth();
+        
+        if (x >= bounds.left && x <= bounds.right - 30) {
+            char freqStr[16];
+            if (freq >= 1000) {
+                snprintf(freqStr, sizeof(freqStr), "%.0fk", freq / 1000);
+            } else {
+                snprintf(freqStr, sizeof(freqStr), "%.0f", freq);
+            }
+            
+            CRect textRect(x - 15, bounds.bottom - 20, x + 15, bounds.bottom - 5);
+            context->drawString(freqStr, textRect, kCenterText);
         }
     }
 }
@@ -482,6 +517,21 @@ CPoint SpectrumVisualizationView::frequencyToPosition(float freq, float magnitud
 void SpectrumVisualizationView::updateSpectrumData(const std::vector<float>& spectrum_data, const std::vector<float>& frequency_bins) {
     if (!spectrum_data.empty()) {
         spectrumData = spectrum_data;
+        
+        // Debug output to verify data is being received
+        float maxVal = -120.0f;
+        size_t maxIdx = 0;
+        for (size_t i = 0; i < spectrumData.size(); ++i) {
+            if (spectrumData[i] > maxVal) {
+                maxVal = spectrumData[i];
+                maxIdx = i;
+            }
+        }
+        
+        // Only print if there's significant energy
+        if (maxVal > -80.0f) {
+            printf("Spectrum GUI Update: Peak %.1fdB at bin %zu\n", maxVal, maxIdx);
+        }
     }
     if (!frequency_bins.empty()) {
         frequencyBins = frequency_bins;
