@@ -74,6 +74,7 @@ private:
     std::vector<float> spectrumData;
     std::vector<float> frequencyBins;
     int drawingStyle;
+    uint64_t lastUpdateTime;
     
     void drawGrid(CDrawContext* context);
     void drawSpectrum(CDrawContext* context);
@@ -82,6 +83,7 @@ private:
     void drawSpectrumAsBins(CDrawContext* context);
     void drawSpectrumAsFills(CDrawContext* context);
     CPoint frequencyToPosition(float freq, float magnitude);
+    void updateTestData();
     
     // Constants for display
     static constexpr float MIN_FREQ = 20.0f;

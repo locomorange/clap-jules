@@ -15,6 +15,8 @@
 #include <iostream>
 #include <cmath>
 #include <cstdio> // For snprintf
+#include <ctime>  // For time functions
+#include <cstdlib> // For rand()
 
 #ifdef __linux__
 #include <vstgui/lib/platform/platform_x11.h>
@@ -59,8 +61,8 @@ EQVisualizationView::~EQVisualizationView() {
 }
 
 void EQVisualizationView::draw(CDrawContext* context) {
-    // Clear background
-    context->setFillColor(MyPluginEditor::kBackgroundColor);
+    // Use a semi-transparent background so spectrum shows through
+    context->setFillColor(CColor(25, 25, 30, 128)); // 50% transparent
     context->drawRect(getViewSize(), kDrawFilled);
     
     drawGrid(context);
@@ -294,7 +296,7 @@ void EQVisualizationView::setNodeSelected(int nodeIndex, bool selected) {
 //=============================================================================
 
 SpectrumVisualizationView::SpectrumVisualizationView(const CRect& size)
-    : CView(size), drawingStyle(0) {
+    : CView(size), drawingStyle(0), lastUpdateTime(0) {
     // Initialize with empty spectrum data
     spectrumData.resize(256, -60.0f);
     frequencyBins.resize(256);
@@ -309,12 +311,8 @@ SpectrumVisualizationView::SpectrumVisualizationView(const CRect& size)
         frequencyBins[i] = std::pow(10.0f, log_freq);
     }
     
-    // Add some test data to show that the view is working
-    // Add a small peak at 1kHz for visual confirmation
-    size_t testBin = 128; // Approximate 1kHz bin
-    if (testBin < spectrumData.size()) {
-        spectrumData[testBin] = -20.0f; // Visible level
-    }
+    // Add some animated test data to show that the view is working
+    updateTestData();
 }
 
 SpectrumVisualizationView::~SpectrumVisualizationView() {
@@ -327,11 +325,18 @@ void SpectrumVisualizationView::draw(CDrawContext* context) {
     context->setFillColor(MyPluginEditor::kPanelColor);
     context->drawRect(bounds, kDrawFilled);
     
+    // Update test data periodically to show animation
+    uint64_t currentTime = static_cast<uint64_t>(time(nullptr) * 10); // 10Hz update rate
+    if (currentTime != lastUpdateTime) {
+        updateTestData();
+        lastUpdateTime = currentTime;
+    }
+    
     drawGrid(context);
     drawSpectrum(context);
     
     // Add a debug indicator to show the view is being drawn
-    context->setFrameColor(CColor(255, 0, 0, 100)); // Semi-transparent red
+    context->setFrameColor(CColor(255, 0, 0, 50)); // Very faint red border
     context->setLineWidth(1.0);
     context->drawRect(bounds, kDrawStroked);
 }
@@ -536,12 +541,48 @@ void SpectrumVisualizationView::updateSpectrumData(const std::vector<float>& spe
     if (!frequency_bins.empty()) {
         frequencyBins = frequency_bins;
     }
-    invalid(); // Trigger redraw
+    
+    // Force immediate redraw - call multiple invalidation methods to ensure update
+    invalid();
+    setDirty(true);
+    if (getParentView()) {
+        getParentView()->invalid();
+    }
 }
 
 void SpectrumVisualizationView::setDrawingStyle(int style) {
     drawingStyle = style;
     invalid(); // Trigger redraw
+}
+
+void SpectrumVisualizationView::updateTestData() {
+    // Create animated test data to show the spectrum is working
+    uint64_t time = static_cast<uint64_t>(clock());
+    float phase = (time % 10000) / 10000.0f * 2.0f * 3.14159f; // 2π over ~10 seconds
+    
+    // Add some base noise floor
+    for (size_t i = 0; i < spectrumData.size(); ++i) {
+        spectrumData[i] = -70.0f + (rand() % 100) * 0.05f; // Random noise floor
+    }
+    
+    // Add animated peaks at specific frequencies
+    // 440Hz peak that oscillates
+    size_t bin440 = 50;  // Approximate 440Hz bin
+    if (bin440 < spectrumData.size()) {
+        spectrumData[bin440] = -30.0f + 15.0f * sin(phase);
+    }
+    
+    // 1kHz peak that pulses
+    size_t bin1k = 100;  // Approximate 1kHz bin
+    if (bin1k < spectrumData.size()) {
+        spectrumData[bin1k] = -25.0f + 10.0f * sin(phase * 2.0f);
+    }
+    
+    // 5kHz peak that fades in and out
+    size_t bin5k = 180;  // Approximate 5kHz bin
+    if (bin5k < spectrumData.size()) {
+        spectrumData[bin5k] = -35.0f + 20.0f * sin(phase * 0.5f);
+    }
 }
 
 //=============================================================================
@@ -1049,34 +1090,12 @@ void MyPluginEditor::createRightPanel() {
     rightPanel->setBackgroundColor(kBackgroundColor);
     frame->addView(rightPanel);
     
-    // Split the right panel into EQ (top) and Spectrum (bottom)
-    float panelHeight = rightRect.getHeight();
-    float halfHeight = panelHeight * 0.5f;
-    
-    // EQ section header
-    CRect eqHeaderRect(20, 20, rightRect.getWidth() - 20, 50);
-    auto eqHeaderLabel = new CTextLabel(eqHeaderRect, "DYNAMIC EQ VISUALIZATION");
-    eqHeaderLabel->setFontColor(kAccentColor);
-    eqHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
-    eqHeaderLabel->setFont(new CFontDesc("Arial", 14, kBoldFace));
-    eqHeaderLabel->setHoriAlign(kLeftText);
-    eqHeaderLabel->setStyle(eqHeaderLabel->getStyle() | CTextLabel::kNoFrame);
-    rightPanel->addView(eqHeaderLabel);
-    
-    // EQ visualization area (top half)
-    CRect eqRect(20, 60, rightRect.getWidth() - 20, halfHeight - 10);
-    eqView = new EQVisualizationView(eqRect);
-    rightPanel->addView(eqView);
-    
-    // Update EQ view with current parameters
-    double eq_freq[3] = {200.0, 1000.0, 5000.0};
-    double eq_gain[3] = {0.0, 0.0, 0.0};
-    double eq_q[3] = {1.0, 1.0, 1.0};
-    eqView->updateEQData(eq_freq, eq_gain, eq_q);
+    // Create a single visualization area where both EQ and spectrum are overlaid
+    CRect visualRect(20, 60, rightRect.getWidth() - 20, rightRect.getHeight() - 20);
     
     // Spectrum section header
-    CRect spectrumHeaderRect(20, halfHeight + 10, rightRect.getWidth() - 20, halfHeight + 40);
-    auto spectrumHeaderLabel = new CTextLabel(spectrumHeaderRect, "REAL-TIME SPECTRUM ANALYZER");
+    CRect spectrumHeaderRect(20, 20, rightRect.getWidth() - 20, 50);
+    auto spectrumHeaderLabel = new CTextLabel(spectrumHeaderRect, "REAL-TIME SPECTRUM ANALYZER + EQ");
     spectrumHeaderLabel->setFontColor(kAccentColor);
     spectrumHeaderLabel->setBackColor(CColor(0, 0, 0, 0));
     spectrumHeaderLabel->setFont(new CFontDesc("Arial", 14, kBoldFace));
@@ -1084,10 +1103,19 @@ void MyPluginEditor::createRightPanel() {
     spectrumHeaderLabel->setStyle(spectrumHeaderLabel->getStyle() | CTextLabel::kNoFrame);
     rightPanel->addView(spectrumHeaderLabel);
     
-    // Spectrum visualization area (bottom half)
-    CRect spectrumRect(20, halfHeight + 50, rightRect.getWidth() - 20, rightRect.getHeight() - 20);
-    spectrumView = new SpectrumVisualizationView(spectrumRect);
+    // Add spectrum visualization FIRST (so it's drawn behind the EQ)
+    spectrumView = new SpectrumVisualizationView(visualRect);
     rightPanel->addView(spectrumView);
+    
+    // Add EQ visualization SECOND (so it's drawn on top of the spectrum)
+    eqView = new EQVisualizationView(visualRect);
+    rightPanel->addView(eqView);
+    
+    // Update EQ view with current parameters
+    double eq_freq[3] = {200.0, 1000.0, 5000.0};
+    double eq_gain[3] = {0.0, 0.0, 0.0};
+    double eq_q[3] = {1.0, 1.0, 1.0};
+    eqView->updateEQData(eq_freq, eq_gain, eq_q);
 }
 
 void MyPluginEditor::styleControl(CView* control) {
