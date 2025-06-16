@@ -68,17 +68,16 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     
     // Initialize parameters with default values
     self->params.spectrum_drawing_style = 0.0f; // STYLE_LINES
-
     self->params.cutoff = 1000.0;
     self->params.resonance = 1.0;
-    self->params.drive = 0.0;
-    self->params.output = 0.0;
+    self->params.drive = 1.0;
+    self->params.output = 1.0;
     self->params.mix = 1.0;
     self->params.bypass = false;
     
     for (int i = 0; i < 3; ++i) {
         self->params.eq_gain[i] = 0.0;
-        self->params.eq_freq[i] = (i == 0) ? 200.0 : (i == 1) ? 1000.0 : 5000.0;
+        self->params.eq_freq[i] = (i == 0) ? 100.0 : (i == 1) ? 1000.0 : 10000.0;
         self->params.eq_q[i] = 1.0;
     }
 
@@ -349,7 +348,186 @@ static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t para
             param_info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM;
             param_info->cookie = nullptr;
             return true;
-        // Add cases for other parameters as needed...
+        case PARAM_CUTOFF:
+            param_info->id = PARAM_CUTOFF;
+            strncpy(param_info->name, "Cutoff", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Filter", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 1000.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_RESONANCE:
+            param_info->id = PARAM_RESONANCE;
+            strncpy(param_info->name, "Resonance", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Filter", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_DRIVE:
+            param_info->id = PARAM_DRIVE;
+            strncpy(param_info->name, "Drive", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Distortion", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_OUTPUT:
+            param_info->id = PARAM_OUTPUT;
+            strncpy(param_info->name, "Output", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Main", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 2.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_MIX:
+            param_info->id = PARAM_MIX;
+            strncpy(param_info->name, "Mix", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Main", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 1.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_BYPASS:
+            param_info->id = PARAM_BYPASS;
+            strncpy(param_info->name, "Bypass", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "Main", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.0;
+            param_info->max_value = 1.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_BYPASS;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_GAIN1:
+            param_info->id = PARAM_EQ_GAIN1;
+            strncpy(param_info->name, "EQ Gain 1", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = -24.0;
+            param_info->max_value = 24.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_FREQ1:
+            param_info->id = PARAM_EQ_FREQ1;
+            strncpy(param_info->name, "EQ Freq 1", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 100.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_Q1:
+            param_info->id = PARAM_EQ_Q1;
+            strncpy(param_info->name, "EQ Q 1", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_GAIN2:
+            param_info->id = PARAM_EQ_GAIN2;
+            strncpy(param_info->name, "EQ Gain 2", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = -24.0;
+            param_info->max_value = 24.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_FREQ2:
+            param_info->id = PARAM_EQ_FREQ2;
+            strncpy(param_info->name, "EQ Freq 2", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 1000.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_Q2:
+            param_info->id = PARAM_EQ_Q2;
+            strncpy(param_info->name, "EQ Q 2", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_GAIN3:
+            param_info->id = PARAM_EQ_GAIN3;
+            strncpy(param_info->name, "EQ Gain 3", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = -24.0;
+            param_info->max_value = 24.0;
+            param_info->default_value = 0.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_FREQ3:
+            param_info->id = PARAM_EQ_FREQ3;
+            strncpy(param_info->name, "EQ Freq 3", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 20.0;
+            param_info->max_value = 20000.0;
+            param_info->default_value = 10000.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
+        case PARAM_EQ_Q3:
+            param_info->id = PARAM_EQ_Q3;
+            strncpy(param_info->name, "EQ Q 3", sizeof(param_info->name));
+            param_info->name[sizeof(param_info->name) - 1] = '\0';
+            strncpy(param_info->module, "EQ", sizeof(param_info->module));
+            param_info->module[sizeof(param_info->module) - 1] = '\0';
+            param_info->min_value = 0.1;
+            param_info->max_value = 10.0;
+            param_info->default_value = 1.0;
+            param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+            param_info->cookie = nullptr;
+            return true;
         default:
             return false;
     }
@@ -361,44 +539,66 @@ static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id para
         case PARAM_SPECTRUM_DRAWING_STYLE:
             *value = self->params.spectrum_drawing_style;
             return true;
-        // Add cases for other parameters...
+        case PARAM_CUTOFF:
+            *value = self->params.cutoff;
+            return true;
+        case PARAM_RESONANCE:
+            *value = self->params.resonance;
+            return true;
+        case PARAM_DRIVE:
+            *value = self->params.drive;
+            return true;
+        case PARAM_OUTPUT:
+            *value = self->params.output;
+            return true;
+        case PARAM_MIX:
+            *value = self->params.mix;
+            return true;
+        case PARAM_BYPASS:
+            *value = self->params.bypass ? 1.0 : 0.0;
+            return true;
+        case PARAM_EQ_GAIN1:
+            *value = self->params.eq_gain[0];
+            return true;
+        case PARAM_EQ_FREQ1:
+            *value = self->params.eq_freq[0];
+            return true;
+        case PARAM_EQ_Q1:
+            *value = self->params.eq_q[0];
+            return true;
+        case PARAM_EQ_GAIN2:
+            *value = self->params.eq_gain[1];
+            return true;
+        case PARAM_EQ_FREQ2:
+            *value = self->params.eq_freq[1];
+            return true;
+        case PARAM_EQ_Q2:
+            *value = self->params.eq_q[1];
+            return true;
+        case PARAM_EQ_GAIN3:
+            *value = self->params.eq_gain[2];
+            return true;
+        case PARAM_EQ_FREQ3:
+            *value = self->params.eq_freq[2];
+            return true;
+        case PARAM_EQ_Q3:
+            *value = self->params.eq_q[2];
+            return true;
         default:
             return false;
     }
 }
 
 static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size) {
-    switch (param_id) {
-        case PARAM_SPECTRUM_DRAWING_STYLE: {
-            const char* style_names[] = {"Lines", "Dots", "Bins", "Fills"};
-            int style_index = (int)value;
-            if (style_index >= 0 && style_index < STYLE_COUNT) {
-                strncpy(display, style_names[style_index], size);
-                display[size - 1] = '\0';
-                return true;
-            }
-            return false;
-        }
-        default:
-            return false;
-    }
+    // For simplicity and CLAP validator compatibility, we don't provide custom text conversion
+    // The host will use default numeric formatting for all parameters
+    return false;
 }
 
 static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value) {
-    switch (param_id) {
-        case PARAM_SPECTRUM_DRAWING_STYLE: {
-            const char* style_names[] = {"Lines", "Dots", "Bins", "Fills"};
-            for (int i = 0; i < STYLE_COUNT; ++i) {
-                if (strcmp(display, style_names[i]) == 0) {
-                    *value = i;
-                    return true;
-                }
-            }
-            return false;
-        }
-        default:
-            return false;
-    }
+    // For simplicity and CLAP validator compatibility, we don't provide custom text conversion
+    // The host will handle text to value conversion using default numeric parsing
+    return false;
 }
 
 static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
