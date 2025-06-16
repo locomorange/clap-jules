@@ -48,43 +48,49 @@ if(ENABLE_SKIA)
     set(SKIA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/skia")
     
     if(NOT EXISTS "${SKIA_DIR}")
-        message(FATAL_ERROR "Skia not found. Please run scripts/setup_skia.sh to install Skia.")
+        message(WARNING "Skia not found at ${SKIA_DIR}. Please run scripts/setup_skia.sh to install Skia. Continuing without Skia integration.")
+        set(ENABLE_SKIA OFF)
     endif()
     
-    # Find Skia libraries
-    find_library(SKIA_LIBRARY
-        NAMES skia
-        PATHS "${SKIA_DIR}/out/Release"
-        NO_DEFAULT_PATH
-        REQUIRED
-    )
-    
-    if(NOT SKIA_LIBRARY)
-        message(FATAL_ERROR "Skia library not found. Please run scripts/setup_skia.sh to build Skia.")
+    # Find Skia libraries only if directory exists
+    if(ENABLE_SKIA)
+        find_library(SKIA_LIBRARY
+            NAMES skia
+            PATHS "${SKIA_DIR}/out/Release"
+            NO_DEFAULT_PATH
+        )
+        
+        if(NOT SKIA_LIBRARY)
+            message(WARNING "Skia library not found at ${SKIA_DIR}/out/Release. Please run scripts/setup_skia.sh to build Skia. Continuing without Skia integration.")
+            set(ENABLE_SKIA OFF)
+        endif()
     endif()
     
-    message(STATUS "Found Skia library: ${SKIA_LIBRARY}")
-    
-    # Set Skia include directories
-    set(SKIA_INCLUDE_DIRS
-        "${SKIA_DIR}"
-        "${SKIA_DIR}/include"
-        "${SKIA_DIR}/include/core"
-        "${SKIA_DIR}/include/config"
-        "${SKIA_DIR}/include/gpu"
-        "${SKIA_DIR}/include/effects"
-        "${SKIA_DIR}/include/pathops"
-    )
-    
-    # Create Skia target
-    add_library(skia SHARED IMPORTED)
-    set_target_properties(skia PROPERTIES
-        IMPORTED_LOCATION "${SKIA_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${SKIA_INCLUDE_DIRS}"
-    )
-    
-    # Add preprocessor definition
-    add_compile_definitions(CLAP_JULES_WITH_SKIA=1)
+    # Only proceed with Skia setup if we still have ENABLE_SKIA on
+    if(ENABLE_SKIA)
+        message(STATUS "Found Skia library: ${SKIA_LIBRARY}")
+        
+        # Set Skia include directories
+        set(SKIA_INCLUDE_DIRS
+            "${SKIA_DIR}"
+            "${SKIA_DIR}/include"
+            "${SKIA_DIR}/include/core"
+            "${SKIA_DIR}/include/config"
+            "${SKIA_DIR}/include/gpu"
+            "${SKIA_DIR}/include/effects"
+            "${SKIA_DIR}/include/pathops"
+        )
+        
+        # Create Skia target
+        add_library(skia SHARED IMPORTED)
+        set_target_properties(skia PROPERTIES
+            IMPORTED_LOCATION "${SKIA_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${SKIA_INCLUDE_DIRS}"
+        )
+        
+        # Add preprocessor definition
+        add_compile_definitions(CLAP_JULES_WITH_SKIA=1)
+    endif()
 else()
     message(STATUS "Skia integration disabled. Use -DENABLE_SKIA=ON to enable.")
 endif()
