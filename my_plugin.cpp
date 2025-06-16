@@ -5,7 +5,76 @@
 #include <cstdlib>  // For calloc
 #include <cmath>    // For sin/cos
 #include <memory>   // For std::make_unique, std::unique_ptr
+#include <algorithm> // For std::fill, std::max
+#include <complex>  // For std::complex
 #include <clap/ext/gui.h>
+
+// Simple FFT implementation (Cooley-Tukey algorithm)
+namespace {
+    void fft(std::vector<std::complex<float>>& x) {
+        const size_t N = x.size();
+        if (N <= 1) return;
+        
+        // Divide
+        std::vector<std::complex<float>> even(N/2), odd(N/2);
+        for (size_t i = 0; i < N/2; ++i) {
+            even[i] = x[i*2];
+            odd[i] = x[i*2+1];
+        }
+        
+        // Conquer
+        fft(even);
+        fft(odd);
+        
+        // Combine
+        for (size_t i = 0; i < N/2; ++i) {
+            std::complex<float> t = std::polar(1.0f, -2.0f * (float)M_PI * (float)i / (float)N) * odd[i];
+            x[i] = even[i] + t;
+            x[i+N/2] = even[i] - t;
+        }
+    }
+    
+    void process_spectrum(my_plugin_t* self, const float* audio_data, uint32_t frame_count) {
+        if (!self || frame_count == 0) return;
+        
+        // Add incoming audio to input buffer
+        for (uint32_t i = 0; i < frame_count; ++i) {
+            self->fft_input_buffer[self->input_buffer_pos] = audio_data[i];
+            self->input_buffer_pos = (self->input_buffer_pos + 1) % FFT_SIZE;
+            
+            // When buffer is full, process FFT
+            if (self->input_buffer_pos == 0) {
+                // Copy input buffer to FFT buffer
+                for (size_t j = 0; j < FFT_SIZE; ++j) {
+                    self->fft_buffer[j] = std::complex<float>(self->fft_input_buffer[j], 0.0f);
+                }
+                
+                // Apply window function (Hann window)
+                for (size_t j = 0; j < FFT_SIZE; ++j) {
+                    float window = 0.5f * (1.0f - cos(2.0f * M_PI * j / (FFT_SIZE - 1)));
+                    self->fft_buffer[j] *= window;
+                }
+                
+                // Perform FFT
+                fft(self->fft_buffer);
+                
+                // Calculate magnitudes and smooth
+                for (size_t j = 0; j < SPECTRUM_BINS; ++j) {
+                    float magnitude = std::abs(self->fft_buffer[j]);
+                    // Convert to dB scale
+                    magnitude = 20.0f * log10f(std::max(magnitude, 1e-8f));
+                    // Normalize to 0-1 range (assuming input range of -80dB to 0dB)
+                    magnitude = std::max(0.0f, std::min(1.0f, (magnitude + 80.0f) / 80.0f));
+                    
+                    // Apply smoothing
+                    self->smoothed_spectrum[j] = self->spectrum_smoothing * self->smoothed_spectrum[j] + 
+                                               (1.0f - self->spectrum_smoothing) * magnitude;
+                    self->spectrum_magnitudes[j] = magnitude;
+                }
+            }
+        }
+    }
+}
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -86,8 +155,8 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     // Initialize GUI state
     self->gui_created = false;
     self->gui_visible = false;
-    self->gui_width = 320;
-    self->gui_height = 240;
+    self->gui_width = 640;  // Wider for spectrum display
+    self->gui_height = 480; // Taller for spectrum display
     self->gui_api = nullptr;
     self->gui_is_floating = false;
     self->native_window = nullptr;
@@ -99,27 +168,19 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->win32_renderer = nullptr;
 #endif
     
+    // Initialize FFT and spectrum analyzer buffers
+    self->fft_input_buffer.resize(FFT_SIZE, 0.0f);
+    self->fft_buffer.resize(FFT_SIZE);
+    self->spectrum_magnitudes.resize(SPECTRUM_BINS, 0.0f);
+    self->smoothed_spectrum.resize(SPECTRUM_BINS, 0.0f);
+    self->input_buffer_pos = 0;
+    self->draw_mode = SpectrumDrawMode::LINES;
+    self->spectrum_smoothing = 0.7f;
+    self->sample_rate = 44100.0;
+    
     // Initialize graphics system and demonstrate basic usage
     printf("MyPlugin: Graphics backend - %s\n", clap_jules::graphics::getGraphicsBackendInfo().c_str());
     printf("MyPlugin: Skia available - %s\n", clap_jules::graphics::isSkiaAvailable() ? "Yes" : "No");
-    
-    // Create a test graphics context
-    auto graphics = clap_jules::graphics::createGraphicsContext(320, 240);
-    if (graphics) {
-        // Demonstrate basic graphics operations
-        graphics->clear(clap_jules::graphics::Color(50, 50, 50)); // Dark gray background
-        graphics->drawRect(clap_jules::graphics::Rect(10, 10, 100, 50), 
-                          clap_jules::graphics::Color(255, 100, 100)); // Red rectangle
-        graphics->drawCircle(clap_jules::graphics::Point(200, 120), 30, 
-                           clap_jules::graphics::Color(100, 255, 100)); // Green circle
-        graphics->drawLine(clap_jules::graphics::Point(50, 200), 
-                          clap_jules::graphics::Point(250, 200),
-                          clap_jules::graphics::Color(100, 100, 255), 3.0f); // Blue line
-        graphics->drawText("CLAP-Jules", clap_jules::graphics::Point(50, 150), 
-                          clap_jules::graphics::Color(255, 255, 255), 16.0f); // White text
-        
-        printf("MyPlugin: Graphics context created and test drawing performed\n");
-    }
     
     // Initialize your plugin state here
     return true;
@@ -131,7 +192,12 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
+    
+    // Store sample rate for spectrum analysis
+    self->sample_rate = sample_rate;
+    
     // Allocate and prepare resources needed for processing (e.g., buffers)
     return true;
 }
@@ -156,45 +222,28 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Process audio from input to output (pass-through)
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
 
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+        if (out_buf->channel_count >= 1 && in_buf->channel_count >= 1 && 
+            out_buf->data32 && in_buf->data32 && process->frames_count > 0) {
+            
+            // Copy input to output (pass-through)
+            for (uint32_t ch = 0; ch < std::min(out_buf->channel_count, in_buf->channel_count); ++ch) {
+                for (uint32_t i = 0; i < process->frames_count; ++i) {
+                    out_buf->data32[ch][i] = in_buf->data32[ch][i];
+                }
+            }
+            
+            // Process spectrum analysis on the first channel (left or mono)
+            process_spectrum(self, in_buf->data32[0], process->frames_count);
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 
@@ -215,6 +264,14 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
+    // Cycle through drawing modes for demo purposes (every 5 seconds)
+    static int mode_counter = 0;
+    mode_counter++;
+    if (mode_counter % 300 == 0) { // Assuming 60 FPS, 300 frames = 5 seconds
+        self->draw_mode = (SpectrumDrawMode)(((int)self->draw_mode + 1) % 4);
+        printf("MyPlugin: Switched to drawing mode %d\n", (int)self->draw_mode);
+    }
+    
     // If GUI is visible, update the rendering
     if (self->gui_created && self->gui_visible && self->graphics_context) {
         my_plugin_render_content(self);
@@ -224,113 +281,223 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
 
 // --- Plugin-specific rendering functions ---
 
+// Spectrum drawing functions
+namespace {
+    void draw_spectrum_lines(my_plugin_t *self, float spectrum_x, float spectrum_y, float spectrum_width, float spectrum_height) {
+        const float bin_width = spectrum_width / (SPECTRUM_BINS - 1);
+        
+        for (size_t i = 0; i < SPECTRUM_BINS - 1; ++i) {
+            float x1 = spectrum_x + i * bin_width;
+            float y1 = spectrum_y + spectrum_height - (self->smoothed_spectrum[i] * spectrum_height);
+            float x2 = spectrum_x + (i + 1) * bin_width;
+            float y2 = spectrum_y + spectrum_height - (self->smoothed_spectrum[i + 1] * spectrum_height);
+            
+            // Color based on frequency (low = red, mid = green, high = blue)
+            float freq_ratio = (float)i / SPECTRUM_BINS;
+            int r = (int)(255 * (1.0f - freq_ratio));
+            int g = (int)(255 * (freq_ratio < 0.5f ? 2.0f * freq_ratio : 2.0f * (1.0f - freq_ratio)));
+            int b = (int)(255 * freq_ratio);
+            
+            self->graphics_context->drawLine(clap_jules::graphics::Point(x1, y1), 
+                                           clap_jules::graphics::Point(x2, y2),
+                                           clap_jules::graphics::Color(r, g, b), 2.0f);
+        }
+    }
+    
+    void draw_spectrum_dots(my_plugin_t *self, float spectrum_x, float spectrum_y, float spectrum_width, float spectrum_height) {
+        const float bin_width = spectrum_width / SPECTRUM_BINS;
+        
+        for (size_t i = 0; i < SPECTRUM_BINS; ++i) {
+            float x = spectrum_x + i * bin_width;
+            float y = spectrum_y + spectrum_height - (self->smoothed_spectrum[i] * spectrum_height);
+            
+            // Color based on frequency
+            float freq_ratio = (float)i / SPECTRUM_BINS;
+            int r = (int)(255 * (1.0f - freq_ratio));
+            int g = (int)(255 * (freq_ratio < 0.5f ? 2.0f * freq_ratio : 2.0f * (1.0f - freq_ratio)));
+            int b = (int)(255 * freq_ratio);
+            
+            // Size based on magnitude
+            float radius = 2.0f + self->smoothed_spectrum[i] * 4.0f;
+            
+            self->graphics_context->drawCircle(clap_jules::graphics::Point(x, y), radius,
+                                             clap_jules::graphics::Color(r, g, b));
+        }
+    }
+    
+    void draw_spectrum_bins(my_plugin_t *self, float spectrum_x, float spectrum_y, float spectrum_width, float spectrum_height) {
+        const float bin_width = spectrum_width / SPECTRUM_BINS;
+        
+        for (size_t i = 0; i < SPECTRUM_BINS; ++i) {
+            float x = spectrum_x + i * bin_width;
+            float height = self->smoothed_spectrum[i] * spectrum_height;
+            float y = spectrum_y + spectrum_height - height;
+            
+            // Color based on frequency
+            float freq_ratio = (float)i / SPECTRUM_BINS;
+            int r = (int)(255 * (1.0f - freq_ratio));
+            int g = (int)(255 * (freq_ratio < 0.5f ? 2.0f * freq_ratio : 2.0f * (1.0f - freq_ratio)));
+            int b = (int)(255 * freq_ratio);
+            
+            self->graphics_context->drawRect(clap_jules::graphics::Rect(x, y, bin_width - 1, height),
+                                           clap_jules::graphics::Color(r, g, b));
+        }
+    }
+    
+    void draw_spectrum_fill(my_plugin_t *self, float spectrum_x, float spectrum_y, float spectrum_width, float spectrum_height) {
+        const float bin_width = spectrum_width / (SPECTRUM_BINS - 1);
+        
+        // Draw filled area by connecting points with lines to create a filled shape
+        std::vector<clap_jules::graphics::Point> points;
+        
+        // Start from bottom-left
+        points.push_back(clap_jules::graphics::Point(spectrum_x, spectrum_y + spectrum_height));
+        
+        // Add spectrum points
+        for (size_t i = 0; i < SPECTRUM_BINS; ++i) {
+            float x = spectrum_x + i * bin_width;
+            float y = spectrum_y + spectrum_height - (self->smoothed_spectrum[i] * spectrum_height);
+            points.push_back(clap_jules::graphics::Point(x, y));
+        }
+        
+        // End at bottom-right
+        points.push_back(clap_jules::graphics::Point(spectrum_x + spectrum_width, spectrum_y + spectrum_height));
+        
+        // Draw filled area with gradient effect
+        for (size_t i = 0; i < points.size() - 1; ++i) {
+            // Create vertical gradient lines
+            float x = points[i].x;
+            float y_top = points[i].y;
+            float y_bottom = spectrum_y + spectrum_height;
+            
+            // Color based on frequency
+            float freq_ratio = (float)i / points.size();
+            int r = (int)(100 * (1.0f - freq_ratio));
+            int g = (int)(150 * (freq_ratio < 0.5f ? 2.0f * freq_ratio : 2.0f * (1.0f - freq_ratio)));
+            int b = (int)(200 * freq_ratio);
+            
+            self->graphics_context->drawLine(clap_jules::graphics::Point(x, y_top),
+                                           clap_jules::graphics::Point(x, y_bottom),
+                                           clap_jules::graphics::Color(r, g, b), 1.0f);
+        }
+        
+        // Draw outline
+        for (size_t i = 0; i < SPECTRUM_BINS - 1; ++i) {
+            float x1 = spectrum_x + i * bin_width;
+            float y1 = spectrum_y + spectrum_height - (self->smoothed_spectrum[i] * spectrum_height);
+            float x2 = spectrum_x + (i + 1) * bin_width;
+            float y2 = spectrum_y + spectrum_height - (self->smoothed_spectrum[i + 1] * spectrum_height);
+            
+            self->graphics_context->drawLine(clap_jules::graphics::Point(x1, y1),
+                                           clap_jules::graphics::Point(x2, y2),
+                                           clap_jules::graphics::Color(255, 255, 255), 2.0f);
+        }
+    }
+}
+
 static void my_plugin_render_content(my_plugin_t *self) {
     if (!self->graphics_context) {
         return;
     }
     
-    // Render the plugin's GUI content
-    self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50)); // Dark blue-gray background
+    // Clear background
+    self->graphics_context->clear(clap_jules::graphics::Color(20, 20, 30)); // Dark background
     
-    // Animation counter
-    static int frame_counter = 0;
-    frame_counter++;
-    float time = frame_counter * 0.05f;
+    // Define layout areas
+    const float margin = 20.0f;
+    const float control_height = 60.0f;
+    const float spectrum_x = margin;
+    const float spectrum_y = margin + control_height;
+    const float spectrum_width = self->gui_width - 2 * margin;
+    const float spectrum_height = self->gui_height - 3 * margin - control_height;
     
-    // Draw a grid pattern in the background
-    for (int i = 0; i < self->gui_width; i += 40) {
-        self->graphics_context->drawLine(clap_jules::graphics::Point(i, 0), 
-                                       clap_jules::graphics::Point(i, self->gui_height),
-                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
-    }
-    for (int j = 0; j < self->gui_height; j += 40) {
-        self->graphics_context->drawLine(clap_jules::graphics::Point(0, j), 
-                                       clap_jules::graphics::Point(self->gui_width, j),
-                                       clap_jules::graphics::Color(60, 60, 70), 1.0f);
-    }
+    // Draw spectrum area background
+    self->graphics_context->drawRect(
+        clap_jules::graphics::Rect(spectrum_x, spectrum_y, spectrum_width, spectrum_height),
+        clap_jules::graphics::Color(30, 30, 40)
+    );
     
-    // Draw various shapes for testing
-    // 1. Static blue rectangle (top-left)
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
-                                   clap_jules::graphics::Color(80, 120, 200));
-    
-    // 2. Pulsing green circle (center)
-    float pulse_radius = 40 + 15 * sin(time * 2.0f);
-    self->graphics_context->drawCircle(clap_jules::graphics::Point(self->gui_width/2, self->gui_height/2), 
-                                     pulse_radius, clap_jules::graphics::Color(120, 200, 120));
-    
-    // 3. Color-changing circles around the center
-    for (int i = 0; i < 6; i++) {
-        float angle = time + i * 3.14159f / 3.0f;
-        float orbit_x = self->gui_width/2 + 80 * cos(angle);
-        float orbit_y = self->gui_height/2 + 80 * sin(angle);
-        int r = (int)(127 + 127 * sin(time + i));
-        int g = (int)(127 + 127 * sin(time + i + 2.0f));
-        int b = (int)(127 + 127 * sin(time + i + 4.0f));
-        self->graphics_context->drawCircle(clap_jules::graphics::Point(orbit_x, orbit_y), 15, 
-                                         clap_jules::graphics::Color(r, g, b));
+    // Draw frequency grid lines
+    const int grid_lines = 10;
+    for (int i = 0; i <= grid_lines; ++i) {
+        float x = spectrum_x + (i * spectrum_width / grid_lines);
+        self->graphics_context->drawLine(
+            clap_jules::graphics::Point(x, spectrum_y),
+            clap_jules::graphics::Point(x, spectrum_y + spectrum_height),
+            clap_jules::graphics::Color(50, 50, 60), 1.0f
+        );
     }
     
-    // 4. Animated rectangles with different colors (top-right corner)
-    for (int i = 0; i < 3; i++) {
-        float rect_x = self->gui_width - 150 + i * 20;
-        float rect_y = 20 + 15 * sin(time * 1.5f + i);
-        int color_intensity = (int)(100 + 100 * sin(time + i * 2.0f));
-        self->graphics_context->drawRect(clap_jules::graphics::Rect(rect_x, rect_y, 30, 50), 
-                                       clap_jules::graphics::Color(color_intensity, 255 - color_intensity, 150));
+    // Draw magnitude grid lines
+    for (int i = 0; i <= 10; ++i) {
+        float y = spectrum_y + (i * spectrum_height / 10);
+        self->graphics_context->drawLine(
+            clap_jules::graphics::Point(spectrum_x, y),
+            clap_jules::graphics::Point(spectrum_x + spectrum_width, y),
+            clap_jules::graphics::Color(50, 50, 60), 1.0f
+        );
     }
     
-    // 5. Moving purple line
-    float line_y = self->gui_height - 80 + 20 * sin(time);
-    self->graphics_context->drawLine(clap_jules::graphics::Point(20, line_y), 
-                                   clap_jules::graphics::Point(self->gui_width - 20, line_y),
-                                   clap_jules::graphics::Color(200, 100, 255), 3.0f);
-    
-    // 6. Bouncing animated squares
-    float bounce_x = 50 + 30 * sin(time * 2.0f);
-    float bounce_y = 80 + 20 * cos(time * 1.8f);
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x, bounce_y, 20, 20), 
-                                   clap_jules::graphics::Color(255, 200, 100));
-    
-    // Another bouncing square with different pattern
-    float bounce_x2 = self->gui_width - 80 + 25 * cos(time * 1.3f);
-    float bounce_y2 = self->gui_height - 120 + 30 * sin(time * 1.7f);
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x2, bounce_y2, 25, 25), 
-                                   clap_jules::graphics::Color(255, 100, 200));
-    
-    // 7. Text with different sizes and colors
-    self->graphics_context->drawText("CLAP-Jules", clap_jules::graphics::Point(20, 30), 
-                                   clap_jules::graphics::Color(255, 255, 255), 24.0f);
-    self->graphics_context->drawText("Graphics Test", clap_jules::graphics::Point(20, 55), 
-                                   clap_jules::graphics::Color(255, 255, 100), 16.0f);
-    
-    // 8. Frame counter display
-    char frame_text[64];
-    snprintf(frame_text, sizeof(frame_text), "Frame: %d", frame_counter);
-    self->graphics_context->drawText(frame_text, clap_jules::graphics::Point(self->gui_width - 120, 30), 
-                                   clap_jules::graphics::Color(100, 255, 100), 14.0f);
-    
-    // 9. Drawing some lines to create a star pattern (bottom-left)
-    float star_center_x = 80;
-    float star_center_y = self->gui_height - 80;
-    for (int i = 0; i < 8; i++) {
-        float angle = i * 3.14159f / 4.0f + time * 0.5f;
-        float end_x = star_center_x + 30 * cos(angle);
-        float end_y = star_center_y + 30 * sin(angle);
-        int line_color = (int)(150 + 100 * sin(time + i));
-        self->graphics_context->drawLine(clap_jules::graphics::Point(star_center_x, star_center_y),
-                                       clap_jules::graphics::Point(end_x, end_y),
-                                       clap_jules::graphics::Color(line_color, 200, 255 - line_color), 2.0f);
+    // Draw spectrum based on current mode
+    switch (self->draw_mode) {
+        case SpectrumDrawMode::LINES:
+            draw_spectrum_lines(self, spectrum_x, spectrum_y, spectrum_width, spectrum_height);
+            break;
+        case SpectrumDrawMode::DOTS:
+            draw_spectrum_dots(self, spectrum_x, spectrum_y, spectrum_width, spectrum_height);
+            break;
+        case SpectrumDrawMode::BINS:
+            draw_spectrum_bins(self, spectrum_x, spectrum_y, spectrum_width, spectrum_height);
+            break;
+        case SpectrumDrawMode::FILL:
+            draw_spectrum_fill(self, spectrum_x, spectrum_y, spectrum_width, spectrum_height);
+            break;
     }
     
-    // 10. Status text at bottom
-    self->graphics_context->drawText("GUI Active & Rendering", clap_jules::graphics::Point(20, self->gui_height - 20), 
+    // Draw control panel
+    const float button_width = 80.0f;
+    const float button_height = 30.0f;
+    const float button_spacing = 90.0f;
+    const char* mode_names[] = {"Lines", "Dots", "Bins", "Fill"};
+    
+    for (int i = 0; i < 4; ++i) {
+        float btn_x = margin + i * button_spacing;
+        float btn_y = margin + 15.0f;
+        
+        // Button background (highlight if selected)
+        clap_jules::graphics::Color btn_color = (self->draw_mode == (SpectrumDrawMode)i) ? 
+            clap_jules::graphics::Color(100, 150, 200) : clap_jules::graphics::Color(60, 60, 80);
+        
+        self->graphics_context->drawRect(
+            clap_jules::graphics::Rect(btn_x, btn_y, button_width, button_height),
+            btn_color
+        );
+        
+        // Button text
+        clap_jules::graphics::Color text_color = (self->draw_mode == (SpectrumDrawMode)i) ? 
+            clap_jules::graphics::Color(255, 255, 255) : clap_jules::graphics::Color(200, 200, 200);
+        
+        self->graphics_context->drawText(
+            mode_names[i],
+            clap_jules::graphics::Point(btn_x + 5, btn_y + 20),
+            text_color, 14.0f
+        );
+    }
+    
+    // Draw title and info
+    self->graphics_context->drawText("FFT Spectrum Analyzer", 
+                                   clap_jules::graphics::Point(margin, spectrum_y + spectrum_height + 30),
                                    clap_jules::graphics::Color(255, 255, 255), 18.0f);
+    
+    char info_text[128];
+    snprintf(info_text, sizeof(info_text), "Mode: %s | FFT Size: %zu | Sample Rate: %.0f Hz", 
+             mode_names[(int)self->draw_mode], FFT_SIZE, self->sample_rate);
+    self->graphics_context->drawText(info_text,
+                                   clap_jules::graphics::Point(margin, spectrum_y + spectrum_height + 55),
+                                   clap_jules::graphics::Color(180, 180, 180), 12.0f);
     
     // Finalize rendering
     self->graphics_context->present();
-    
-    printf("MyPlugin: Rendered frame %d at size %ux%u\n", frame_counter, self->gui_width, self->gui_height);
 }
 
 static bool my_plugin_present_graphics(my_plugin_t *self) {

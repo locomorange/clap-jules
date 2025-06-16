@@ -3,6 +3,8 @@
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
 #include <memory>
+#include <vector>
+#include <complex>
 #include "graphics/skia_graphics.h"
 
 #if defined(__linux__) && defined(HAVE_X11)
@@ -12,6 +14,18 @@
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #include "graphics/win32_renderer.h"
 #endif
+
+// Spectrum analyzer parameters
+constexpr size_t FFT_SIZE = 1024;
+constexpr size_t SPECTRUM_BINS = FFT_SIZE / 2;
+
+// Drawing modes for spectrum visualization
+enum class SpectrumDrawMode {
+    LINES = 0,
+    DOTS = 1,
+    BINS = 2,
+    FILL = 3
+};
 
 // Basic plugin structure
 typedef struct {
@@ -42,6 +56,20 @@ typedef struct {
     
     // Render callback data
     bool needs_redraw = false;
+    
+    // Audio processing data
+    double sample_rate = 44100.0;
+    
+    // FFT and spectrum analyzer data
+    std::vector<float> fft_input_buffer;
+    std::vector<std::complex<float>> fft_buffer;
+    std::vector<float> spectrum_magnitudes;
+    std::vector<float> smoothed_spectrum;
+    size_t input_buffer_pos = 0;
+    SpectrumDrawMode draw_mode = SpectrumDrawMode::LINES;
+    
+    // Smoothing factor for spectrum display (0.0 to 1.0)
+    float spectrum_smoothing = 0.7f;
 } my_plugin_t;
 
 // Plugin factory ID
