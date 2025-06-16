@@ -3,6 +3,7 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <cmath>    // For sin/cos
 #include <clap/ext/gui.h>
 
 // --- Forward declarations of plugin functions ---
@@ -16,6 +17,10 @@ static void my_plugin_reset(const struct clap_plugin *plugin);
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+
+// --- Plugin-specific rendering functions ---
+static void my_plugin_render_content(my_plugin_t *self);
+static bool my_plugin_present_graphics(my_plugin_t *self);
 
 // --- GUI Extension Function Declarations ---
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
@@ -84,6 +89,11 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->gui_height = 240;
     self->gui_api = nullptr;
     self->gui_is_floating = false;
+    self->native_window = nullptr;
+    self->needs_redraw = true;
+#ifdef __linux__
+    self->x11_renderer = nullptr;
+#endif
     
     // Initialize graphics system and demonstrate basic usage
     printf("MyPlugin: Graphics backend - %s\n", clap_jules::graphics::getGraphicsBackendInfo().c_str());
@@ -199,7 +209,79 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
-    // printf("MyPlugin: on_main_thread called\n");
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // If GUI is visible, update the rendering
+    if (self->gui_created && self->gui_visible && self->graphics_context) {
+        my_plugin_render_content(self);
+        my_plugin_present_graphics(self);
+    }
+}
+
+// --- Plugin-specific rendering functions ---
+
+static void my_plugin_render_content(my_plugin_t *self) {
+    if (!self->graphics_context) {
+        return;
+    }
+    
+    // Render the plugin's GUI content
+    self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50)); // Dark blue-gray background
+    
+    // Draw UI elements
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
+                                   clap_jules::graphics::Color(80, 120, 200)); // Blue rectangle
+    self->graphics_context->drawCircle(clap_jules::graphics::Point(self->gui_width/2, self->gui_height/2), 40, 
+                                     clap_jules::graphics::Color(120, 200, 120)); // Green circle
+    self->graphics_context->drawLine(clap_jules::graphics::Point(20, self->gui_height - 50), 
+                                   clap_jules::graphics::Point(self->gui_width - 20, self->gui_height - 50),
+                                   clap_jules::graphics::Color(200, 100, 255), 3.0f); // Purple line
+    self->graphics_context->drawText("CLAP-Jules GUI", clap_jules::graphics::Point(20, self->gui_height - 20), 
+                                   clap_jules::graphics::Color(255, 255, 255), 20.0f); // White text
+    
+    // Add some animated content to demonstrate it's working
+    static int frame_counter = 0;
+    frame_counter++;
+    
+    // Draw a small animated square
+    float x = 50 + 30 * sin(frame_counter * 0.1f);
+    float y = 80 + 20 * cos(frame_counter * 0.1f);
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(x, y, 20, 20), 
+                                   clap_jules::graphics::Color(255, 200, 100)); // Animated yellow square
+    
+    // Finalize rendering
+    self->graphics_context->present();
+    
+    printf("MyPlugin: Rendered frame %d at size %ux%u\n", frame_counter, self->gui_width, self->gui_height);
+}
+
+static bool my_plugin_present_graphics(my_plugin_t *self) {
+    if (!self->graphics_context || !self->gui_created) {
+        return false;
+    }
+    
+    // Get the rendered pixel data
+    const void* pixel_data = self->graphics_context->getPixelData();
+    if (!pixel_data) {
+        return false;
+    }
+    
+    int width = self->graphics_context->getWidth();
+    int height = self->graphics_context->getHeight();
+    
+    printf("MyPlugin: Presenting %ux%u graphics buffer to window\n", width, height);
+    
+#ifdef __linux__
+    // Use X11 renderer if available
+    if (self->x11_renderer && self->x11_renderer->isInitialized()) {
+        const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
+        return self->x11_renderer->presentPixelBuffer(pixels, width, height);
+    }
+#endif
+    
+    // Fallback: just log that we would present the graphics
+    printf("MyPlugin: Would present graphics buffer (no platform renderer available)\n");
+    return true;
 }
 
 // --- GUI Extension Implementation ---
@@ -257,15 +339,10 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     }
     
     // Render initial content
-    self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50)); // Dark blue-gray background
-    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
-                                   clap_jules::graphics::Color(80, 120, 200)); // Blue rectangle
-    self->graphics_context->drawCircle(clap_jules::graphics::Point(200, 120), 40, 
-                                     clap_jules::graphics::Color(120, 200, 120)); // Green circle
-    self->graphics_context->drawText("CLAP-Jules GUI", clap_jules::graphics::Point(20, 190), 
-                                   clap_jules::graphics::Color(255, 255, 255), 20.0f); // White text
+    my_plugin_render_content(self);
     
     self->gui_created = true;
+    self->needs_redraw = true;
     printf("MyPlugin: GUI - Window created successfully\n");
     return true;
 }
@@ -280,6 +357,11 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     
     // Clean up graphics context
     self->graphics_context.reset();
+    
+#ifdef __linux__
+    // Clean up X11 renderer
+    self->x11_renderer.reset();
+#endif
     
     self->gui_created = false;
     self->gui_visible = false;
@@ -339,18 +421,21 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
     self->gui_width = width;
     self->gui_height = height;
     
+    // Resize X11 renderer if available
+#ifdef __linux__
+    if (self->x11_renderer && self->x11_renderer->isInitialized()) {
+        self->x11_renderer->resize(width, height);
+    }
+#endif
+    
     // Recreate graphics context with new size if GUI is created
-    if (self->gui_created && self->graphics_context) {
+    if (self->gui_created) {
         self->graphics_context = clap_jules::graphics::createGraphicsContext(width, height);
         if (self->graphics_context) {
             // Re-render content at new size
-            self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50));
-            self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
-                                           clap_jules::graphics::Color(80, 120, 200));
-            self->graphics_context->drawCircle(clap_jules::graphics::Point(width/2, height/2), 40, 
-                                             clap_jules::graphics::Color(120, 200, 120));
-            self->graphics_context->drawText("CLAP-Jules GUI", clap_jules::graphics::Point(20, height - 50), 
-                                           clap_jules::graphics::Color(255, 255, 255), 20.0f);
+            my_plugin_render_content(self);
+            my_plugin_present_graphics(self);
+            self->needs_redraw = true;
         }
     }
     
@@ -358,6 +443,7 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
 }
 
 static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: GUI - Setting parent window (API: %s)\n", window ? window->api : "null");
     
     if (!window) {
@@ -365,13 +451,37 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         return false;
     }
     
-    // In a real implementation, you would embed your window into the parent here
-    // For different APIs, you'd handle:
-    // - X11: Use XReparentWindow() to embed into window->x11
-    // - Win32: Use SetParent() to embed into window->win32  
-    // - Cocoa: Add your NSView to window->cocoa
+    // Store the native window handle for later use
+    if (strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
+        self->native_window = (void*)window->x11;
+        printf("MyPlugin: GUI - X11 window handle: %lu\n", window->x11);
+        
+#ifdef __linux__
+        // Initialize X11 renderer
+        self->x11_renderer = std::make_unique<clap_jules::graphics::X11Renderer>();
+        if (!self->x11_renderer->initialize(window->x11, self->gui_width, self->gui_height)) {
+            printf("MyPlugin: GUI - Failed to initialize X11 renderer\n");
+            self->x11_renderer.reset();
+        } else {
+            printf("MyPlugin: GUI - X11 renderer initialized successfully\n");
+        }
+#endif
+        
+    } else if (strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
+        self->native_window = window->win32;
+        printf("MyPlugin: GUI - Win32 window handle set\n");
+    } else if (strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
+        self->native_window = window->cocoa;
+        printf("MyPlugin: GUI - Cocoa window handle set\n");
+    }
     
-    printf("MyPlugin: GUI - Parent window set (simulation)\n");
+    // Trigger initial render
+    if (self->gui_created) {
+        my_plugin_render_content(self);
+        my_plugin_present_graphics(self);
+    }
+    
+    printf("MyPlugin: GUI - Parent window set and initial render performed\n");
     return true;
 }
 
@@ -396,7 +506,12 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     }
     
     self->gui_visible = true;
-    printf("MyPlugin: GUI - Window is now visible\n");
+    
+    // Render and present graphics when showing
+    my_plugin_render_content(self);
+    my_plugin_present_graphics(self);
+    
+    printf("MyPlugin: GUI - Window is now visible with rendered content\n");
     return true;
 }
 

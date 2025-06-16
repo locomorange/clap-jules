@@ -4,6 +4,16 @@
 #include <clap/ext/gui.h>
 #include "graphics/skia_graphics.h"
 
+#pragma once
+
+#include <clap/clap.h>
+#include <clap/ext/gui.h>
+#include "graphics/skia_graphics.h"
+
+#ifdef __linux__
+#include "graphics/x11_renderer.h"
+#endif
+
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
@@ -18,6 +28,17 @@ typedef struct {
     
     // Graphics context for rendering
     std::unique_ptr<clap_jules::graphics::GraphicsContext> graphics_context;
+    
+    // Platform-specific window handle
+    void* native_window;
+    
+    // Platform-specific renderer
+#ifdef __linux__
+    std::unique_ptr<clap_jules::graphics::X11Renderer> x11_renderer;
+#endif
+    
+    // Render callback data
+    bool needs_redraw;
 } my_plugin_t;
 
 // Plugin factory ID

@@ -83,6 +83,18 @@ public:
     void rotate(float radians) override {
         // canvas_->rotate(radians * 180.0f / M_PI);
     }
+    
+    void present() override {
+        // In Skia implementation, this would flush the canvas and present to screen
+    }
+    
+    const void* getPixelData() const override {
+        // In Skia implementation, this would return the surface pixels
+        return nullptr;
+    }
+    
+    int getWidth() const override { return width_; }
+    int getHeight() const override { return height_; }
 };
 
 #endif // CLAP_JULES_USE_SKIA
@@ -183,6 +195,18 @@ public:
     void rotate(float radians) override {
         // No-op for stub implementation
     }
+    
+    void present() override {
+        // For stub implementation, rendering is already complete in buffer
+        // In a real implementation, this would present to the window
+    }
+    
+    const void* getPixelData() const override {
+        return buffer_.data();
+    }
+    
+    int getWidth() const override { return width_; }
+    int getHeight() const override { return height_; }
     
     // Stub-specific method to get the buffer for testing
     const std::vector<uint32_t>& getBuffer() const { return buffer_; }

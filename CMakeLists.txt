@@ -96,6 +96,18 @@ add_library(clap_jules_graphics STATIC
     graphics/skia_graphics.h
 )
 
+# Add platform-specific graphics files
+if(UNIX AND NOT APPLE)
+    target_sources(clap_jules_graphics PRIVATE
+        graphics/x11_renderer.cpp
+        graphics/x11_renderer.h
+    )
+    # Find and link X11
+    find_package(X11 REQUIRED)
+    target_link_libraries(clap_jules_graphics PRIVATE ${X11_LIBRARIES})
+    target_include_directories(clap_jules_graphics PRIVATE ${X11_INCLUDE_DIR})
+endif()
+
 target_include_directories(clap_jules_graphics PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

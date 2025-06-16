@@ -43,6 +43,12 @@ public:
     virtual void translate(float dx, float dy) = 0;
     virtual void scale(float sx, float sy) = 0;
     virtual void rotate(float radians) = 0;
+    
+    // Rendering/presentation
+    virtual void present() = 0;
+    virtual const void* getPixelData() const = 0;
+    virtual int getWidth() const = 0;
+    virtual int getHeight() const = 0;
 };
 
 // Factory function to create graphics context
