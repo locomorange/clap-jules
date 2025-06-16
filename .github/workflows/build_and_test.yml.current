@@ -19,22 +19,19 @@ jobs:
         include:
           - os: ubuntu-latest
             name: "Linux with GUI"
-            cmakeConfig: ""
           - os: windows-latest
             name: "Windows with GUI"
-            cmakeConfig: ""
           - os: macos-latest
             name: "macOS with GUI"
-            cmakeConfig: ""
           - os: ubuntu-latest
             name: "Linux without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: windows-latest
             name: "Windows without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: macos-latest
             name: "macOS without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
 
     steps:
     - name: Checkout repository
@@ -215,22 +212,19 @@ jobs:
         include:
           - os: ubuntu-latest
             name: "Linux with GUI"
-            cmakeConfig: ""
           - os: windows-latest
             name: "Windows with GUI"
-            cmakeConfig: ""
           - os: macos-latest
             name: "macOS with GUI"
-            cmakeConfig: ""
           - os: ubuntu-latest
             name: "Linux without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: windows-latest
             name: "Windows without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
           - os: macos-latest
             name: "macOS without GUI"
-            cmakeConfig: "-DCLAP_INCLUDE_GUI=False"
+            cmakeConfig: -DCLAP_INCLUDE_GUI=False
 
     steps:
     - name: Checkout repository
