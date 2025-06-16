@@ -202,7 +202,7 @@ static void update_spectrum_data(fft_data_t* fft_data) {
         for (size_t i = 0; i < num_bins; ++i) {
             float magnitude = std::abs(fft_data->fft_buffer[i]);
             // Convert to dB scale and normalize
-            float db = 20.0f * log10f(std::max(magnitude, 1e-6f));
+            float db = 20.0f * static_cast<float>(std::log10(std::max(magnitude, 1e-6f)));
             // Normalize to 0-1 range (assuming -60dB to 0dB range)
             fft_data->spectrum_data.magnitudes[i] = std::max(0.0f, std::min(1.0f, (db + 60.0f) / 60.0f));
         }
