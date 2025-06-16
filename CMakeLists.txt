@@ -128,5 +128,25 @@ enable_testing()
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
+# Add include directories for the test target
+target_include_directories(my_plugin_tests PRIVATE 
+    ${CLAP_PATH}/include
+    libs/clap/include
+)
+
+# Add GLFW include directories if available
+if (TARGET glfw)
+    target_include_directories(my_plugin_tests PRIVATE libs/glfw/include)
+endif()
+
+# Add compile definitions for graphics libraries to tests
+if (TARGET glfw)
+    target_compile_definitions(my_plugin_tests PRIVATE HAVE_GLFW=1)
+endif()
+
+if (USE_SKIA AND TARGET skia)
+    target_compile_definitions(my_plugin_tests PRIVATE HAVE_SKIA=1)
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)

@@ -117,3 +117,22 @@ sudo apt-get install -y libwayland-dev wayland-protocols libxkbcommon-dev
 ```
 
 **Note**: The current configuration builds GLFW with minimal dependencies (null backend) to ensure broad compatibility. For full windowing system support, enable the appropriate backends in CMakeLists.txt.
+
+### CI/CD Considerations
+
+The graphics library integration is designed to be CI/CD friendly:
+
+**GLFW:**
+- ✅ Builds successfully in headless environments
+- ✅ Uses null backend when no windowing system is available
+- ✅ Compatible with GitHub Actions and other CI systems
+
+**Skia:**
+- ⚠️ Requires manual build step due to complex dependencies
+- 💡 Consider using pre-built Skia binaries in CI environments
+- 📦 For production builds, Skia can be built once and cached
+
+**Testing:**
+- All integration tests pass in headless environments
+- Graphics library availability is tested at compile-time
+- Runtime initialization is tested but gracefully handles failures
