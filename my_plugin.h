@@ -4,14 +4,12 @@
 #include <clap/ext/gui.h>
 #include "graphics/skia_graphics.h"
 
-#pragma once
-
-#include <clap/clap.h>
-#include <clap/ext/gui.h>
-#include "graphics/skia_graphics.h"
-
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_X11)
 #include "graphics/x11_renderer.h"
+#endif
+
+#ifdef _WIN32
+#include "graphics/win32_renderer.h"
 #endif
 
 // Basic plugin structure
@@ -33,8 +31,12 @@ typedef struct {
     void* native_window;
     
     // Platform-specific renderer
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_X11)
     std::unique_ptr<clap_jules::graphics::X11Renderer> x11_renderer;
+#endif
+
+#ifdef _WIN32
+    std::unique_ptr<clap_jules::graphics::Win32Renderer> win32_renderer;
 #endif
     
     // Render callback data

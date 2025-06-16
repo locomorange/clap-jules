@@ -98,14 +98,24 @@ add_library(clap_jules_graphics STATIC
 
 # Add platform-specific graphics files
 if(UNIX AND NOT APPLE)
+    # Find X11 (optional)
+    find_package(X11)
+    if(X11_FOUND)
+        target_sources(clap_jules_graphics PRIVATE
+            graphics/x11_renderer.cpp
+            graphics/x11_renderer.h
+        )
+        target_link_libraries(clap_jules_graphics PRIVATE ${X11_LIBRARIES})
+        target_include_directories(clap_jules_graphics PRIVATE ${X11_INCLUDE_DIR})
+        target_compile_definitions(clap_jules_graphics PRIVATE HAVE_X11)
+    endif()
+elseif(WIN32)
     target_sources(clap_jules_graphics PRIVATE
-        graphics/x11_renderer.cpp
-        graphics/x11_renderer.h
+        graphics/win32_renderer.cpp
+        graphics/win32_renderer.h
     )
-    # Find and link X11
-    find_package(X11 REQUIRED)
-    target_link_libraries(clap_jules_graphics PRIVATE ${X11_LIBRARIES})
-    target_include_directories(clap_jules_graphics PRIVATE ${X11_INCLUDE_DIR})
+    # Link with Win32 GDI libraries
+    target_link_libraries(clap_jules_graphics PRIVATE gdi32 user32)
 endif()
 
 target_include_directories(clap_jules_graphics PUBLIC 

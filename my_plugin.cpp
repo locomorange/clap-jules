@@ -91,8 +91,11 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->gui_is_floating = false;
     self->native_window = nullptr;
     self->needs_redraw = true;
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_X11)
     self->x11_renderer = nullptr;
+#endif
+#ifdef _WIN32
+    self->win32_renderer = nullptr;
 #endif
     
     // Initialize graphics system and demonstrate basic usage
@@ -271,11 +274,19 @@ static bool my_plugin_present_graphics(my_plugin_t *self) {
     
     printf("MyPlugin: Presenting %ux%u graphics buffer to window\n", width, height);
     
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_X11)
     // Use X11 renderer if available
     if (self->x11_renderer && self->x11_renderer->isInitialized()) {
         const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
         return self->x11_renderer->presentPixelBuffer(pixels, width, height);
+    }
+#endif
+
+#ifdef _WIN32
+    // Use Win32 renderer if available
+    if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+        const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
+        return self->win32_renderer->presentPixelBuffer(pixels, width, height);
     }
 #endif
     
@@ -358,9 +369,14 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     // Clean up graphics context
     self->graphics_context.reset();
     
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_X11)
     // Clean up X11 renderer
     self->x11_renderer.reset();
+#endif
+
+#ifdef _WIN32
+    // Clean up Win32 renderer
+    self->win32_renderer.reset();
 #endif
     
     self->gui_created = false;
@@ -422,7 +438,7 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
     self->gui_height = height;
     
     // Resize X11 renderer if available
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_X11)
     if (self->x11_renderer && self->x11_renderer->isInitialized()) {
         self->x11_renderer->resize(width, height);
     }
@@ -456,7 +472,7 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         self->native_window = (void*)window->x11;
         printf("MyPlugin: GUI - X11 window handle: %lu\n", window->x11);
         
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_X11)
         // Initialize X11 renderer
         self->x11_renderer = std::make_unique<clap_jules::graphics::X11Renderer>();
         if (!self->x11_renderer->initialize(window->x11, self->gui_width, self->gui_height)) {
@@ -470,6 +486,17 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
     } else if (strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
         self->native_window = window->win32;
         printf("MyPlugin: GUI - Win32 window handle set\n");
+        
+#ifdef _WIN32
+        // Initialize Win32 renderer
+        self->win32_renderer = std::make_unique<clap_jules::graphics::Win32Renderer>();
+        if (!self->win32_renderer->initialize((HWND)window->win32, self->gui_width, self->gui_height)) {
+            printf("MyPlugin: GUI - Failed to initialize Win32 renderer\n");
+            self->win32_renderer.reset();
+        } else {
+            printf("MyPlugin: GUI - Win32 renderer initialized successfully\n");
+        }
+#endif
     } else if (strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
         self->native_window = window->cocoa;
         printf("MyPlugin: GUI - Cocoa window handle set\n");
