@@ -44,3 +44,6 @@ clap-info
 clap-info.zip
 clap-validator
 clap-validator.tar.gz
+
+# Third-party dependencies
+third_party/

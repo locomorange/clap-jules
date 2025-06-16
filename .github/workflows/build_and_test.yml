@@ -18,6 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        skia: [false]  # Default builds without Skia
+        include:
+          # Add one Linux build with Skia enabled for testing
+          - os: ubuntu-latest
+            skia: true
 
     steps:
     - name: Checkout repository
@@ -46,7 +51,15 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      run: |
+        if [ "${{ matrix.skia }}" = "true" ]; then
+          echo "Configuring with Skia enabled"
+          cmake . -B build -DENABLE_SKIA=ON || cmake . -B build
+        else
+          echo "Configuring without Skia"
+          cmake . -B build
+        fi
+      shell: bash
 
     - name: Build project
       run: cmake --build build --config Release

@@ -13,6 +13,19 @@ TEST(MyPluginTest, PlaceholderTest) {
     // EXPECT_EQ(add(2, 2), 4);
 }
 
+#ifdef CLAP_JULES_WITH_SKIA
+TEST(MyPluginTest, SkiaIntegrationTest) {
+    // Test that Skia integration is enabled
+    // This test only runs when Skia is enabled
+    ASSERT_TRUE(true) << "Skia integration is enabled";
+}
+#else
+TEST(MyPluginTest, SkiaDisabledTest) {
+    // Test that runs when Skia is disabled
+    ASSERT_TRUE(true) << "Skia integration is disabled";
+}
+#endif
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

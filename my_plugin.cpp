@@ -3,6 +3,14 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
+#ifdef CLAP_JULES_WITH_SKIA
+#include "include/core/SkCanvas.h"
+#include "include/core/SkSurface.h"
+#include "include/core/SkImageInfo.h"
+#include "include/core/SkPaint.h"
+#include "include/core/SkRect.h"
+#endif
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -38,6 +46,26 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 static bool my_plugin_init(const struct clap_plugin *plugin) {
     // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
+    
+#ifdef CLAP_JULES_WITH_SKIA
+    printf("MyPlugin: Skia integration enabled\n");
+    
+    // Simple Skia initialization test
+    SkImageInfo info = SkImageInfo::MakeN32Premul(100, 100);
+    sk_sp<SkSurface> surface = SkSurface::MakeRaster(info);
+    if (surface) {
+        SkCanvas* canvas = surface->getCanvas();
+        SkPaint paint;
+        paint.setColor(SK_ColorRED);
+        canvas->drawRect(SkRect::MakeXYWH(10, 10, 80, 80), paint);
+        printf("MyPlugin: Skia surface creation and drawing test successful\n");
+    } else {
+        printf("MyPlugin: Skia surface creation failed\n");
+    }
+#else
+    printf("MyPlugin: Skia integration not enabled\n");
+#endif
+    
     // Initialize your plugin state here
     return true;
 }
