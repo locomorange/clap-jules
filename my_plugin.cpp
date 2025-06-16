@@ -341,85 +341,59 @@ void SpectrumAnalyzer::set_style(SpectrumDrawStyle new_style) {
 //=============================================================================
 
 FFTProcessor* fft_processor_create(double sample_rate) {
-#ifdef __cplusplus
     return new FFTProcessor(sample_rate);
-#else
-    return nullptr;
-#endif
 }
 
 void fft_processor_destroy(FFTProcessor* processor) {
-#ifdef __cplusplus
     delete processor;
-#endif
 }
 
 void fft_processor_process(FFTProcessor* processor, const float* input, size_t frame_count) {
-#ifdef __cplusplus
     if (processor) {
         processor->process(input, frame_count);
     }
-#endif
 }
 
 void fft_processor_get_spectrum_data(FFTProcessor* processor, float* magnitudes, float* frequencies, size_t* count) {
-#ifdef __cplusplus
     if (processor) {
         processor->get_spectrum_data(magnitudes, frequencies, count);
     } else {
         *count = 0;
     }
-#else
-    *count = 0;
-#endif
 }
 
 SpectrumAnalyzer* spectrum_analyzer_create(void) {
-#ifdef __cplusplus
     return new SpectrumAnalyzer();
-#else
-    return nullptr;
-#endif
 }
 
 void spectrum_analyzer_destroy(SpectrumAnalyzer* analyzer) {
-#ifdef __cplusplus
     delete analyzer;
-#endif
 }
 
 void spectrum_analyzer_update_data(SpectrumAnalyzer* analyzer, const float* magnitudes, const float* frequencies, size_t count) {
-#ifdef __cplusplus
     if (analyzer) {
         analyzer->update_data(magnitudes, frequencies, count);
     }
-#endif
 }
 
 bool spectrum_analyzer_get_data(SpectrumAnalyzer* analyzer, float* magnitudes, float* frequencies, size_t* count) {
-#ifdef __cplusplus
     if (analyzer) {
         return analyzer->get_data(magnitudes, frequencies, count);
     }
-#endif
     *count = 0;
     return false;
 }
 
 void spectrum_analyzer_set_enabled(SpectrumAnalyzer* analyzer, bool enabled) {
-#ifdef __cplusplus
     if (analyzer) {
         analyzer->set_enabled(enabled);
     }
-#endif
 }
 
 void spectrum_analyzer_set_style(SpectrumAnalyzer* analyzer, SpectrumDrawStyle style) {
-#ifdef __cplusplus
     if (analyzer) {
         analyzer->set_style(style);
     }
-#endif
 }
 
 //=============================================================================
