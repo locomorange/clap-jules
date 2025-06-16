@@ -77,14 +77,14 @@ namespace {
 }
 
 // --- Forward declarations of plugin functions ---
-bool my_plugin_init(const struct clap_plugin *plugin);
-void my_plugin_destroy(const struct clap_plugin *plugin);
-bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
+CLAP_EXPORT bool my_plugin_init(const struct clap_plugin *plugin);
+CLAP_EXPORT void my_plugin_destroy(const struct clap_plugin *plugin);
+CLAP_EXPORT bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count);
 static void my_plugin_deactivate(const struct clap_plugin *plugin);
 static bool my_plugin_start_processing(const struct clap_plugin *plugin);
 static void my_plugin_stop_processing(const struct clap_plugin *plugin);
 static void my_plugin_reset(const struct clap_plugin *plugin);
-clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
+CLAP_EXPORT clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
@@ -147,7 +147,7 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 
 // --- Plugin Implementation ---
-bool my_plugin_init(const struct clap_plugin *plugin) {
+CLAP_EXPORT bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
@@ -185,12 +185,12 @@ bool my_plugin_init(const struct clap_plugin *plugin) {
     return true;
 }
 
-void my_plugin_destroy(const struct clap_plugin *plugin) {
+CLAP_EXPORT void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
     // Free any resources allocated in init
 }
 
-bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+CLAP_EXPORT bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
     
@@ -220,7 +220,7 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
     // Reset plugin state (e.g., clear buffers, reset parameters)
 }
 
-clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
+CLAP_EXPORT clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
     // Process audio from input to output (pass-through)
