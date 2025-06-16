@@ -140,8 +140,15 @@ message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstC
 add_subdirectory(libs/googletest)
 enable_testing()
 
-add_executable(my_plugin_tests test/test_my_plugin.cpp)
-target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+add_executable(my_plugin_tests test/test_my_plugin.cpp graphics_wrapper.cpp)
+target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main)
+
+# Add Skia support to the test executable if available
+if(SKIA_FOUND)
+    target_include_directories(my_plugin_tests PRIVATE ${SKIA_INCLUDE_DIRS})
+    target_link_libraries(my_plugin_tests PRIVATE ${SKIA_LIBRARIES})
+    target_compile_definitions(my_plugin_tests PRIVATE HAVE_SKIA=1)
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
