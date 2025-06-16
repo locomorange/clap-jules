@@ -109,6 +109,18 @@ endif()
 add_library(my_clap_plugin SHARED my_plugin.cpp graphics_wrapper.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
+# Add platform-specific windowing libraries
+if(WIN32)
+    target_link_libraries(my_clap_plugin PRIVATE user32 gdi32)
+elseif(APPLE)
+    find_library(COCOA_LIBRARY Cocoa)
+    target_link_libraries(my_clap_plugin PRIVATE ${COCOA_LIBRARY})
+else()
+    find_package(X11 REQUIRED)
+    target_link_libraries(my_clap_plugin PRIVATE ${X11_LIBRARIES})
+    target_include_directories(my_clap_plugin PRIVATE ${X11_INCLUDE_DIR})
+endif()
+
 # Add Skia support to the plugin if available
 if(SKIA_FOUND)
     target_include_directories(my_clap_plugin PRIVATE ${SKIA_INCLUDE_DIRS})
@@ -163,4 +175,24 @@ if(BUILD_SKIA_EXAMPLE)
         target_compile_definitions(skia_example PRIVATE HAVE_SKIA=1)
     endif()
     message(STATUS "Skia example executable will be built")
+endif()
+
+# GUI test executable
+option(BUILD_GUI_TEST "Build the GUI test executable" ON)
+if(BUILD_GUI_TEST)
+    add_executable(test_gui test_gui.cpp)
+    target_link_libraries(test_gui PRIVATE clap dl)
+    
+    # Add platform-specific libraries for the test
+    if(WIN32)
+        target_link_libraries(test_gui PRIVATE user32 gdi32)
+    elseif(APPLE)
+        find_library(COCOA_LIBRARY Cocoa)
+        target_link_libraries(test_gui PRIVATE ${COCOA_LIBRARY})
+    else()
+        target_link_libraries(test_gui PRIVATE ${X11_LIBRARIES})
+        target_include_directories(test_gui PRIVATE ${X11_INCLUDE_DIR})
+    endif()
+    
+    message(STATUS "GUI test executable will be built")
 endif()

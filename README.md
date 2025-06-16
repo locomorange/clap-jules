@@ -137,3 +137,86 @@ cmake --build build
 4. **Memory Usage**: Skia can be memory-intensive for large graphics operations. Consider the target environment when enabling Skia support.
 
 5. **License Compatibility**: Ensure Skia's BSD license is compatible with your project's licensing requirements.
+
+## GUI Support
+
+This CLAP plugin includes a full GUI implementation using the CLAP GUI extension. The GUI displays a visual representation of the plugin's graphics capabilities.
+
+### Features
+
+- **Cross-platform windowing**: Supports Win32 (Windows), X11 (Linux), and Cocoa (macOS)
+- **Embedded and floating window modes**: Can integrate into host windows or run as standalone windows
+- **Resizable interface**: Supports dynamic resizing with constraints
+- **Real-time graphics rendering**: Uses the integrated graphics wrapper for visual feedback
+- **Host integration**: Fully compliant with CLAP GUI extension specifications
+
+### GUI Architecture
+
+The GUI implementation includes:
+
+- **Platform abstraction**: Cross-platform window management code
+- **Graphics integration**: Leverages the existing graphics wrapper for rendering
+- **Host communication**: Proper CLAP extension protocol implementation
+- **Resource management**: Automatic cleanup and memory management
+
+### Visual Elements
+
+The plugin GUI displays:
+- Dark-themed interface with professional appearance
+- Animated graphics showing plugin capabilities
+- Real-time visual feedback
+- Resizable graphics that adapt to window size changes
+
+### Testing the GUI
+
+#### Automated Testing
+```bash
+# Build with GUI test enabled (default)
+cmake . -B build
+cmake --build build
+
+# Run GUI functionality test
+./build/test_gui
+```
+
+#### Manual Testing with Host Applications
+The plugin can be loaded into any CLAP-compatible host that supports the GUI extension:
+
+1. **Load the plugin** in your CLAP host
+2. **Open the plugin GUI** - look for a GUI/Editor button
+3. **Resize the window** to test responsive graphics
+4. **Observe real-time rendering** of graphics elements
+
+#### Host Compatibility
+The GUI has been designed to work with popular DAW hosts that support CLAP:
+- Bitwig Studio (with CLAP support)
+- Reaper (with CLAP plugin)
+- Other CLAP-compatible hosts
+
+### Platform-Specific Notes
+
+#### Linux (X11)
+- Requires X11 development libraries: `sudo apt-get install libx11-dev`
+- Tested with common Linux desktop environments
+- Supports both embedded and floating window modes
+
+#### Windows
+- Uses native Win32 API for optimal integration
+- Supports high-DPI displays automatically
+- Compatible with Windows 10 and later
+
+#### macOS
+- Uses Cocoa framework for native look and feel
+- Supports retina displays
+- Compatible with macOS 10.15 and later
+
+### Development
+
+To extend the GUI functionality:
+
+1. **Modify graphics rendering** in `render_graphics()` function
+2. **Add interactive elements** by handling platform-specific events
+3. **Extend CLAP GUI extension** support for additional features
+4. **Test across platforms** to ensure compatibility
+
+The GUI implementation serves as a complete example of CLAP GUI extension usage and can be adapted for more complex plugin interfaces.
