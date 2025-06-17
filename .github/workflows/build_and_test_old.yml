@@ -27,24 +27,18 @@ jobs:
 
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Install GUI dependencies (Windows)
-      if: runner.os == 'Windows'
-      shell: cmd
-      run: |
-        echo Installing Windows dependencies for GUI - GLFW will be built from source
+      uses: microsoft/setup-msbuild@v2
 
     - name: Install GUI dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
         brew install glfw
-
     - name: Install GUI dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
         sudo apt update
         sudo apt install -y libglfw3-dev libgl1-mesa-dev libx11-dev libxinerama-dev libxcursor-dev libxi-dev libxrandr-dev libxext-dev libxfixes-dev libxrender-dev
+
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -119,24 +113,18 @@ jobs:
 
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Install GUI dependencies (Windows)
-      if: runner.os == 'Windows'
-      shell: cmd
-      run: |
-        echo Installing Windows dependencies for GUI - GLFW will be built from source
+      uses: microsoft/setup-msbuild@v2
 
     - name: Install GUI dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
         brew install glfw
-
     - name: Install GUI dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
         sudo apt update
         sudo apt install -y libglfw3-dev libgl1-mesa-dev libx11-dev libxinerama-dev libxcursor-dev libxi-dev libxrandr-dev libxext-dev libxfixes-dev libxrender-dev
+
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
