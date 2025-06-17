@@ -129,6 +129,12 @@ if (USE_SKIA AND TARGET skia)
     target_compile_definitions(my_clap_plugin PRIVATE HAVE_SKIA=1)
     message(STATUS "Skia support enabled")
 endif()
+# Add Windows-specific libraries for Win32 renderer
+if (WIN32)
+    target_link_libraries(my_clap_plugin PRIVATE user32 gdi32 kernel32)
+    target_link_libraries(my_plugin_tests PRIVATE user32 gdi32 kernel32)
+endif()
+
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
