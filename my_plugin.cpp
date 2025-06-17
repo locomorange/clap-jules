@@ -2,6 +2,18 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <clap/ext/gui.h>
+
+// GLFW includes
+#ifdef __linux__
+#define GLFW_EXPOSE_NATIVE_X11
+#include <X11/Xlib.h>
+#endif
+#ifdef _WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#endif
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -14,6 +26,23 @@ static void my_plugin_reset(const struct clap_plugin *plugin);
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+
+// --- Forward declarations of GUI functions ---
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin);
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale);
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin);
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints);
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height);
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window);
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window);
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title);
+static bool my_plugin_gui_show(const clap_plugin_t *plugin);
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -36,15 +65,38 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize GUI-related fields
+    self->window = NULL;
+    self->gui_created = false;
+    self->gui_visible = false;
+    self->gui_width = 400;
+    self->gui_height = 300;
+    self->gui_api = NULL;
+    self->is_floating = false;
+    
+    // Initialize GLFW if not already done
+    if (!glfwInit()) {
+        printf("MyPlugin: Failed to initialize GLFW\n");
+        return false;
+    }
+    
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    // Clean up GUI resources
+    if (self->gui_created) {
+        my_plugin_gui_destroy(plugin);
+    }
+    
+    // Terminate GLFW
+    glfwTerminate();
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -115,16 +167,297 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     return CLAP_PROCESS_CONTINUE;
 }
 
+// --- GUI Extension Implementation ---
+static const clap_plugin_gui_t my_plugin_gui_extension = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    my_plugin_gui_get_resize_hints,
+    my_plugin_gui_adjust_size,
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    my_plugin_gui_set_transient,
+    my_plugin_gui_suggest_title,
+    my_plugin_gui_show,
+    my_plugin_gui_hide,
+};
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
+    // Return GUI extension if requested
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &my_plugin_gui_extension;
+    }
+    
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    return NULL; // Extension not supported
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
     // printf("MyPlugin: on_main_thread called\n");
+}
+
+// --- GUI Extension Implementation ---
+
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    printf("MyPlugin: GUI API support check - API: %s, Floating: %s\n", api, is_floating ? "true" : "false");
+    
+    // Support X11 for Linux (embedded and floating)
+    if (strcmp(api, CLAP_WINDOW_API_X11) == 0) {
+        return true;
+    }
+    
+    // Support Win32 for Windows (embedded and floating)
+    if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0) {
+        return true;
+    }
+    
+    return false;
+}
+
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    printf("MyPlugin: GUI preferred API request\n");
+    
+    // Prefer embedded windows
+    *is_floating = false;
+    
+    // Prefer X11 on Linux, Win32 on Windows
+#ifdef __linux__
+    *api = CLAP_WINDOW_API_X11;
+#elif defined(_WIN32)
+    *api = CLAP_WINDOW_API_WIN32;
+#else
+    *api = CLAP_WINDOW_API_X11; // Default to X11
+#endif
+    
+    return true;
+}
+
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI create - API: %s, Floating: %s\n", api ? api : "NULL", is_floating ? "true" : "false");
+    
+    if (self->gui_created) {
+        printf("MyPlugin: GUI already created\n");
+        return false;
+    }
+    
+    // Store GUI configuration
+    self->gui_api = api;
+    self->is_floating = is_floating;
+    
+    // Configure GLFW window hints
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // Start hidden
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    
+    // Create GLFW window
+    self->window = glfwCreateWindow(
+        self->gui_width, 
+        self->gui_height, 
+        "My CLAP Plugin", 
+        NULL, 
+        NULL
+    );
+    
+    if (!self->window) {
+        printf("MyPlugin: Failed to create GLFW window\n");
+        return false;
+    }
+    
+    // Make context current for OpenGL operations
+    glfwMakeContextCurrent(self->window);
+    
+    self->gui_created = true;
+    printf("MyPlugin: GUI created successfully\n");
+    return true;
+}
+
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI destroy\n");
+    
+    if (!self->gui_created) {
+        return;
+    }
+    
+    if (self->window) {
+        glfwDestroyWindow(self->window);
+        self->window = NULL;
+    }
+    
+    self->gui_created = false;
+    self->gui_visible = false;
+}
+
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    printf("MyPlugin: GUI set scale: %f\n", scale);
+    // For this simple implementation, we'll ignore scaling
+    return true;
+}
+
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created) {
+        *width = self->gui_width;
+        *height = self->gui_height;
+    } else {
+        int w, h;
+        glfwGetWindowSize(self->window, &w, &h);
+        *width = (uint32_t)w;
+        *height = (uint32_t)h;
+    }
+    
+    printf("MyPlugin: GUI get size: %ux%u\n", *width, *height);
+    return true;
+}
+
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
+    printf("MyPlugin: GUI can resize: true\n");
+    return true;
+}
+
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    printf("MyPlugin: GUI get resize hints\n");
+    hints->can_resize_horizontally = true;
+    hints->can_resize_vertically = true;
+    hints->preserve_aspect_ratio = false;
+    return true;
+}
+
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    printf("MyPlugin: GUI adjust size: %ux%u\n", *width, *height);
+    
+    // Ensure minimum size
+    if (*width < 200) *width = 200;
+    if (*height < 150) *height = 150;
+    
+    return true;
+}
+
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI set size: %ux%u\n", width, height);
+    
+    self->gui_width = width;
+    self->gui_height = height;
+    
+    if (self->window) {
+        glfwSetWindowSize(self->window, width, height);
+    }
+    
+    return true;
+}
+
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI set parent - API: %s\n", window->api);
+    
+    if (!self->gui_created || !self->window) {
+        printf("MyPlugin: GUI not created, cannot set parent\n");
+        return false;
+    }
+    
+    // Store parent window information
+    self->parent_window = *window;
+    
+    // Handle X11 embedding
+    if (strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
+#ifdef __linux__
+        Display* display = glfwGetX11Display();
+        Window child = glfwGetX11Window(self->window);
+        Window parent = (Window)window->x11;
+        
+        if (display && child && parent) {
+            // Reparent the GLFW window
+            XReparentWindow(display, child, parent, 0, 0);
+            XMapWindow(display, child);
+            XFlush(display);
+            printf("MyPlugin: X11 window reparented successfully\n");
+            return true;
+        } else {
+            printf("MyPlugin: Failed to get X11 handles\n");
+            return false;
+        }
+#else
+        printf("MyPlugin: X11 not supported on this platform\n");
+        return false;
+#endif
+    }
+    
+    // Handle Win32 embedding
+    if (strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
+#ifdef _WIN32
+        HWND child = glfwGetWin32Window(self->window);
+        HWND parent = (HWND)window->win32;
+        
+        if (child && parent) {
+            SetParent(child, parent);
+            printf("MyPlugin: Win32 window reparented successfully\n");
+            return true;
+        } else {
+            printf("MyPlugin: Failed to get Win32 handles\n");
+            return false;
+        }
+#else
+        printf("MyPlugin: Win32 not supported on this platform\n");
+        return false;
+#endif
+    }
+    
+    printf("MyPlugin: Unsupported window API: %s\n", window->api);
+    return false;
+}
+
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    printf("MyPlugin: GUI set transient (floating window)\n");
+    // For floating windows, we could set the window to stay above the parent
+    // This is a simplified implementation
+    return true;
+}
+
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI suggest title: %s\n", title);
+    
+    if (self->window) {
+        glfwSetWindowTitle(self->window, title);
+    }
+}
+
+static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI show\n");
+    
+    if (!self->gui_created || !self->window) {
+        printf("MyPlugin: GUI not created, cannot show\n");
+        return false;
+    }
+    
+    glfwShowWindow(self->window);
+    self->gui_visible = true;
+    
+    return true;
+}
+
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI hide\n");
+    
+    if (!self->gui_created || !self->window) {
+        return false;
+    }
+    
+    glfwHideWindow(self->window);
+    self->gui_visible = false;
+    
+    return true;
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
