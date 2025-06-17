@@ -705,7 +705,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     return &self->plugin;
 }
 
-const struct clap_plugin_factory my_plugin_factory = {
+const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
     my_factory_get_plugin_count,
     my_factory_get_plugin_descriptor,
     my_factory_create_plugin,
