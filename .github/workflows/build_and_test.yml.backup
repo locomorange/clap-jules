@@ -32,18 +32,9 @@ jobs:
     - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Install GUI dependencies for GLFW and OpenGL
+        # Install GUI dependencies for GLFW
         sudo apt-get update
-        sudo apt-get install -y \
-          libx11-dev \
-          libxcursor-dev \
-          libxrandr-dev \
-          libxinerama-dev \
-          libxi-dev \
-          libgl1-mesa-dev \
-          libglu1-mesa-dev \
-          libxxf86vm-dev \
-          libxfixes-dev
+        sudo apt-get install -y libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev
         
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
@@ -120,18 +111,9 @@ jobs:
     - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Install GUI dependencies for GLFW and OpenGL
+        # Install GUI dependencies for GLFW
         sudo apt-get update
-        sudo apt-get install -y \
-          libx11-dev \
-          libxcursor-dev \
-          libxrandr-dev \
-          libxinerama-dev \
-          libxi-dev \
-          libgl1-mesa-dev \
-          libglu1-mesa-dev \
-          libxxf86vm-dev \
-          libxfixes-dev
+        sudo apt-get install -y libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev
         
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
