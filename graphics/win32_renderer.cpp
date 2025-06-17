@@ -74,7 +74,7 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
     }
     
     // Copy pixel data to bitmap
-    size_t bytes_to_copy = std::min(width * height * 4, width_ * height_ * 4);
+    size_t bytes_to_copy = (std::min)(width * height * 4, width_ * height_ * 4);
     memcpy(bitmap_data_, pixels, bytes_to_copy);
     
     // Trigger redraw
@@ -140,8 +140,8 @@ LRESULT CALLBACK Win32Renderer::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 bool Win32Renderer::createChildWindow() {
     // Register window class if not already done
     if (!class_registered) {
-        WNDCLASSEX wc = {};
-        wc.cbSize = sizeof(WNDCLASSEX);
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(WNDCLASSEXW);
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = WindowProc;
         wc.hInstance = GetModuleHandle(nullptr);
