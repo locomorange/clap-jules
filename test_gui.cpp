@@ -8,7 +8,7 @@ int main() {
     std::cout << "Testing CLAP Plugin GUI..." << std::endl;
     
     // Create plugin factory
-    const clap_plugin_factory* factory = get_plugin_factory();
+    const clap_plugin_factory* factory = &my_plugin_factory;
     
     // Create a minimal host
     struct test_host {
@@ -54,17 +54,33 @@ int main() {
     
     std::cout << "GUI extension available" << std::endl;
     
-    // Test GUI API support
-    if (!gui->is_api_supported(plugin, "", true)) {
-        std::cerr << "Floating GUI not supported" << std::endl;
-        plugin->destroy(plugin);
-        return 1;
+    // Test GUI API support - test with X11 embedded
+    if (!gui->is_api_supported(plugin, CLAP_WINDOW_API_X11, false)) {
+        std::cout << "X11 embedded GUI not supported, trying other APIs..." << std::endl;
+        // Try Win32
+        if (!gui->is_api_supported(plugin, CLAP_WINDOW_API_WIN32, false)) {
+            std::cout << "Win32 embedded GUI not supported, trying Wayland floating..." << std::endl;
+            // Try Wayland floating as fallback
+            if (!gui->is_api_supported(plugin, CLAP_WINDOW_API_WAYLAND, true)) {
+                std::cerr << "No supported GUI API found" << std::endl;
+                plugin->destroy(plugin);
+                return 1;
+            } else {
+                std::cout << "Wayland floating GUI supported" << std::endl;
+            }
+        } else {
+            std::cout << "Win32 embedded GUI supported" << std::endl;
+        }
+    } else {
+        std::cout << "X11 embedded GUI supported" << std::endl;
     }
     
-    std::cout << "Floating GUI supported" << std::endl;
+    // Create GUI - use the preferred API
+    const char* preferred_api;
+    bool is_floating;
+    gui->get_preferred_api(plugin, &preferred_api, &is_floating);
     
-    // Create GUI
-    if (!gui->create(plugin, "", true)) {
+    if (!gui->create(plugin, preferred_api, is_floating)) {
         std::cerr << "Failed to create GUI" << std::endl;
         plugin->destroy(plugin);
         return 1;

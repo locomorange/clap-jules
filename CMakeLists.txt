@@ -85,7 +85,12 @@ if(USE_SKIA)
 endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED 
+    my_plugin.cpp
+    graphics/skia_graphics.cpp
+    graphics/win32_renderer.cpp
+    graphics/x11_renderer.cpp
+)
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
 # Add threading support
@@ -93,16 +98,30 @@ find_package(Threads REQUIRED)
 target_link_libraries(my_clap_plugin PRIVATE Threads::Threads)
 
 # Link with optional dependencies
-if (TARGET glfw)
-    target_link_libraries(my_clap_plugin PRIVATE glfw)
-    target_compile_definitions(my_clap_plugin PRIVATE HAVE_GLFW=1)
-    
-    # Link OpenGL for rendering
-    find_package(OpenGL REQUIRED)
-    target_link_libraries(my_clap_plugin PRIVATE ${OPENGL_LIBRARIES})
-    target_include_directories(my_clap_plugin PRIVATE ${OPENGL_INCLUDE_DIRS})
-    
-    message(STATUS "GLFW support enabled with OpenGL")
+# GLFW is temporarily disabled in favor of native window embedding
+# if (TARGET glfw)
+#     target_link_libraries(my_clap_plugin PRIVATE glfw)
+#     target_compile_definitions(my_clap_plugin PRIVATE HAVE_GLFW=1)
+#     
+#     # Link OpenGL for rendering
+#     find_package(OpenGL REQUIRED)
+#     target_link_libraries(my_clap_plugin PRIVATE ${OPENGL_LIBRARIES})
+#     target_include_directories(my_clap_plugin PRIVATE ${OPENGL_INCLUDE_DIRS})
+#     
+#     message(STATUS "GLFW support enabled with OpenGL")
+# endif()
+
+# Add X11 support on Linux
+if (UNIX AND NOT APPLE)
+    find_package(X11 QUIET)
+    if (X11_FOUND)
+        target_link_libraries(my_clap_plugin PRIVATE ${X11_LIBRARIES})
+        target_include_directories(my_clap_plugin PRIVATE ${X11_INCLUDE_DIR})
+        target_compile_definitions(my_clap_plugin PRIVATE HAVE_X11=1)
+        message(STATUS "X11 support enabled")
+    else()
+        message(STATUS "X11 not found, using software rendering only")
+    endif()
 endif()
 
 if (USE_SKIA AND TARGET skia)
@@ -145,16 +164,23 @@ target_include_directories(my_plugin_tests PRIVATE
 )
 
 # Add GLFW include directories if available
-if (TARGET glfw)
-    target_include_directories(my_plugin_tests PRIVATE libs/glfw/include)
-    # Also link OpenGL to tests
-    find_package(OpenGL REQUIRED)
-    target_link_libraries(my_plugin_tests PRIVATE ${OPENGL_LIBRARIES})
-endif()
+# if (TARGET glfw)
+#     target_include_directories(my_plugin_tests PRIVATE libs/glfw/include)
+#     # Also link OpenGL to tests
+#     find_package(OpenGL REQUIRED)
+#     target_link_libraries(my_plugin_tests PRIVATE ${OPENGL_LIBRARIES})
+# endif()
 
 # Add compile definitions for graphics libraries to tests
 if (TARGET glfw)
     target_compile_definitions(my_plugin_tests PRIVATE HAVE_GLFW=1)
+endif()
+
+# Add X11 support to tests on Linux
+if (UNIX AND NOT APPLE AND X11_FOUND)
+    target_link_libraries(my_plugin_tests PRIVATE ${X11_LIBRARIES})
+    target_include_directories(my_plugin_tests PRIVATE ${X11_INCLUDE_DIR})
+    target_compile_definitions(my_plugin_tests PRIVATE HAVE_X11=1)
 endif()
 
 if (USE_SKIA AND TARGET skia)

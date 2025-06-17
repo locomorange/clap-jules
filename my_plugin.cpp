@@ -1,16 +1,11 @@
 #include "my_plugin.h"
+#include "graphics/skia_graphics.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
-
-// OpenGL support for rendering
-#ifdef HAVE_GLFW
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
-#endif
+#include <cmath>    // For sin/cos
+#include <memory>   // For std::make_unique, std::unique_ptr
+#include <clap/ext/gui.h>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -24,28 +19,45 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
-#ifdef HAVE_GLFW
-// GUI function declarations
-static bool gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
-static bool gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
-static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
-static void gui_destroy(const clap_plugin_t *plugin);
-static bool gui_set_scale(const clap_plugin_t *plugin, double scale);
-static bool gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
-static bool gui_can_resize(const clap_plugin_t *plugin);
-static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints);
-static bool gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
-static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height);
-static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window);
-static bool gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window);
-static void gui_suggest_title(const clap_plugin_t *plugin, const char *title);
-static bool gui_show(const clap_plugin_t *plugin);
-static bool gui_hide(const clap_plugin_t *plugin);
+// --- Plugin-specific rendering functions ---
+static void my_plugin_render_content(my_plugin_t *self);
+static bool my_plugin_present_graphics(my_plugin_t *self);
 
-// GLFW callbacks
-static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-static void render_gui(my_plugin_t* plugin);
-#endif
+// --- GUI Extension Function Declarations ---
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin);
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale);
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin);
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints);
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height);
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window);
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window);
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title);
+static bool my_plugin_gui_show(const clap_plugin_t *plugin);
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
+
+// --- GUI Extension Implementation ---
+static const clap_plugin_gui_t my_plugin_gui = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    my_plugin_gui_get_resize_hints,
+    my_plugin_gui_adjust_size,
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    my_plugin_gui_set_transient,
+    my_plugin_gui_suggest_title,
+    my_plugin_gui_show,
+    my_plugin_gui_hide,
+};
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -71,50 +83,51 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
-    // Initialize graphics libraries if available
-#ifdef HAVE_GLFW
-    // Initialize GUI state regardless of GLFW initialization success
-    self->window = nullptr;
+    // Initialize GUI state
     self->gui_created = false;
-    self->button_red = true;  // Start with red button
-    self->window_width = 400;
-    self->window_height = 300;
+    self->gui_visible = false;
+    self->gui_width = 320;
+    self->gui_height = 240;
+    self->gui_api = nullptr;
+    self->gui_is_floating = false;
+    self->native_window = nullptr;
+    self->needs_redraw = true;
+#if defined(__linux__) && defined(HAVE_X11)
+    self->x11_renderer = nullptr;
+#endif
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    self->win32_renderer = nullptr;
+#endif
     
-    if (glfwInit()) {
-        printf("MyPlugin: GLFW initialized successfully\n");
-    } else {
-        printf("MyPlugin: Warning - GLFW initialization failed\n");
+    // Initialize graphics system and demonstrate basic usage
+    printf("MyPlugin: Graphics backend - %s\n", clap_jules::graphics::getGraphicsBackendInfo().c_str());
+    printf("MyPlugin: Skia available - %s\n", clap_jules::graphics::isSkiaAvailable() ? "Yes" : "No");
+    
+    // Create a test graphics context
+    auto graphics = clap_jules::graphics::createGraphicsContext(320, 240);
+    if (graphics) {
+        // Demonstrate basic graphics operations
+        graphics->clear(clap_jules::graphics::Color(50, 50, 50)); // Dark gray background
+        graphics->drawRect(clap_jules::graphics::Rect(10, 10, 100, 50), 
+                          clap_jules::graphics::Color(255, 100, 100)); // Red rectangle
+        graphics->drawCircle(clap_jules::graphics::Point(200, 120), 30, 
+                            clap_jules::graphics::Color(100, 255, 100)); // Green circle
+        graphics->drawLine(clap_jules::graphics::Point(50, 200), 
+                          clap_jules::graphics::Point(250, 200),
+                          clap_jules::graphics::Color(100, 100, 255), 3.0f); // Blue line
+        graphics->drawText("CLAP-Jules", clap_jules::graphics::Point(50, 150), 
+                          clap_jules::graphics::Color(255, 255, 255), 16.0f); // White text
+        
+        printf("MyPlugin: Graphics context created and test drawing performed\n");
     }
-#endif
-
-#ifdef HAVE_SKIA
-    printf("MyPlugin: Skia support is available\n");
-    self->surface = nullptr;
-#endif
-
+    
+    // Initialize your plugin state here
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    
-    // Cleanup graphics resources
-#ifdef HAVE_GLFW
-    if (self->window) {
-        glfwDestroyWindow(self->window);
-        self->window = nullptr;
-    }
-    glfwTerminate();
-    printf("MyPlugin: GLFW terminated\n");
-#endif
-
-#ifdef HAVE_SKIA
-    if (self->surface) {
-        self->surface.reset();
-    }
-    printf("MyPlugin: Skia resources cleaned up\n");
-#endif
+    // Free any resources allocated in init
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -187,23 +200,471 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     printf("MyPlugin: Host requesting extension: %s\n", id);
-#ifdef HAVE_GLFW
+    
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        printf("MyPlugin: Returning GUI extension\n");
         return &my_plugin_gui;
     }
-#endif
-    return NULL; // No other extensions supported in this basic example
+    
+    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
+    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
+    return NULL; // Extension not supported
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
-#ifdef HAVE_GLFW
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    if (self->window && !glfwWindowShouldClose(self->window)) {
-        render_gui(self);
-        glfwPollEvents();
+    
+    // If GUI is visible, update the rendering
+    if (self->gui_created && self->gui_visible && self->graphics_context) {
+        my_plugin_render_content(self);
+        my_plugin_present_graphics(self);
+    }
+}
+
+// --- Plugin-specific rendering functions ---
+
+static void my_plugin_render_content(my_plugin_t *self) {
+    if (!self->graphics_context) {
+        return;
+    }
+    
+    // Render the plugin's GUI content
+    self->graphics_context->clear(clap_jules::graphics::Color(40, 40, 50)); // Dark blue-gray background
+    
+    // Animation counter
+    static int frame_counter = 0;
+    frame_counter++;
+    float time = frame_counter * 0.05f;
+    
+    // Draw a grid pattern in the background
+    for (int i = 0; i < self->gui_width; i += 40) {
+        self->graphics_context->drawLine(clap_jules::graphics::Point(i, 0), 
+                                        clap_jules::graphics::Point(i, self->gui_height),
+                                        clap_jules::graphics::Color(60, 60, 70), 1.0f);
+    }
+    for (int j = 0; j < self->gui_height; j += 40) {
+        self->graphics_context->drawLine(clap_jules::graphics::Point(0, j), 
+                                        clap_jules::graphics::Point(self->gui_width, j),
+                                        clap_jules::graphics::Color(60, 60, 70), 1.0f);
+    }
+    
+    // Draw various shapes for testing
+    // 1. Static blue rectangle (top-left)
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(10, 10, 120, 60), 
+                                    clap_jules::graphics::Color(80, 120, 200));
+    
+    // 2. Pulsing green circle (center)
+    float pulse_radius = 40 + 15 * sin(time * 2.0f);
+    self->graphics_context->drawCircle(clap_jules::graphics::Point(self->gui_width/2, self->gui_height/2), 
+                                      pulse_radius, clap_jules::graphics::Color(120, 200, 120));
+    
+    // 3. Color-changing circles around the center
+    for (int i = 0; i < 6; i++) {
+        float angle = time + i * 3.14159f / 3.0f;
+        float orbit_x = self->gui_width/2 + 80 * cos(angle);
+        float orbit_y = self->gui_height/2 + 80 * sin(angle);
+        int r = (int)(127 + 127 * sin(time + i));
+        int g = (int)(127 + 127 * sin(time + i + 2.0f));
+        int b = (int)(127 + 127 * sin(time + i + 4.0f));
+        self->graphics_context->drawCircle(clap_jules::graphics::Point(orbit_x, orbit_y), 15, 
+                                          clap_jules::graphics::Color(r, g, b));
+    }
+    
+    // 4. Animated rectangles with different colors (top-right corner)
+    for (int i = 0; i < 3; i++) {
+        float rect_x = self->gui_width - 150 + i * 20;
+        float rect_y = 20 + 15 * sin(time * 1.5f + i);
+        int color_intensity = (int)(100 + 100 * sin(time + i * 2.0f));
+        self->graphics_context->drawRect(clap_jules::graphics::Rect(rect_x, rect_y, 30, 50), 
+                                        clap_jules::graphics::Color(color_intensity, 255 - color_intensity, 150));
+    }
+    
+    // 5. Moving purple line
+    float line_y = self->gui_height - 80 + 20 * sin(time);
+    self->graphics_context->drawLine(clap_jules::graphics::Point(20, line_y), 
+                                    clap_jules::graphics::Point(self->gui_width - 20, line_y),
+                                    clap_jules::graphics::Color(200, 100, 255), 3.0f);
+    
+    // 6. Bouncing animated squares
+    float bounce_x = 50 + 30 * sin(time * 2.0f);
+    float bounce_y = 80 + 20 * cos(time * 1.8f);
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x, bounce_y, 20, 20), 
+                                    clap_jules::graphics::Color(255, 200, 100));
+    
+    // Another bouncing square with different pattern
+    float bounce_x2 = self->gui_width - 80 + 25 * cos(time * 1.3f);
+    float bounce_y2 = self->gui_height - 120 + 30 * sin(time * 1.7f);
+    self->graphics_context->drawRect(clap_jules::graphics::Rect(bounce_x2, bounce_y2, 25, 25), 
+                                    clap_jules::graphics::Color(255, 100, 200));
+    
+    // 7. Text with different sizes and colors
+    self->graphics_context->drawText("CLAP-Jules", clap_jules::graphics::Point(20, 30), 
+                                    clap_jules::graphics::Color(255, 255, 255), 24.0f);
+    self->graphics_context->drawText("Graphics Test", clap_jules::graphics::Point(20, 55), 
+                                    clap_jules::graphics::Color(255, 255, 100), 16.0f);
+    
+    // 8. Frame counter display
+    char frame_text[64];
+    snprintf(frame_text, sizeof(frame_text), "Frame: %d", frame_counter);
+    self->graphics_context->drawText(frame_text, clap_jules::graphics::Point(self->gui_width - 120, 30), 
+                                    clap_jules::graphics::Color(100, 255, 100), 14.0f);
+    
+    // 9. Drawing some lines to create a star pattern (bottom-left)
+    float star_center_x = 80;
+    float star_center_y = self->gui_height - 80;
+    for (int i = 0; i < 8; i++) {
+        float angle = i * 3.14159f / 4.0f + time * 0.5f;
+        float end_x = star_center_x + 30 * cos(angle);
+        float end_y = star_center_y + 30 * sin(angle);
+        int line_color = (int)(150 + 100 * sin(time + i));
+        self->graphics_context->drawLine(clap_jules::graphics::Point(star_center_x, star_center_y),
+                                        clap_jules::graphics::Point(end_x, end_y),
+                                        clap_jules::graphics::Color(line_color, 200, 255 - line_color), 2.0f);
+    }
+    
+    // 10. Status text at bottom
+    self->graphics_context->drawText("GUI Active & Rendering", clap_jules::graphics::Point(20, self->gui_height - 20), 
+                                    clap_jules::graphics::Color(255, 255, 255), 18.0f);
+    
+    // Finalize rendering
+    self->graphics_context->present();
+    
+    printf("MyPlugin: Rendered frame %d at size %ux%u\n", frame_counter, self->gui_width, self->gui_height);
+}
+
+static bool my_plugin_present_graphics(my_plugin_t *self) {
+    if (!self->graphics_context || !self->gui_created) {
+        return false;
+    }
+    
+    // Get the rendered pixel data
+    const void* pixel_data = self->graphics_context->getPixelData();
+    if (!pixel_data) {
+        return false;
+    }
+    
+    int width = self->graphics_context->getWidth();
+    int height = self->graphics_context->getHeight();
+    
+    printf("MyPlugin: Presenting %ux%u graphics buffer to window\n", width, height);
+    
+#if defined(__linux__) && defined(HAVE_X11)
+    // Use X11 renderer if available
+    if (self->x11_renderer && self->x11_renderer->isInitialized()) {
+        const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
+        return self->x11_renderer->presentPixelBuffer(pixels, width, height);
     }
 #endif
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    // Use Win32 renderer if available
+    if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+        const uint32_t* pixels = static_cast<const uint32_t*>(pixel_data);
+        return self->win32_renderer->presentPixelBuffer(pixels, width, height);
+    }
+#endif
+    
+    // Fallback: just log that we would present the graphics
+    printf("MyPlugin: Would present graphics buffer (no platform renderer available)\n");
+    return true;
+}
+
+// --- GUI Extension Implementation ---
+
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    printf("MyPlugin: GUI - Checking API support: %s (floating: %s)\n", api, is_floating ? "yes" : "no");
+    
+    // Support the most common windowing APIs
+    if (strcmp(api, CLAP_WINDOW_API_X11) == 0) return true;      // Linux X11
+    if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0) return true;    // Windows
+    if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) return true;    // macOS
+    if (strcmp(api, CLAP_WINDOW_API_WAYLAND) == 0 && is_floating) return true; // Wayland (floating only)
+    
+    return false;
+}
+
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    printf("MyPlugin: GUI - Getting preferred API\n");
+    
+    // Prefer embedded windows on most platforms
+    *is_floating = false;
+    
+    #ifdef __linux__
+        *api = CLAP_WINDOW_API_X11;
+    #elif defined(_WIN32)
+        *api = CLAP_WINDOW_API_WIN32;
+    #elif defined(__APPLE__)
+        *api = CLAP_WINDOW_API_COCOA;
+    #else
+        *api = CLAP_WINDOW_API_X11; // Default fallback
+    #endif
+    
+    printf("MyPlugin: GUI - Preferred API: %s\n", *api);
+    return true;
+}
+
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI - Creating window (API: %s, floating: %s)\n", api ? api : "none", is_floating ? "yes" : "no");
+    
+    if (self->gui_created) {
+        printf("MyPlugin: GUI - Already created\n");
+        return false;
+    }
+    
+    // Store GUI settings
+    self->gui_api = api;
+    self->gui_is_floating = is_floating;
+    
+    // Create graphics context for the GUI
+    self->graphics_context = clap_jules::graphics::createGraphicsContext(self->gui_width, self->gui_height);
+    if (!self->graphics_context) {
+        printf("MyPlugin: GUI - Failed to create graphics context\n");
+        return false;
+    }
+    
+    // Render initial content
+    my_plugin_render_content(self);
+    
+    self->gui_created = true;
+    self->needs_redraw = true;
+    printf("MyPlugin: GUI - Window created successfully\n");
+    return true;
+}
+
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI - Destroying window\n");
+    
+    if (!self->gui_created) {
+        return;
+    }
+    
+    // Clean up graphics context
+    self->graphics_context.reset();
+    
+#if defined(__linux__) && defined(HAVE_X11)
+    // Clean up X11 renderer
+    self->x11_renderer.reset();
+#endif
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    // Clean up Win32 renderer
+    self->win32_renderer.reset();
+#endif
+    
+    self->gui_created = false;
+    self->gui_visible = false;
+    self->gui_api = nullptr;
+    
+    printf("MyPlugin: GUI - Window destroyed\n");
+}
+
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    printf("MyPlugin: GUI - Setting scale: %.2f\n", scale);
+    // For now, we ignore scaling but report success
+    return true;
+}
+
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    *width = self->gui_width;
+    *height = self->gui_height;
+    printf("MyPlugin: GUI - Reporting size: %ux%u\n", *width, *height);
+    return true;
+}
+
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
+    printf("MyPlugin: GUI - Can resize: yes\n");
+    return true; // Allow resizing
+}
+
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    printf("MyPlugin: GUI - Getting resize hints\n");
+    hints->can_resize_horizontally = true;
+    hints->can_resize_vertically = true;
+    hints->preserve_aspect_ratio = false;
+    hints->aspect_ratio_width = 4;
+    hints->aspect_ratio_height = 3;
+    return true;
+}
+
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    printf("MyPlugin: GUI - Adjusting size from %ux%u", *width, *height);
+    
+    // Constrain minimum size
+    if (*width < 200) *width = 200;
+    if (*height < 150) *height = 150;
+    
+    // Constrain maximum size
+    if (*width > 1200) *width = 1200;
+    if (*height > 800) *height = 800;
+    
+    printf(" to %ux%u\n", *width, *height);
+    return true;
+}
+
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI - Setting size: %ux%u\n", width, height);
+    
+    self->gui_width = width;
+    self->gui_height = height;
+    
+    // Resize Win32 renderer if available
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+        self->win32_renderer->resize(width, height);
+    }
+#endif
+    
+    // Resize X11 renderer if available
+#if defined(__linux__) && defined(HAVE_X11)
+    if (self->x11_renderer && self->x11_renderer->isInitialized()) {
+        self->x11_renderer->resize(width, height);
+    }
+#endif
+    
+    // Recreate graphics context with new size if GUI is created
+    if (self->gui_created) {
+        self->graphics_context = clap_jules::graphics::createGraphicsContext(width, height);
+        if (self->graphics_context) {
+            // Re-render content at new size
+            my_plugin_render_content(self);
+            my_plugin_present_graphics(self);
+            self->needs_redraw = true;
+            
+            // Force immediate refresh for Win32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+            if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+                self->win32_renderer->invalidate();
+            }
+#endif
+        }
+    }
+    
+    return true;
+}
+
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI - Setting parent window (API: %s)\n", window ? window->api : "null");
+    
+    if (!window) {
+        printf("MyPlugin: GUI - No parent window provided\n");
+        return false;
+    }
+    
+    // Store the native window handle for later use
+    if (strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
+        self->native_window = (void*)window->x11;
+        printf("MyPlugin: GUI - X11 window handle: %lu\n", window->x11);
+        
+#if defined(__linux__) && defined(HAVE_X11)
+        // Initialize X11 renderer
+        self->x11_renderer = std::make_unique<clap_jules::graphics::X11Renderer>();
+        if (!self->x11_renderer->initialize(window->x11, self->gui_width, self->gui_height)) {
+            printf("MyPlugin: GUI - Failed to initialize X11 renderer\n");
+            self->x11_renderer.reset();
+        } else {
+            printf("MyPlugin: GUI - X11 renderer initialized successfully\n");
+        }
+#endif
+        
+    } else if (strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
+        self->native_window = window->win32;
+        printf("MyPlugin: GUI - Win32 window handle set\n");
+        
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+        // Initialize Win32 renderer
+        self->win32_renderer = std::make_unique<clap_jules::graphics::Win32Renderer>();
+        
+        // Set up redraw callback to trigger rendering
+        self->win32_renderer->setRedrawCallback([self]() {
+            if (self && self->gui_created && self->gui_visible && self->graphics_context) {
+                my_plugin_render_content(self);
+                my_plugin_present_graphics(self);
+            }
+        });
+        
+        if (!self->win32_renderer->initialize((HWND)window->win32, self->gui_width, self->gui_height)) {
+            printf("MyPlugin: GUI - Failed to initialize Win32 renderer\n");
+            self->win32_renderer.reset();
+        } else {
+            printf("MyPlugin: GUI - Win32 renderer initialized successfully\n");
+        }
+#endif
+    } else if (strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
+        self->native_window = window->cocoa;
+        printf("MyPlugin: GUI - Cocoa window handle set\n");
+    }
+    
+    // Trigger initial render
+    if (self->gui_created) {
+        my_plugin_render_content(self);
+        my_plugin_present_graphics(self);
+        
+        // Force immediate refresh for Win32
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+        if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+            self->win32_renderer->invalidate();
+        }
+#endif
+    }
+    
+    printf("MyPlugin: GUI - Parent window set and initial render performed\n");
+    return true;
+}
+
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    printf("MyPlugin: GUI - Setting transient parent for floating window\n");
+    // For floating windows, make the plugin window stay above the parent
+    return true;
+}
+
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    printf("MyPlugin: GUI - Suggested title: %s\n", title ? title : "null");
+    // For floating windows, set the window title
+}
+
+static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI - Showing window\n");
+    
+    if (!self->gui_created) {
+        printf("MyPlugin: GUI - Cannot show, window not created\n");
+        return false;
+    }
+    
+    self->gui_visible = true;
+    
+    // Render and present graphics when showing
+    my_plugin_render_content(self);
+    my_plugin_present_graphics(self);
+    
+    // Force immediate refresh for all platforms
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    if (self->win32_renderer && self->win32_renderer->isInitialized()) {
+        self->win32_renderer->invalidate();
+    }
+#endif
+    
+    printf("MyPlugin: GUI - Window is now visible with rendered content\n");
+    return true;
+}
+
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI - Hiding window\n");
+    
+    if (!self->gui_created) {
+        return false;
+    }
+    
+    self->gui_visible = false;
+    printf("MyPlugin: GUI - Window is now hidden\n");
+    return true;
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -292,264 +753,3 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         return NULL;
     }
 };
-
-#ifdef HAVE_GLFW
-// --- GUI Extension Implementation ---
-
-static bool gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
-    // We only support floating windows since we use GLFW
-    return is_floating && (api == NULL || strlen(api) == 0);
-}
-
-static bool gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
-    *api = "";  // Use default API
-    *is_floating = true;  // We create floating windows
-    return true;
-}
-
-static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    
-    if (self->gui_created) {
-        return false;  // GUI already created
-    }
-    
-    if (!is_floating) {
-        return false;  // We only support floating windows
-    }
-    
-    // Set platform-specific window hints
-#ifdef _WIN32
-    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
-    glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);  // Always on top for Windows
-#endif
-    
-    // Create GLFW window
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);  // Start hidden
-    self->window = glfwCreateWindow(self->window_width, self->window_height, "CLAP Plugin GUI", NULL, NULL);
-    
-    if (!self->window) {
-        printf("MyPlugin: Failed to create GLFW window\n");
-        return false;
-    }
-    
-    // Set up OpenGL context
-    glfwMakeContextCurrent(self->window);
-    
-    // Set up mouse callback
-    glfwSetWindowUserPointer(self->window, self);
-    glfwSetMouseButtonCallback(self->window, glfw_mouse_button_callback);
-    
-    // Enable VSync
-    glfwSwapInterval(1);
-    
-#ifdef _WIN32
-    // Windows-specific: Center window and bring to front
-    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-    if (mode) {
-        int xpos = (mode->width - self->window_width) / 2;
-        int ypos = (mode->height - self->window_height) / 2;
-        glfwSetWindowPos(self->window, xpos, ypos);
-    }
-#endif
-    
-    self->gui_created = true;
-    printf("MyPlugin: GUI created successfully\n");
-    return true;
-}
-
-static void gui_destroy(const clap_plugin_t *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    
-    if (self->window) {
-        glfwDestroyWindow(self->window);
-        self->window = nullptr;
-    }
-    
-    self->gui_created = false;
-    printf("MyPlugin: GUI destroyed\n");
-}
-
-static bool gui_set_scale(const clap_plugin_t *plugin, double scale) {
-    // We ignore scaling for this simple example
-    return true;
-}
-
-static bool gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    *width = self->window_width;
-    *height = self->window_height;
-    return true;
-}
-
-static bool gui_can_resize(const clap_plugin_t *plugin) {
-    return false;  // Fixed size for simplicity
-}
-
-static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
-    return false;  // No resize hints
-}
-
-static bool gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
-    return false;  // Fixed size
-}
-
-static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
-    return false;  // Fixed size
-}
-
-static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
-    return false;  // We only support floating windows
-}
-
-static bool gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
-    // TODO: Implement window parent relationship
-    return true;
-}
-
-static void gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    if (self->window) {
-        glfwSetWindowTitle(self->window, title);
-    }
-}
-
-static bool gui_show(const clap_plugin_t *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    
-    if (!self->window) {
-        return false;
-    }
-    
-    glfwShowWindow(self->window);
-    
-#ifdef _WIN32
-    // Windows-specific: Ensure window is brought to front and focused
-    glfwFocusWindow(self->window);
-    glfwRequestWindowAttention(self->window);
-#endif
-    
-    printf("MyPlugin: GUI shown\n");
-    return true;
-}
-
-static bool gui_hide(const clap_plugin_t *plugin) {
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    
-    if (!self->window) {
-        return false;
-    }
-    
-    glfwHideWindow(self->window);
-    printf("MyPlugin: GUI hidden\n");
-    return true;
-}
-
-// GUI extension structure
-const clap_plugin_gui_t my_plugin_gui = {
-    gui_is_api_supported,
-    gui_get_preferred_api,
-    gui_create,
-    gui_destroy,
-    gui_set_scale,
-    gui_get_size,
-    gui_can_resize,
-    gui_get_resize_hints,
-    gui_adjust_size,
-    gui_set_size,
-    gui_set_parent,
-    gui_set_transient,
-    gui_suggest_title,
-    gui_show,
-    gui_hide,
-};
-
-// GLFW mouse callback
-static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        my_plugin_t* plugin = (my_plugin_t*)glfwGetWindowUserPointer(window);
-        
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-        
-        // Check if click is within button area (center of window, 100x50 pixels)
-        int window_width, window_height;
-        glfwGetWindowSize(window, &window_width, &window_height);
-        
-        int button_x = window_width / 2 - 50;
-        int button_y = window_height / 2 - 25;
-        int button_width = 100;
-        int button_height = 50;
-        
-        if (xpos >= button_x && xpos <= button_x + button_width &&
-            ypos >= button_y && ypos <= button_y + button_height) {
-            
-            // Toggle button color
-            plugin->button_red = !plugin->button_red;
-            printf("MyPlugin: Button clicked! Color changed to %s\n", 
-                   plugin->button_red ? "red" : "blue");
-        }
-    }
-}
-
-// Render the GUI
-static void render_gui(my_plugin_t* plugin) {
-    if (!plugin->window) {
-        return;
-    }
-    
-    glfwMakeContextCurrent(plugin->window);
-    
-    int window_width, window_height;
-    glfwGetFramebufferSize(plugin->window, &window_width, &window_height);
-    
-    glViewport(0, 0, window_width, window_height);
-    
-    // Clear screen with dark gray
-    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    
-    // Set up 2D rendering
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, window_width, window_height, 0, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    
-    // Draw button
-    int button_x = window_width / 2 - 50;
-    int button_y = window_height / 2 - 25;
-    int button_width = 100;
-    int button_height = 50;
-    
-    // Set button color
-    if (plugin->button_red) {
-        glColor3f(0.8f, 0.2f, 0.2f);  // Red
-    } else {
-        glColor3f(0.2f, 0.2f, 0.8f);  // Blue
-    }
-    
-    // Draw filled rectangle
-    glBegin(GL_QUADS);
-    glVertex2i(button_x, button_y);
-    glVertex2i(button_x + button_width, button_y);
-    glVertex2i(button_x + button_width, button_y + button_height);
-    glVertex2i(button_x, button_y + button_height);
-    glEnd();
-    
-    // Draw button border
-    glColor3f(1.0f, 1.0f, 1.0f);  // White border
-    glLineWidth(2.0f);
-    glBegin(GL_LINE_LOOP);
-    glVertex2i(button_x, button_y);
-    glVertex2i(button_x + button_width, button_y);
-    glVertex2i(button_x + button_width, button_y + button_height);
-    glVertex2i(button_x, button_y + button_height);
-    glEnd();
-    
-    glfwSwapBuffers(plugin->window);
-}
-
-#endif
