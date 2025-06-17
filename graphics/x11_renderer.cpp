@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cstdint>
+#include <algorithm>
 
 namespace clap_jules {
 namespace graphics {

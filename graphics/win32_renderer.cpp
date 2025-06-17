@@ -3,6 +3,8 @@
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include <cstdio>
+#include <algorithm>
+#include <cstring>
 
 namespace clap_jules {
 namespace graphics {
@@ -147,7 +149,7 @@ bool Win32Renderer::createChildWindow() {
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wc.lpszClassName = CHILD_WINDOW_CLASS;
         
-        if (!RegisterClassEx(&wc)) {
+        if (!RegisterClassExW(&wc)) {
             printf("Win32Renderer: Failed to register window class\n");
             return false;
         }
@@ -155,7 +157,7 @@ bool Win32Renderer::createChildWindow() {
     }
     
     // Create child window
-    child_hwnd_ = CreateWindowEx(
+    child_hwnd_ = CreateWindowExW(
         0,
         CHILD_WINDOW_CLASS,
         L"CLAP Plugin GUI",

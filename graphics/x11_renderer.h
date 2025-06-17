@@ -5,6 +5,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <functional>
+#include <cstdint>
 
 namespace clap_jules {
 namespace graphics {

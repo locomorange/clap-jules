@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <functional>
 #include <memory>
+#include <cstdint>
 
 namespace clap_jules {
 namespace graphics {
