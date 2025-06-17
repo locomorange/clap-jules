@@ -7,6 +7,11 @@
 #include <GLFW/glfw3.h>
 #endif
 
+// Forward declaration for C compatibility
+namespace clap_jules {
+    class SkiaRenderer;
+}
+
 // GUI state structure
 typedef struct {
     bool is_created;
@@ -20,6 +25,7 @@ typedef struct {
     GLFWwindow* window;
 #endif
     void* parent_window;
+    void* renderer; // clap_jules::SkiaRenderer* when cast
 } my_plugin_gui_t;
 
 // Basic plugin structure

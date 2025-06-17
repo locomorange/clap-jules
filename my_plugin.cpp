@@ -1,4 +1,5 @@
 #include "my_plugin.h"
+#include "skia_renderer.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -273,6 +274,15 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     self->gui.height = 300;
     self->gui.scale = 1.0;
     
+    // Initialize Skia renderer
+    self->gui.renderer = new clap_jules::SkiaRenderer();
+    clap_jules::SkiaRenderer* renderer = static_cast<clap_jules::SkiaRenderer*>(self->gui.renderer);
+    if (!renderer->initialize(self->gui.width, self->gui.height)) {
+        printf("MyPlugin: Failed to initialize Skia renderer\n");
+        delete renderer;
+        self->gui.renderer = nullptr;
+    }
+    
     printf("MyPlugin: GUI created successfully\n");
     return true;
 }
@@ -285,6 +295,13 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     }
     
     printf("MyPlugin: Destroying GUI\n");
+    
+    // Clean up Skia renderer
+    if (self->gui.renderer) {
+        clap_jules::SkiaRenderer* renderer = static_cast<clap_jules::SkiaRenderer*>(self->gui.renderer);
+        delete renderer;
+        self->gui.renderer = nullptr;
+    }
     
 #ifdef CLAP_JULES_HAS_GLFW
     if (self->gui.window) {
@@ -354,6 +371,12 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
         glfwSetWindowSize(self->gui.window, width, height);
     }
 #endif
+
+    // Resize Skia renderer
+    if (self->gui.renderer) {
+        clap_jules::SkiaRenderer* renderer = static_cast<clap_jules::SkiaRenderer*>(self->gui.renderer);
+        renderer->resize(width, height);
+    }
     
     return true;
 }
@@ -400,12 +423,26 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
 #ifdef CLAP_JULES_HAS_GLFW
     if (self->gui.window) {
         glfwShowWindow(self->gui.window);
-        
-        // Basic rendering loop would go here
-        // For now, just clear the window
         glfwMakeContextCurrent(self->gui.window);
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        
+        // Render using Skia if available
+        if (self->gui.renderer) {
+            clap_jules::SkiaRenderer* renderer = static_cast<clap_jules::SkiaRenderer*>(self->gui.renderer);
+            renderer->beginFrame();
+            renderer->clear(0.2f, 0.3f, 0.3f, 1.0f);
+            
+            // Draw some test content
+            renderer->drawRect(50, 50, 100, 75, 0xFF4CAF50); // Green rectangle
+            renderer->drawRect(200, 100, 150, 50, 0xFF2196F3); // Blue rectangle
+            renderer->drawText("CLAP Jules Plugin", 60, 200, 24, 0xFFFFFFFF); // White text
+            
+            renderer->endFrame();
+        } else {
+            // Fallback OpenGL rendering
+            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+        
         glfwSwapBuffers(self->gui.window);
     }
 #endif
@@ -488,6 +525,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->gui.window = NULL;
 #endif
     self->gui.parent_window = NULL;
+    self->gui.renderer = nullptr;
 
     printf("MyPlugin: Plugin instance created successfully.\n");
     return &self->plugin;

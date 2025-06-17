@@ -95,6 +95,59 @@ The plugin now includes GUI support with the following capabilities:
 
 The project is prepared for Skia graphics library integration for advanced 2D rendering capabilities. The current implementation provides a foundation that can be extended with Skia-based rendering.
 
+#### Enabling Skia Support
+
+To enable Skia support, you have several options:
+
+1. **System Package** (Linux):
+   ```bash
+   # Install Skia development packages (if available on your distribution)
+   sudo apt-get install libskia-dev  # Ubuntu/Debian (if available)
+   ```
+
+2. **Custom Build**:
+   ```bash
+   # Build Skia from source and set SKIA_ROOT
+   cmake . -B build -DSKIA_ROOT=/path/to/skia
+   ```
+
+3. **Pre-built Binaries**:
+   Download pre-built Skia binaries and set the SKIA_ROOT environment variable.
+
+When Skia is properly configured, the plugin will automatically detect it and enable advanced 2D rendering features including:
+- Hardware-accelerated vector graphics
+- High-quality text rendering with font support  
+- Advanced path rendering and effects
+- Cross-platform consistent rendering
+
+#### Skia Integration Architecture
+
+The Skia integration uses a fallback pattern:
+- **With Skia**: Full 2D graphics capabilities using Skia's Canvas API
+- **Without Skia**: Basic OpenGL rendering with simple primitives
+
+This allows the plugin to work in both scenarios while providing enhanced capabilities when Skia is available.
+
+## Project Structure
+
+```
+clap-jules/
+├── src/                    # Source files
+│   ├── skia_renderer.h     # Skia graphics renderer interface
+│   └── skia_renderer.cpp   # Skia graphics renderer implementation
+├── libs/                   # Third-party dependencies (git submodules)
+│   ├── clap/               # CLAP SDK
+│   ├── clap-helpers/       # CLAP helper utilities
+│   ├── glfw/               # GLFW window management library
+│   └── googletest/         # Google Test framework
+├── test/                   # Test files
+│   └── test_my_plugin.cpp  # Plugin unit tests
+├── my_plugin.h             # Main plugin header
+├── my_plugin.cpp           # Main plugin implementation
+├── CMakeLists.txt          # Build configuration
+└── README.md               # This file
+```
+
 ## Architecture
 
 ### Plugin Structure

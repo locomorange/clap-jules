@@ -51,8 +51,48 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
 endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED 
+    my_plugin.cpp
+    src/skia_renderer.cpp
+)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Include source directory
+target_include_directories(my_clap_plugin PRIVATE src)
+
+# Check for system Skia
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(SKIA QUIET skia)
+    if(SKIA_FOUND)
+        message(STATUS "Found system Skia, enabling Skia support")
+        target_compile_definitions(my_clap_plugin PRIVATE CLAP_JULES_HAS_SKIA=1)
+        target_link_libraries(my_clap_plugin PRIVATE ${SKIA_LIBRARIES})
+        target_include_directories(my_clap_plugin PRIVATE ${SKIA_INCLUDE_DIRS})
+        target_compile_options(my_clap_plugin PRIVATE ${SKIA_CFLAGS_OTHER})
+    else()
+        message(STATUS "System Skia not found, Skia support disabled")
+        message(STATUS "To enable Skia support, install Skia development packages or set SKIA_ROOT")
+    endif()
+else()
+    message(STATUS "PkgConfig not found, Skia detection disabled")
+endif()
+
+# Alternative: Check for custom Skia installation
+if(DEFINED SKIA_ROOT)
+    if(EXISTS "${SKIA_ROOT}/include/core/SkSurface.h")
+        message(STATUS "Found Skia at ${SKIA_ROOT}, enabling Skia support")
+        target_compile_definitions(my_clap_plugin PRIVATE CLAP_JULES_HAS_SKIA=1)
+        target_include_directories(my_clap_plugin PRIVATE "${SKIA_ROOT}/include")
+        
+        # Link Skia libraries
+        if(WIN32)
+            target_link_libraries(my_clap_plugin PRIVATE "${SKIA_ROOT}/lib/skia.lib")
+        else()
+            target_link_libraries(my_clap_plugin PRIVATE "${SKIA_ROOT}/lib/libskia.a")
+        endif()
+    endif()
+endif()
 
 # Link GLFW if available
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
