@@ -154,7 +154,13 @@ message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstC
 add_subdirectory(libs/googletest)
 enable_testing()
 
-add_executable(my_plugin_tests test/test_my_plugin.cpp test/test_gui.cpp)
+add_executable(my_plugin_tests 
+    test/test_my_plugin.cpp 
+    test/test_gui.cpp
+    graphics/skia_graphics.cpp
+    graphics/win32_renderer.cpp
+    graphics/x11_renderer.cpp
+)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin Threads::Threads)
 
 # Add include directories for the test target

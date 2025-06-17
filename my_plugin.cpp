@@ -83,21 +83,10 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
-    // Initialize GUI state
-    self->gui_created = false;
-    self->gui_visible = false;
+    // Update GUI state (constructor already initialized basic values)
     self->gui_width = 320;
     self->gui_height = 240;
-    self->gui_api = nullptr;
-    self->gui_is_floating = false;
-    self->native_window = nullptr;
     self->needs_redraw = true;
-#if defined(__linux__) && defined(HAVE_X11)
-    self->x11_renderer = nullptr;
-#endif
-#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
-    self->win32_renderer = nullptr;
-#endif
     
     // Initialize graphics system and demonstrate basic usage
     printf("MyPlugin: Graphics backend - %s\n", clap_jules::graphics::getGraphicsBackendInfo().c_str());
@@ -128,6 +117,8 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
     // Free any resources allocated in init
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    delete self;
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -691,7 +682,7 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         return NULL;
     }
 
-    my_plugin_t *self = (my_plugin_t *)calloc(1, sizeof(my_plugin_t));
+    my_plugin_t *self = new my_plugin_t();
     if (!self) {
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
