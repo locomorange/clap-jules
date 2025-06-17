@@ -53,18 +53,37 @@ void Win32Renderer::resize(int width, int height) {
         return;
     }
     
+    // Store old bitmap temporarily to avoid flicker
+    HBITMAP old_bitmap = bitmap_;
+    HDC old_hdc = hdc_;
+    void* old_bitmap_data = bitmap_data_;
+    
     width_ = width;
     height_ = height;
     
     // Resize child window
     if (child_hwnd_) {
         SetWindowPos(child_hwnd_, nullptr, 0, 0, width, height, 
-                     SWP_NOZORDER | SWP_NOACTIVATE);
+                     SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
     }
     
-    // Recreate bitmap with new size
-    destroyBitmap();
-    createBitmap(width, height);
+    // Create new bitmap with new size
+    if (createBitmap(width, height)) {
+        // Clean up old bitmap after new one is ready
+        if (old_bitmap) {
+            DeleteObject(old_bitmap);
+        }
+        if (old_hdc) {
+            DeleteDC(old_hdc);
+        }
+    } else {
+        // Restore old bitmap if creation failed
+        bitmap_ = old_bitmap;
+        hdc_ = old_hdc;
+        bitmap_data_ = old_bitmap_data;
+        width_ = width; // Keep the requested dimensions
+        height_ = height;
+    }
     
     printf("Win32Renderer: Resized to %dx%d\n", width, height);
 }
@@ -78,8 +97,11 @@ bool Win32Renderer::presentPixelBuffer(const uint32_t* pixels, int width, int he
     size_t bytes_to_copy = (std::min)(width * height * 4, width_ * height_ * 4);
     memcpy(bitmap_data_, pixels, bytes_to_copy);
     
-    // Trigger redraw
-    InvalidateRect(child_hwnd_, nullptr, FALSE);
+    // Trigger redraw efficiently
+    if (child_hwnd_) {
+        InvalidateRect(child_hwnd_, nullptr, FALSE);
+        UpdateWindow(child_hwnd_); // Force immediate update
+    }
     
     return true;
 }
@@ -120,6 +142,10 @@ LRESULT CALLBACK Win32Renderer::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
                 return 0;
             }
             
+            case WM_ERASEBKGND:
+                // Prevent background erasing to avoid flicker
+                return 1;
+            
             case WM_LBUTTONDOWN:
             case WM_RBUTTONDOWN:
             case WM_MOUSEMOVE:
@@ -129,9 +155,15 @@ LRESULT CALLBACK Win32Renderer::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
                 }
                 return 0;
                 
-            case WM_SIZE:
-                // Handle window resize
+            case WM_SIZE: {
+                // Handle window resize - but don't resize renderer here
+                // as it's handled by the plugin's set_size callback
+                RECT rect;
+                if (GetClientRect(hwnd, &rect)) {
+                    InvalidateRect(hwnd, nullptr, FALSE);
+                }
                 return 0;
+            }
         }
     }
     
@@ -143,11 +175,11 @@ bool Win32Renderer::createChildWindow() {
     if (!class_registered) {
         WNDCLASSEXW wc = {};
         wc.cbSize = sizeof(WNDCLASSEXW);
-        wc.style = CS_HREDRAW | CS_VREDRAW;
+        wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
         wc.lpfnWndProc = WindowProc;
         wc.hInstance = GetModuleHandle(nullptr);
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wc.hbrBackground = nullptr; // No automatic background erasing
         wc.lpszClassName = CHILD_WINDOW_CLASS;
         
         if (!RegisterClassExW(&wc)) {
