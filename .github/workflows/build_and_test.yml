@@ -29,6 +29,13 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Install GUI dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install -y libglfw3-dev libgl1-mesa-dev libxinerama-dev libxcursor-dev libxi-dev libxrandr-dev
+
+
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -103,6 +110,13 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+
+    - name: Install GUI dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install -y libglfw3-dev libgl1-mesa-dev libxinerama-dev libxcursor-dev libxi-dev libxrandr-dev
+
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'

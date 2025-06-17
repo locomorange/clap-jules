@@ -43,14 +43,47 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
 endif()
 
 # Find and link GLFW for GUI support
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GLFW3 REQUIRED glfw3)
+# Try to find GLFW using find_package first (works on most systems)
+find_package(glfw3 CONFIG QUIET)
+
+if(NOT glfw3_FOUND)
+    # If not found, try pkg-config (Linux/Unix systems)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(GLFW3 QUIET glfw3)
+    endif()
+    
+    if(NOT GLFW3_FOUND)
+        # If still not found, build GLFW from source using FetchContent
+        message(STATUS "GLFW not found, building from source...")
+        include(FetchContent)
+        FetchContent_Declare(
+            glfw
+            GIT_REPOSITORY https://github.com/glfw/glfw.git
+            GIT_TAG        3.3.10
+        )
+        set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+        set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(glfw)
+        set(GLFW_LIBRARIES glfw)
+        set(GLFW_INCLUDE_DIRS "")
+    else()
+        set(GLFW_LIBRARIES ${GLFW3_LIBRARIES})
+        set(GLFW_INCLUDE_DIRS ${GLFW3_INCLUDE_DIRS})
+    endif()
+else()
+    set(GLFW_LIBRARIES glfw)
+    set(GLFW_INCLUDE_DIRS "")
+endif()
+
+# Find OpenGL
+find_package(OpenGL REQUIRED)
 
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp gui.cpp renderer.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap ${GLFW3_LIBRARIES} GL)
-target_include_directories(my_clap_plugin PRIVATE ${GLFW3_INCLUDE_DIRS} ${CLAP_PATH}/include)
-target_compile_options(my_clap_plugin PRIVATE ${GLFW3_CFLAGS_OTHER})
+target_link_libraries(my_clap_plugin PRIVATE clap ${GLFW_LIBRARIES} OpenGL::GL)
+target_include_directories(my_clap_plugin PRIVATE ${GLFW_INCLUDE_DIRS} ${CLAP_PATH}/include)
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -80,8 +113,8 @@ add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 add_executable(gui_tests test/test_gui.cpp)
-target_link_libraries(gui_tests PRIVATE gtest gtest_main my_clap_plugin ${GLFW3_LIBRARIES} GL)
-target_include_directories(gui_tests PRIVATE ${GLFW3_INCLUDE_DIRS} ${CLAP_PATH}/include)
+target_link_libraries(gui_tests PRIVATE gtest gtest_main my_clap_plugin ${GLFW_LIBRARIES} OpenGL::GL)
+target_include_directories(gui_tests PRIVATE ${GLFW_INCLUDE_DIRS} ${CLAP_PATH}/include)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
