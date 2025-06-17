@@ -45,8 +45,14 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
     set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW docs")
     set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
     set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
-    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW Wayland support")
-    set(GLFW_BUILD_X11 ON CACHE BOOL "Build GLFW X11 support")
+    
+    # Platform-specific GLFW settings
+    if(UNIX AND NOT APPLE)
+        # Linux-specific settings
+        set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW Wayland support")
+        set(GLFW_BUILD_X11 ON CACHE BOOL "Build GLFW X11 support")
+    endif()
+    
     add_subdirectory(libs/glfw)
 endif()
 
@@ -105,14 +111,21 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
     
     # Platform-specific libraries
     if(WIN32)
-        # Windows specific libraries
-        target_link_libraries(my_clap_plugin PRIVATE opengl32)
+        # Windows specific libraries (OpenGL::GL already linked above)
     elseif(APPLE)
         # macOS specific libraries
         find_library(COCOA_LIBRARY Cocoa)
         find_library(IOKIT_LIBRARY IOKit)
         find_library(COREVIDEO_LIBRARY CoreVideo)
-        target_link_libraries(my_clap_plugin PRIVATE ${COCOA_LIBRARY} ${IOKIT_LIBRARY} ${COREVIDEO_LIBRARY})
+        if(COCOA_LIBRARY AND IOKIT_LIBRARY AND COREVIDEO_LIBRARY)
+            target_link_libraries(my_clap_plugin PRIVATE ${COCOA_LIBRARY} ${IOKIT_LIBRARY} ${COREVIDEO_LIBRARY})
+            message(STATUS "Found all required macOS frameworks")
+        else()
+            message(WARNING "Some macOS frameworks not found - GUI may not work properly")
+            message(STATUS "COCOA_LIBRARY: ${COCOA_LIBRARY}")
+            message(STATUS "IOKIT_LIBRARY: ${IOKIT_LIBRARY}")
+            message(STATUS "COREVIDEO_LIBRARY: ${COREVIDEO_LIBRARY}")
+        endif()
     else()
         # Linux specific libraries
         find_package(PkgConfig REQUIRED)

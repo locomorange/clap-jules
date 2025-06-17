@@ -2,8 +2,8 @@
 #include <cstdio>
 
 #ifdef CLAP_JULES_HAS_GLFW
+// Let GLFW handle OpenGL headers for cross-platform compatibility
 #include <GLFW/glfw3.h>
-#include <GL/gl.h>
 #endif
 
 namespace clap_jules {
