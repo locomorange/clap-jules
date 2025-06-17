@@ -49,6 +49,21 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
     add_subdirectory(libs/glfw)
 endif()
 
+# Add Skia integration placeholder
+# Note: Skia uses GN/Ninja build system. For now, we'll add a placeholder
+# for future integration. See docs for building Skia with CMake.
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/include/core/SkCanvas.h")
+    message(STATUS "Found Skia headers - integration ready for future implementation")
+    # TODO: Add proper Skia CMake integration
+    # This would require either:
+    # 1. Using Skia's GN build system to generate CMake files
+    # 2. Creating a custom CMake wrapper for essential Skia components
+    # 3. Using precompiled Skia libraries
+    set(SKIA_AVAILABLE TRUE)
+else()
+    set(SKIA_AVAILABLE FALSE)
+endif()
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)

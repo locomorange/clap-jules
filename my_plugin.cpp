@@ -15,6 +15,13 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+// OpenGL for basic rendering
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -28,6 +35,7 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Forward declarations of GUI functions ---
+static void my_plugin_gui_render(const clap_plugin_t *plugin);
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
 static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
 static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
@@ -205,6 +213,76 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
 
 // --- GUI Extension Implementation ---
 
+static void my_plugin_gui_render(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created || !self->window) {
+        return;
+    }
+    
+    glfwMakeContextCurrent(self->window);
+    
+    // Get framebuffer size for proper rendering
+    int width, height;
+    glfwGetFramebufferSize(self->window, &width, &height);
+    glViewport(0, 0, width, height);
+    
+    // Clear the screen
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    // Basic OpenGL rendering - draw a simple gradient background
+    glBegin(GL_TRIANGLES);
+    
+    // Draw two triangles to form a rectangle with gradient
+    // Triangle 1
+    glColor3f(0.2f, 0.3f, 0.8f); // Blue
+    glVertex2f(-1.0f, -1.0f);     // Bottom left
+    
+    glColor3f(0.8f, 0.2f, 0.3f); // Red
+    glVertex2f(1.0f, -1.0f);      // Bottom right
+    
+    glColor3f(0.3f, 0.8f, 0.2f); // Green
+    glVertex2f(-1.0f, 1.0f);      // Top left
+    
+    // Triangle 2
+    glColor3f(0.8f, 0.2f, 0.3f); // Red
+    glVertex2f(1.0f, -1.0f);      // Bottom right
+    
+    glColor3f(0.3f, 0.8f, 0.2f); // Green
+    glVertex2f(-1.0f, 1.0f);      // Top left
+    
+    glColor3f(0.8f, 0.8f, 0.2f); // Yellow
+    glVertex2f(1.0f, 1.0f);       // Top right
+    
+    glEnd();
+    
+    // Draw a simple white rectangle in the center
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glBegin(GL_QUADS);
+    glVertex2f(-0.5f, -0.3f);
+    glVertex2f(0.5f, -0.3f);
+    glVertex2f(0.5f, 0.3f);
+    glVertex2f(-0.5f, 0.3f);
+    glEnd();
+    
+    // Add some text indication (using basic OpenGL - no text rendering for now)
+    // Draw some lines to indicate this is a plugin GUI
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+    
+    // Draw a cross in the center
+    glVertex2f(-0.2f, 0.0f);
+    glVertex2f(0.2f, 0.0f);
+    glVertex2f(0.0f, -0.2f);
+    glVertex2f(0.0f, 0.2f);
+    
+    glEnd();
+    
+    // Swap buffers to display the rendered frame
+    glfwSwapBuffers(self->window);
+}
+
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
     printf("MyPlugin: GUI API support check - API: %s, Floating: %s\n", api, is_floating ? "true" : "false");
     
@@ -272,6 +350,12 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     
     // Make context current for OpenGL operations
     glfwMakeContextCurrent(self->window);
+    
+    // Enable V-Sync
+    glfwSwapInterval(1);
+    
+    // Set up basic OpenGL state
+    glClearColor(0.2f, 0.3f, 0.4f, 1.0f); // Dark blue background
     
     self->gui_created = true;
     printf("MyPlugin: GUI created successfully\n");
@@ -442,6 +526,9 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     
     glfwShowWindow(self->window);
     self->gui_visible = true;
+    
+    // Render initial frame
+    my_plugin_gui_render(plugin);
     
     return true;
 }
