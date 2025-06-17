@@ -46,7 +46,7 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
     set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
     set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
     set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW with Wayland support")
-    set(GLFW_BUILD_X11 OFF CACHE BOOL "Don't build GLFW with X11 support")
+    set(GLFW_BUILD_X11 ON CACHE BOOL "Build GLFW with X11 support for GUI")
     add_subdirectory(libs/glfw)
 endif()
 
