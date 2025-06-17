@@ -8,7 +8,7 @@ int main() {
     std::cout << "Testing CLAP Plugin GUI..." << std::endl;
     
     // Create plugin factory
-    const clap_plugin_factory* factory = &my_plugin_factory;
+    const clap_plugin_factory* factory = get_plugin_factory();
     
     // Create a minimal host
     struct test_host {

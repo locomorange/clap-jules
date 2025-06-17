@@ -58,3 +58,6 @@ struct my_plugin_t {
 
 // Plugin factory ID
 extern const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory;
+
+// Function to access the plugin factory (properly exported)
+CLAP_EXPORT const struct clap_plugin_factory* get_plugin_factory();
