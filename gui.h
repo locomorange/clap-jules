@@ -2,6 +2,7 @@
 
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+#include "renderer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +33,9 @@ typedef struct {
     // GLFW window (for our internal rendering)
     void *glfw_window;
     
+    // Graphics renderer
+    simple_renderer_t renderer;
+    
 } plugin_gui_t;
 
 // Forward declaration of our plugin structure
@@ -46,6 +50,9 @@ void gui_cleanup();
 
 // GUI lifecycle functions (for manual use)
 void gui_destroy(const clap_plugin_t *plugin);
+
+// GUI rendering
+void gui_render(struct my_plugin *plugin);
 
 // Platform-specific implementations
 bool gui_create_platform_window(struct my_plugin *plugin, const char *api, bool is_floating);

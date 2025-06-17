@@ -9,15 +9,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # If you want to use a custom location, you can set CLAP_PATH before running cmake.
 # For example: cmake -DCLAP_PATH=/path/to/clap ..
 find_package(clap CONFIG)
+
+# Set CLAP_PATH for include directories
+if (DEFINED ENV{CLAP_PATH})
+    set(CLAP_PATH $ENV{CLAP_PATH})
+elseif(DEFINED CLAP_PATH)
+    # CLAP_PATH is already set (e.g. by cmake -DCLAP_PATH=...)
+else()
+    # Try a default location (e.g. a submodule)
+    set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
+endif()
+
 if (NOT CLAP_FOUND)
-    if (DEFINED ENV{CLAP_PATH})
-        set(CLAP_PATH $ENV{CLAP_PATH})
-    elseif(DEFINED CLAP_PATH)
-        # CLAP_PATH is already set (e.g. by cmake -DCLAP_PATH=...)
-    else()
-        # Try a default location (e.g. a submodule)
-        set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
-    endif()
 
     if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
         message(STATUS "Found CLAP headers in ${CLAP_PATH}/include")
@@ -44,9 +47,9 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLFW3 REQUIRED glfw3)
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp gui.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap ${GLFW3_LIBRARIES})
-target_include_directories(my_clap_plugin PRIVATE ${GLFW3_INCLUDE_DIRS})
+add_library(my_clap_plugin SHARED my_plugin.cpp gui.cpp renderer.cpp)
+target_link_libraries(my_clap_plugin PRIVATE clap ${GLFW3_LIBRARIES} GL)
+target_include_directories(my_clap_plugin PRIVATE ${GLFW3_INCLUDE_DIRS} ${CLAP_PATH}/include)
 target_compile_options(my_clap_plugin PRIVATE ${GLFW3_CFLAGS_OTHER})
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
@@ -76,5 +79,10 @@ enable_testing()
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
+add_executable(gui_tests test/test_gui.cpp)
+target_link_libraries(gui_tests PRIVATE gtest gtest_main my_clap_plugin ${GLFW3_LIBRARIES} GL)
+target_include_directories(gui_tests PRIVATE ${GLFW3_INCLUDE_DIRS} ${CLAP_PATH}/include)
+
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+gtest_discover_tests(gui_tests)

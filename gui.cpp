@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "my_plugin.h"
+#include "renderer.h"
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <string.h>
@@ -127,6 +128,14 @@ static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_flo
     }
     
     self->gui.glfw_window = window;
+    
+    // Initialize the renderer
+    if (!renderer_init(&self->gui.renderer, window, self->gui.width, self->gui.height)) {
+        printf("GUI: Failed to initialize renderer\n");
+        glfwDestroyWindow(window);
+        return false;
+    }
+    
     self->gui.is_created = true;
     
     printf("GUI: GUI created successfully\n");
@@ -141,6 +150,9 @@ void gui_destroy(const clap_plugin_t *plugin) {
     if (!self->gui.is_created) {
         return;
     }
+    
+    // Cleanup renderer
+    renderer_cleanup(&self->gui.renderer);
     
     if (self->gui.glfw_window) {
         glfwDestroyWindow((GLFWwindow*)self->gui.glfw_window);
@@ -220,6 +232,9 @@ static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t h
     if (self->gui.glfw_window) {
         glfwSetWindowSize((GLFWwindow*)self->gui.glfw_window, width, height);
     }
+    
+    // Update renderer viewport
+    renderer_resize(&self->gui.renderer, width, height);
     
     return true;
 }
@@ -331,4 +346,41 @@ bool gui_show_platform(my_plugin_t *plugin) {
 
 bool gui_hide_platform(my_plugin_t *plugin) {
     return true;
+}
+
+// GUI rendering function
+void gui_render(my_plugin_t *plugin) {
+    if (!plugin || !plugin->gui.is_created || !plugin->gui.is_visible) {
+        return;
+    }
+    
+    simple_renderer_t *renderer = &plugin->gui.renderer;
+    
+    // Begin rendering
+    renderer_begin_frame(renderer);
+    
+    // Clear background with dark gray
+    renderer_clear(renderer, 0.2f, 0.2f, 0.2f);
+    
+    // Draw a title bar
+    renderer_draw_rect(renderer, 0, 0, plugin->gui.width, 30, 0.3f, 0.3f, 0.4f, 1.0f);
+    
+    // Draw some UI elements to demonstrate the GUI
+    renderer_draw_rect(renderer, 20, 50, 100, 40, 0.4f, 0.6f, 0.8f, 1.0f);
+    renderer_draw_rect(renderer, 140, 50, 100, 40, 0.8f, 0.4f, 0.4f, 1.0f);
+    
+    // Draw status text (placeholder rectangles)
+    renderer_draw_text(renderer, "CLAP Jules Plugin", 10, 8, 1.0f, 1.0f, 1.0f);
+    renderer_draw_text(renderer, "Volume", 30, 65, 1.0f, 1.0f, 1.0f);
+    renderer_draw_text(renderer, "Filter", 150, 65, 1.0f, 1.0f, 1.0f);
+    
+    // Draw some decorative elements
+    for (int i = 0; i < 5; i++) {
+        float x = 20 + i * 30;
+        float height = 20 + (i * 10);
+        renderer_draw_rect(renderer, x, 120, 20, height, 0.2f + i*0.15f, 0.8f - i*0.1f, 0.4f, 0.8f);
+    }
+    
+    // End rendering
+    renderer_end_frame(renderer);
 }
