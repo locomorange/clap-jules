@@ -318,6 +318,14 @@ static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_flo
         return false;  // We only support floating windows
     }
     
+    // Set platform-specific window hints
+#ifdef _WIN32
+    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
+    glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);  // Always on top for Windows
+#endif
+    
     // Create GLFW window
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);  // Start hidden
     self->window = glfwCreateWindow(self->window_width, self->window_height, "CLAP Plugin GUI", NULL, NULL);
@@ -336,6 +344,16 @@ static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_flo
     
     // Enable VSync
     glfwSwapInterval(1);
+    
+#ifdef _WIN32
+    // Windows-specific: Center window and bring to front
+    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    if (mode) {
+        int xpos = (mode->width - self->window_width) / 2;
+        int ypos = (mode->height - self->window_height) / 2;
+        glfwSetWindowPos(self->window, xpos, ypos);
+    }
+#endif
     
     self->gui_created = true;
     printf("MyPlugin: GUI created successfully\n");
@@ -406,6 +424,13 @@ static bool gui_show(const clap_plugin_t *plugin) {
     }
     
     glfwShowWindow(self->window);
+    
+#ifdef _WIN32
+    // Windows-specific: Ensure window is brought to front and focused
+    glfwFocusWindow(self->window);
+    glfwRequestWindowAttention(self->window);
+#endif
+    
     printf("MyPlugin: GUI shown\n");
     return true;
 }
