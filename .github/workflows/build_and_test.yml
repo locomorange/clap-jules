@@ -33,13 +33,6 @@ jobs:
         sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
 
     - name: Set up MSVC (Windows only)
-
-    - name: Install Dependencies (Ubuntu only)
-      if: runner.os == 'Linux'
-      run: |
-        # Install GUI development libraries
-        sudo apt-get update
-        sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
@@ -122,13 +115,6 @@ jobs:
         sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
 
     - name: Set up MSVC (Windows only)
-
-    - name: Install Dependencies (Ubuntu only)
-      if: runner.os == 'Linux'
-      run: |
-        # Install GUI development libraries
-        sudo apt-get update
-        sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
