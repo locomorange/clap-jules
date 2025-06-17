@@ -2,6 +2,8 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+
+#ifdef HAVE_GLFW
 #include <clap/ext/gui.h>
 
 // GLFW includes
@@ -21,6 +23,7 @@
 #else
 #include <GL/gl.h>
 #endif
+#endif // HAVE_GLFW
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -34,6 +37,7 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
+#ifdef HAVE_GLFW
 // --- Forward declarations of GUI functions ---
 static void my_plugin_gui_render(const clap_plugin_t *plugin);
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
@@ -51,6 +55,7 @@ static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_
 static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title);
 static bool my_plugin_gui_show(const clap_plugin_t *plugin);
 static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
+#endif // HAVE_GLFW
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -76,6 +81,7 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
     
+#ifdef HAVE_GLFW
     // Initialize GUI-related fields
     self->window = NULL;
     self->gui_created = false;
@@ -90,6 +96,7 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
         printf("MyPlugin: Failed to initialize GLFW\n");
         return false;
     }
+#endif
     
     return true;
 }
@@ -98,6 +105,7 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
     
+#ifdef HAVE_GLFW
     // Clean up GUI resources
     if (self->gui_created) {
         my_plugin_gui_destroy(plugin);
@@ -105,6 +113,7 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
     
     // Terminate GLFW
     glfwTerminate();
+#endif
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -175,6 +184,7 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     return CLAP_PROCESS_CONTINUE;
 }
 
+#ifdef HAVE_GLFW
 // --- GUI Extension Implementation ---
 static const clap_plugin_gui_t my_plugin_gui_extension = {
     my_plugin_gui_is_api_supported,
@@ -193,12 +203,15 @@ static const clap_plugin_gui_t my_plugin_gui_extension = {
     my_plugin_gui_show,
     my_plugin_gui_hide,
 };
+#endif // HAVE_GLFW
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
+#ifdef HAVE_GLFW
     // Return GUI extension if requested
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
         return &my_plugin_gui_extension;
     }
+#endif
     
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
@@ -211,6 +224,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // printf("MyPlugin: on_main_thread called\n");
 }
 
+#ifdef HAVE_GLFW
 // --- GUI Extension Implementation ---
 
 static void my_plugin_gui_render(const clap_plugin_t *plugin) {
@@ -546,6 +560,7 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     
     return true;
 }
+#endif // HAVE_GLFW
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
 // This is not directly part of the clap_plugin_t struct but is essential.

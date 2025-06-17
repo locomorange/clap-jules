@@ -1,15 +1,18 @@
 #pragma once
 
 #include <clap/clap.h>
-#include <clap/ext/gui.h>
 
+#ifdef HAVE_GLFW
+#include <clap/ext/gui.h>
 // Forward declarations for GLFW
 struct GLFWwindow;
+#endif
 
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
     
+#ifdef HAVE_GLFW
     // GUI-related data
     struct GLFWwindow* window;
     bool gui_created;
@@ -21,6 +24,7 @@ typedef struct {
     
     // Parent window for embedding
     clap_window_t parent_window;
+#endif
     
     // Add any other plugin-specific data here
 } my_plugin_t;

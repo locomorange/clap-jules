@@ -29,9 +29,13 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        # Install GUI dependencies for GLFW
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev
+        
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
         tar -xzf clap-validator.tar.gz
@@ -104,9 +108,13 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        # Install GUI dependencies for GLFW
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev
+        
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
         tar -xzf clap-validator.tar.gz

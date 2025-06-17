@@ -39,14 +39,41 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
-# Add GLFW if available
+# Add GLFW if available and system dependencies are met
+set(GLFW_AVAILABLE FALSE)
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
-    message(STATUS "Found GLFW, adding as subdirectory")
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW documentation")
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
-    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW with Wayland support")
-    add_subdirectory(libs/glfw)
+    # Check if required system dependencies are available
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        find_package(X11 QUIET)
+        if(X11_FOUND)
+            set(GLFW_DEPS_FOUND TRUE)
+        else()
+            message(WARNING "X11 development libraries not found. GLFW GUI support will be disabled.")
+            set(GLFW_DEPS_FOUND FALSE)
+        endif()
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        # Windows should generally have the necessary dependencies
+        set(GLFW_DEPS_FOUND TRUE)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        # macOS should generally have the necessary dependencies
+        set(GLFW_DEPS_FOUND TRUE)
+    else()
+        set(GLFW_DEPS_FOUND FALSE)
+    endif()
+    
+    if(GLFW_DEPS_FOUND)
+        message(STATUS "Found GLFW and system dependencies, adding GUI support")
+        set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW documentation")
+        set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
+        set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
+        set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW with Wayland support")
+        add_subdirectory(libs/glfw)
+        set(GLFW_AVAILABLE TRUE)
+    else()
+        message(STATUS "GLFW system dependencies not met, building without GUI support")
+    endif()
+else()
+    message(STATUS "GLFW not found, building without GUI support")
 endif()
 
 # Add Skia integration placeholder
@@ -68,9 +95,25 @@ endif()
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
-# Link GLFW if available
-if (TARGET glfw)
+# Link GLFW and OpenGL if available
+if (GLFW_AVAILABLE AND TARGET glfw)
     target_link_libraries(my_clap_plugin PRIVATE glfw)
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_GLFW=1)
+    
+    # Link OpenGL on different platforms
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        find_package(OpenGL REQUIRED)
+        target_link_libraries(my_clap_plugin PRIVATE OpenGL::GL)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        target_link_libraries(my_clap_plugin PRIVATE opengl32)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        find_library(OPENGL_FRAMEWORK OpenGL)
+        target_link_libraries(my_clap_plugin PRIVATE ${OPENGL_FRAMEWORK})
+    endif()
+    
+    message(STATUS "GUI support enabled with GLFW and OpenGL")
+else()
+    message(STATUS "Building without GUI support - GLFW not available")
 endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
