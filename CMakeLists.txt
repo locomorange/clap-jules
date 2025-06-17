@@ -132,7 +132,6 @@ endif()
 # Add Windows-specific libraries for Win32 renderer
 if (WIN32)
     target_link_libraries(my_clap_plugin PRIVATE user32 gdi32 kernel32)
-    target_link_libraries(my_plugin_tests PRIVATE user32 gdi32 kernel32)
 endif()
 
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
@@ -169,6 +168,11 @@ add_executable(my_plugin_tests
     graphics/x11_renderer.cpp
 )
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main clap Threads::Threads)
+
+# Add Windows-specific libraries for Win32 renderer to tests
+if (WIN32)
+    target_link_libraries(my_plugin_tests PRIVATE user32 gdi32 kernel32)
+endif()
 
 # Add include directories for the test target
 target_include_directories(my_plugin_tests PRIVATE 
