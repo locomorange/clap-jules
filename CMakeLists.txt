@@ -39,9 +39,48 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add GLFW if available
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
+    message(STATUS "Found GLFW, adding as subdirectory")
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW docs")
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
+    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW Wayland support")
+    set(GLFW_BUILD_X11 ON CACHE BOOL "Build GLFW X11 support")
+    add_subdirectory(libs/glfw)
+endif()
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link GLFW if available
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
+    target_link_libraries(my_clap_plugin PRIVATE glfw)
+    target_compile_definitions(my_clap_plugin PRIVATE CLAP_JULES_HAS_GLFW=1)
+    
+    # Find and link OpenGL
+    find_package(OpenGL REQUIRED)
+    target_link_libraries(my_clap_plugin PRIVATE OpenGL::GL)
+    
+    # Platform-specific libraries
+    if(WIN32)
+        # Windows specific libraries
+        target_link_libraries(my_clap_plugin PRIVATE opengl32)
+    elseif(APPLE)
+        # macOS specific libraries
+        find_library(COCOA_LIBRARY Cocoa)
+        find_library(IOKIT_LIBRARY IOKit)
+        find_library(COREVIDEO_LIBRARY CoreVideo)
+        target_link_libraries(my_clap_plugin PRIVATE ${COCOA_LIBRARY} ${IOKIT_LIBRARY} ${COREVIDEO_LIBRARY})
+    else()
+        # Linux specific libraries
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(X11 REQUIRED x11)
+        target_link_libraries(my_clap_plugin PRIVATE ${X11_LIBRARIES})
+        target_include_directories(my_clap_plugin PRIVATE ${X11_INCLUDE_DIRS})
+    endif()
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
