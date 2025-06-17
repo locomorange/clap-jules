@@ -39,9 +39,24 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add GLFW if available
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
+    message(STATUS "Found GLFW, adding as subdirectory")
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW documentation")
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
+    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW with Wayland support")
+    add_subdirectory(libs/glfw)
+endif()
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link GLFW if available
+if (TARGET glfw)
+    target_link_libraries(my_clap_plugin PRIVATE glfw)
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
