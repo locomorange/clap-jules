@@ -1,6 +1,7 @@
 #include "my_plugin.h"
+#include "gui.h"
 #include <stdio.h>  // For printf in example functions
-#include <string.h> // For strcmp
+#include <string.h> // For strcmp and memset
 #include <cstdlib>  // For calloc
 
 // --- Forward declarations of plugin functions ---
@@ -17,7 +18,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio_effect", "gui", nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
@@ -36,15 +37,33 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize GUI subsystem
+    if (!gui_init()) {
+        printf("MyPlugin: Failed to initialize GUI subsystem\n");
+        return false;
+    }
+    
+    // Initialize GUI structure
+    memset(&self->gui, 0, sizeof(plugin_gui_t));
+    
+    printf("MyPlugin: Plugin initialized successfully\n");
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    // Destroy GUI if it exists
+    if (self->gui.is_created) {
+        gui_destroy(plugin);
+    }
+    
+    // Clean up and free the plugin instance
+    free(self);
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -119,7 +138,13 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    
+    // Support GUI extension
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &gui_extension;
+    }
+    
+    return NULL; // No other extensions supported yet
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -193,7 +218,8 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     // deinit: Called once when the library is unloaded.
     []() -> void {
         printf("MyPlugin: clap_entry.deinit called\n");
-        // Perform any global library cleanup here if needed
+        // Clean up GUI subsystem
+        gui_cleanup();
     },
     // get_factory: Returns a factory based on its ID.
     [](const char *factory_id) -> const void * {

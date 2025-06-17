@@ -1,10 +1,15 @@
 #pragma once
 
 #include <clap/clap.h>
+#include "gui.h"
 
 // Basic plugin structure
-typedef struct {
+typedef struct my_plugin {
     clap_plugin_t plugin;
+    
+    // GUI support
+    plugin_gui_t gui;
+    
     // Add any other plugin-specific data here
 } my_plugin_t;
 

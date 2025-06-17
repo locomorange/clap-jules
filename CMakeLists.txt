@@ -39,9 +39,15 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Find and link GLFW for GUI support
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GLFW3 REQUIRED glfw3)
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap)
+add_library(my_clap_plugin SHARED my_plugin.cpp gui.cpp)
+target_link_libraries(my_clap_plugin PRIVATE clap ${GLFW3_LIBRARIES})
+target_include_directories(my_clap_plugin PRIVATE ${GLFW3_INCLUDE_DIRS})
+target_compile_options(my_clap_plugin PRIVATE ${GLFW3_CFLAGS_OTHER})
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
