@@ -33,8 +33,8 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         # Install GUI dependencies for GLFW and OpenGL
-        sudo apt-get update -y
-        sudo apt-get install -y --no-install-recommends \
+        sudo apt-get update
+        sudo apt-get install -y \
           libx11-dev \
           libxcursor-dev \
           libxrandr-dev \
@@ -78,12 +78,6 @@ jobs:
           find /usr -name "X11" -type d 2>/dev/null | head -5
           echo "=== Checking OpenGL availability ==="
           find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          echo "=== Windows Build Environment ==="
-          echo "MSVC setup:"
-          where cl.exe || echo "cl.exe not found"
-          echo "OpenGL32 availability:"
-          where opengl32.dll || echo "opengl32.dll not found in PATH"
         fi
         echo "=== CMake Configuration ==="
         cmake . -B build
@@ -148,8 +142,8 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         # Install GUI dependencies for GLFW and OpenGL
-        sudo apt-get update -y
-        sudo apt-get install -y --no-install-recommends \
+        sudo apt-get update
+        sudo apt-get install -y \
           libx11-dev \
           libxcursor-dev \
           libxrandr-dev \
@@ -193,12 +187,6 @@ jobs:
           find /usr -name "X11" -type d 2>/dev/null | head -5
           echo "=== Checking OpenGL availability ==="
           find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          echo "=== Windows Test Environment ==="
-          echo "MSVC setup:"
-          where cl.exe || echo "cl.exe not found"
-          echo "OpenGL32 availability:"
-          where opengl32.dll || echo "opengl32.dll not found in PATH"
         fi
         echo "=== CMake Configuration ==="
         cmake . -B build
