@@ -6,22 +6,30 @@
 #ifdef HAVE_GLFW
 #include <clap/ext/gui.h>
 
-// GLFW includes
-#ifdef __linux__
-#define GLFW_EXPOSE_NATIVE_X11
-#include <X11/Xlib.h>
-#endif
+// Platform-specific includes must come before GLFW
 #ifdef _WIN32
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
+#include <windows.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#endif
+
+#ifdef __linux__
+#include <X11/Xlib.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#endif
+
+// GLFW includes
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
 // OpenGL for basic rendering
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
-#else
+#elif defined(_WIN32)
+#include <GL/gl.h>
+#elif defined(__linux__)
 #include <GL/gl.h>
 #endif
 #endif // HAVE_GLFW
@@ -94,7 +102,10 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     
     // Initialize GLFW if not already done
     if (!glfwInit()) {
-        printf("MyPlugin: Failed to initialize GLFW\n");
+        const char* error_desc;
+        int error_code = glfwGetError(&error_desc);
+        printf("MyPlugin: Failed to initialize GLFW - Error %d: %s\n", 
+               error_code, error_desc ? error_desc : "Unknown error");
         return false;
     }
 #endif
@@ -245,6 +256,12 @@ static void my_plugin_gui_render(const clap_plugin_t *plugin) {
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT);
     
+    // Check for OpenGL errors
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        printf("MyPlugin: OpenGL error before rendering: %d\n", error);
+    }
+    
     // Basic OpenGL rendering - draw a simple gradient background
     glBegin(GL_TRIANGLES);
     
@@ -294,6 +311,12 @@ static void my_plugin_gui_render(const clap_plugin_t *plugin) {
     
     glEnd();
     
+    // Check for OpenGL errors
+    error = glGetError();
+    if (error != GL_NO_ERROR) {
+        printf("MyPlugin: OpenGL error after rendering: %d\n", error);
+    }
+    
     // Swap buffers to display the rendered frame
     glfwSwapBuffers(self->window);
 }
@@ -341,6 +364,11 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         return false;
     }
     
+    if (!api) {
+        printf("MyPlugin: No API specified\n");
+        return false;
+    }
+    
     // Store GUI configuration
     self->gui_api = api;
     self->is_floating = is_floating;
@@ -359,12 +387,23 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     );
     
     if (!self->window) {
-        printf("MyPlugin: Failed to create GLFW window\n");
+        const char* error_desc;
+        int error_code = glfwGetError(&error_desc);
+        printf("MyPlugin: Failed to create GLFW window - Error %d: %s\n", 
+               error_code, error_desc ? error_desc : "Unknown error");
         return false;
     }
     
     // Make context current for OpenGL operations
     glfwMakeContextCurrent(self->window);
+    
+    // Check if we can get OpenGL context
+    const char* gl_version = (const char*)glGetString(GL_VERSION);
+    if (gl_version) {
+        printf("MyPlugin: OpenGL version: %s\n", gl_version);
+    } else {
+        printf("MyPlugin: Warning - Could not get OpenGL version\n");
+    }
     
     // Enable V-Sync
     glfwSwapInterval(1);
@@ -456,10 +495,16 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
 
 static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    printf("MyPlugin: GUI set parent - API: %s\n", window->api);
+    
+    printf("MyPlugin: GUI set parent - API: %s\n", window ? window->api : "NULL");
     
     if (!self->gui_created || !self->window) {
         printf("MyPlugin: GUI not created, cannot set parent\n");
+        return false;
+    }
+    
+    if (!window || !window->api) {
+        printf("MyPlugin: Invalid window parameter\n");
         return false;
     }
     
@@ -481,7 +526,8 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
             printf("MyPlugin: X11 window reparented successfully\n");
             return true;
         } else {
-            printf("MyPlugin: Failed to get X11 handles\n");
+            printf("MyPlugin: Failed to get X11 handles (display=%p, child=%lu, parent=%lu)\n", 
+                   display, child, parent);
             return false;
         }
 #else
@@ -497,11 +543,16 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         HWND parent = (HWND)window->win32;
         
         if (child && parent) {
-            SetParent(child, parent);
-            printf("MyPlugin: Win32 window reparented successfully\n");
-            return true;
+            if (SetParent(child, parent) != NULL) {
+                printf("MyPlugin: Win32 window reparented successfully\n");
+                return true;
+            } else {
+                DWORD error = GetLastError();
+                printf("MyPlugin: SetParent failed with error %lu\n", error);
+                return false;
+            }
         } else {
-            printf("MyPlugin: Failed to get Win32 handles\n");
+            printf("MyPlugin: Failed to get Win32 handles (child=%p, parent=%p)\n", child, parent);
             return false;
         }
 #else
