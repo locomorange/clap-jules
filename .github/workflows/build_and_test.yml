@@ -113,14 +113,14 @@ jobs:
         echo "=== Build Environment Debug Info ==="
         echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
         echo "Operating System: $(uname -a)"
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
+        if [ "$RUNNER_OS" = "Linux" ]; then
           echo "=== Checking installed packages ==="
           dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
           echo "=== Checking X11 availability ==="
           find /usr -name "X11" -type d 2>/dev/null | head -5
           echo "=== Checking OpenGL availability ==="
           find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+        elif [ "$RUNNER_OS" = "Windows" ]; then
           echo "=== Windows Build Environment ==="
           echo "MSVC setup:"
           where cl.exe || echo "cl.exe not found"
@@ -270,14 +270,14 @@ jobs:
         echo "=== Test Environment Debug Info ==="
         echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
         echo "Operating System: $(uname -a)"
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
+        if [ "$RUNNER_OS" = "Linux" ]; then
           echo "=== Checking installed packages ==="
           dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
           echo "=== Checking X11 availability ==="
           find /usr -name "X11" -type d 2>/dev/null | head -5
           echo "=== Checking OpenGL availability ==="
           find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+        elif [ "$RUNNER_OS" = "Windows" ]; then
           echo "=== Windows Test Environment ==="
           echo "MSVC setup:"
           where cl.exe || echo "cl.exe not found"
