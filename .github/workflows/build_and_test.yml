@@ -109,6 +109,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
+      shell: bash
       run: |
         echo "=== Build Environment Debug Info ==="
         echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
@@ -266,6 +267,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
+      shell: bash
       run: |
         echo "=== Test Environment Debug Info ==="
         echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
