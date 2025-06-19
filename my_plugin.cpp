@@ -106,7 +106,10 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
         int error_code = glfwGetError(&error_desc);
         printf("MyPlugin: Failed to initialize GLFW - Error %d: %s\n", 
                error_code, error_desc ? error_desc : "Unknown error");
-        return false;
+        // Don't fail plugin initialization if GLFW fails - just disable GUI
+        self->gui_created = false;
+        self->gui_visible = false;
+        return true; // Plugin can still work without GUI
     }
 #endif
     
@@ -391,7 +394,26 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         int error_code = glfwGetError(&error_desc);
         printf("MyPlugin: Failed to create GLFW window - Error %d: %s\n", 
                error_code, error_desc ? error_desc : "Unknown error");
-        return false;
+        
+        // Try to initialize GLFW again in case it wasn't properly initialized
+        if (!glfwInit()) {
+            printf("MyPlugin: GLFW re-initialization also failed\n");
+            return false;
+        }
+        
+        // Try creating window again
+        self->window = glfwCreateWindow(
+            self->gui_width, 
+            self->gui_height, 
+            "My CLAP Plugin", 
+            NULL, 
+            NULL
+        );
+        
+        if (!self->window) {
+            printf("MyPlugin: Window creation failed even after GLFW re-initialization\n");
+            return false;
+        }
     }
     
     // Make context current for OpenGL operations

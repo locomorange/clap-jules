@@ -32,38 +32,80 @@ jobs:
     - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Install GUI dependencies for GLFW and OpenGL
+        # Update package database
         sudo apt-get update -y
-        sudo apt-get install -y --no-install-recommends \
-          libx11-dev \
-          libxcursor-dev \
-          libxrandr-dev \
-          libxinerama-dev \
-          libxi-dev \
-          libgl1-mesa-dev \
-          libglu1-mesa-dev \
-          libxxf86vm-dev \
-          libxfixes-dev \
-          pkg-config \
-          build-essential
         
-        # Verify critical packages are installed
-        dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || {
-          echo "Error: Some required packages failed to install"
-          exit 1
-        }
+        # Install GUI dependencies for GLFW and OpenGL with retry mechanism
+        echo "Installing GUI dependencies..."
+        for attempt in 1 2 3; do
+          if sudo apt-get install -y --no-install-recommends \
+            libx11-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxxf86vm-dev \
+            libxfixes-dev \
+            pkg-config \
+            build-essential; then
+            echo "GUI dependencies installed successfully"
+            break
+          else
+            echo "Attempt $attempt failed, retrying..."
+            sleep 2
+          fi
+        done
         
-        # Download and setup clap-validator
-        wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
+        # Verify critical packages are installed and show detailed info
+        echo "=== Verifying GUI dependencies ==="
+        MISSING_PACKAGES=""
+        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev; do
+          if ! dpkg -l | grep -q "$pkg"; then
+            MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
+          else
+            echo "✓ $pkg is installed"
+          fi
+        done
+        
+        if [ -n "$MISSING_PACKAGES" ]; then
+          echo "Error: Missing packages:$MISSING_PACKAGES"
+          echo "Attempting alternative installation..."
+          # Try installing individual packages
+          for pkg in $MISSING_PACKAGES; do
+            sudo apt-get install -y --no-install-recommends "$pkg" || echo "Warning: Could not install $pkg"
+          done
+        else
+          echo "All critical GUI packages are installed"
+        fi
+        
+        # Download and setup clap-validator with retry
+        echo "=== Setting up CLAP tools ==="
+        for attempt in 1 2 3; do
+          if wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz; then
+            break
+          else
+            echo "Failed to download clap-validator, attempt $attempt"
+            sleep 2
+          fi
+        done
         tar -xzf clap-validator.tar.gz
         chmod +x clap-validator
         
-        # Download and setup clap-info
-        wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip
+        # Download and setup clap-info with retry
+        for attempt in 1 2 3; do
+          if wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip; then
+            break
+          else
+            echo "Failed to download clap-info, attempt $attempt"
+            sleep 2
+          fi
+        done
         unzip -q clap-info.zip
         chmod +x clap-info
         
-        # Add current directory to PATH for tool access
+        # Add current directory to PATH for tool access  
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
@@ -147,38 +189,80 @@ jobs:
     - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Install GUI dependencies for GLFW and OpenGL
+        # Update package database
         sudo apt-get update -y
-        sudo apt-get install -y --no-install-recommends \
-          libx11-dev \
-          libxcursor-dev \
-          libxrandr-dev \
-          libxinerama-dev \
-          libxi-dev \
-          libgl1-mesa-dev \
-          libglu1-mesa-dev \
-          libxxf86vm-dev \
-          libxfixes-dev \
-          pkg-config \
-          build-essential
         
-        # Verify critical packages are installed
-        dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || {
-          echo "Error: Some required packages failed to install"
-          exit 1
-        }
+        # Install GUI dependencies for GLFW and OpenGL with retry mechanism
+        echo "Installing GUI dependencies..."
+        for attempt in 1 2 3; do
+          if sudo apt-get install -y --no-install-recommends \
+            libx11-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxxf86vm-dev \
+            libxfixes-dev \
+            pkg-config \
+            build-essential; then
+            echo "GUI dependencies installed successfully"
+            break
+          else
+            echo "Attempt $attempt failed, retrying..."
+            sleep 2
+          fi
+        done
         
-        # Download and setup clap-validator
-        wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
+        # Verify critical packages are installed and show detailed info
+        echo "=== Verifying GUI dependencies ==="
+        MISSING_PACKAGES=""
+        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev; do
+          if ! dpkg -l | grep -q "$pkg"; then
+            MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
+          else
+            echo "✓ $pkg is installed"
+          fi
+        done
+        
+        if [ -n "$MISSING_PACKAGES" ]; then
+          echo "Error: Missing packages:$MISSING_PACKAGES"
+          echo "Attempting alternative installation..."
+          # Try installing individual packages
+          for pkg in $MISSING_PACKAGES; do
+            sudo apt-get install -y --no-install-recommends "$pkg" || echo "Warning: Could not install $pkg"
+          done
+        else
+          echo "All critical GUI packages are installed"
+        fi
+        
+        # Download and setup clap-validator with retry
+        echo "=== Setting up CLAP tools ==="
+        for attempt in 1 2 3; do
+          if wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz; then
+            break
+          else
+            echo "Failed to download clap-validator, attempt $attempt"
+            sleep 2
+          fi
+        done
         tar -xzf clap-validator.tar.gz
         chmod +x clap-validator
         
-        # Download and setup clap-info
-        wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip
+        # Download and setup clap-info with retry
+        for attempt in 1 2 3; do
+          if wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip; then
+            break
+          else
+            echo "Failed to download clap-info, attempt $attempt"
+            sleep 2
+          fi
+        done
         unzip -q clap-info.zip
         chmod +x clap-info
         
-        # Add current directory to PATH for tool access
+        # Add current directory to PATH for tool access  
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake

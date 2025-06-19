@@ -111,6 +111,9 @@ if (GLFW_AVAILABLE AND TARGET glfw)
             message(STATUS "GUI support enabled with GLFW only (no OpenGL)")
         endif()
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        # Add Windows system libraries for Win32 API
+        target_link_libraries(my_clap_plugin PRIVATE user32 gdi32)
+        
         # Use explicit library names for better compatibility
         find_library(OPENGL32_LIBRARY opengl32)
         if(OPENGL32_LIBRARY)
@@ -121,6 +124,9 @@ if (GLFW_AVAILABLE AND TARGET glfw)
             target_link_libraries(my_clap_plugin PRIVATE opengl32)
             message(STATUS "GUI support enabled with GLFW and OpenGL (fallback)")
         endif()
+        
+        # Add Windows-specific compile definitions
+        target_compile_definitions(my_clap_plugin PRIVATE _CRT_SECURE_NO_WARNINGS)
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         find_library(OPENGL_FRAMEWORK OpenGL)
         if(OPENGL_FRAMEWORK)
