@@ -49,9 +49,6 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 #ifdef HAVE_GLFW
 // --- Forward declarations of GUI functions ---
 static void my_plugin_gui_render(const clap_plugin_t *plugin);
-static void my_plugin_gui_window_refresh_callback(GLFWwindow* window);
-static void my_plugin_gui_window_size_callback(GLFWwindow* window, int width, int height);
-static void my_plugin_gui_framebuffer_size_callback(GLFWwindow* window, int width, int height);
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
 static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
 static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
@@ -102,7 +99,6 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->gui_height = 300;
     self->gui_api = NULL;
     self->is_floating = false;
-    self->needs_redraw = false;
     
     // Initialize GLFW if not already done
     if (!glfwInit()) {
@@ -240,85 +236,11 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
-#ifdef HAVE_GLFW
-    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    
-    // Handle continuous rendering for GUI updates
-    if (self->gui_created && self->gui_visible && self->window) {
-        // Poll events to handle window callbacks
-        glfwPollEvents();
-        
-        // Render if needed (either due to events or periodic update)
-        if (self->needs_redraw) {
-            my_plugin_gui_render(plugin);
-            self->needs_redraw = false;
-        }
-        
-        // Continue requesting callbacks while GUI is visible
-        if (self->host && self->host->request_callback) {
-            self->host->request_callback(self->host);
-        }
-    }
-#endif
+    // Keep this simple to avoid blocking the host
 }
 
 #ifdef HAVE_GLFW
 // --- GUI Extension Implementation ---
-
-// GLFW Callbacks for proper window event handling
-static void my_plugin_gui_window_refresh_callback(GLFWwindow* window) {
-    // Get plugin instance from window user pointer
-    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
-    if (self && self->gui_created && self->gui_visible) {
-        self->needs_redraw = true;
-        
-        // Request host callback for rendering
-        if (self->host && self->host->request_callback) {
-            self->host->request_callback(self->host);
-        }
-        
-        my_plugin_gui_render(&self->plugin);
-    }
-}
-
-static void my_plugin_gui_window_size_callback(GLFWwindow* window, int width, int height) {
-    // Get plugin instance from window user pointer
-    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
-    if (self) {
-        self->gui_width = (uint32_t)width;
-        self->gui_height = (uint32_t)height;
-        self->needs_redraw = true;
-        
-        // Request host callback for rendering
-        if (self->host && self->host->request_callback) {
-            self->host->request_callback(self->host);
-        }
-        
-        if (self->gui_visible) {
-            my_plugin_gui_render(&self->plugin);
-        }
-    }
-}
-
-static void my_plugin_gui_framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    // Get plugin instance from window user pointer
-    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
-    if (self) {
-        self->needs_redraw = true;
-        
-        // Request host callback for rendering
-        if (self->host && self->host->request_callback) {
-            self->host->request_callback(self->host);
-        }
-        
-        // Update viewport immediately
-        if (self->gui_created && self->gui_visible) {
-            glfwMakeContextCurrent(window);
-            glViewport(0, 0, width, height);
-            my_plugin_gui_render(&self->plugin);
-        }
-    }
-}
 
 static void my_plugin_gui_render(const clap_plugin_t *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
@@ -472,26 +394,7 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         int error_code = glfwGetError(&error_desc);
         printf("MyPlugin: Failed to create GLFW window - Error %d: %s\n", 
                error_code, error_desc ? error_desc : "Unknown error");
-        
-        // Try to initialize GLFW again in case it wasn't properly initialized
-        if (!glfwInit()) {
-            printf("MyPlugin: GLFW re-initialization also failed\n");
-            return false;
-        }
-        
-        // Try creating window again
-        self->window = glfwCreateWindow(
-            self->gui_width, 
-            self->gui_height, 
-            "My CLAP Plugin", 
-            NULL, 
-            NULL
-        );
-        
-        if (!self->window) {
-            printf("MyPlugin: Window creation failed even after GLFW re-initialization\n");
-            return false;
-        }
+        return false;
     }
     
     // Make context current for OpenGL operations
@@ -510,12 +413,6 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     
     // Set up basic OpenGL state
     glClearColor(0.2f, 0.3f, 0.4f, 1.0f); // Dark blue background
-    
-    // Set up GLFW callbacks for proper window event handling
-    glfwSetWindowUserPointer(self->window, self);
-    glfwSetWindowRefreshCallback(self->window, my_plugin_gui_window_refresh_callback);
-    glfwSetWindowSizeCallback(self->window, my_plugin_gui_window_size_callback);
-    glfwSetFramebufferSizeCallback(self->window, my_plugin_gui_framebuffer_size_callback);
     
     self->gui_created = true;
     printf("MyPlugin: GUI created successfully\n");
@@ -698,12 +595,6 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     
     glfwShowWindow(self->window);
     self->gui_visible = true;
-    self->needs_redraw = true;
-    
-    // Request main thread callback for continuous rendering
-    if (self->host && self->host->request_callback) {
-        self->host->request_callback(self->host);
-    }
     
     // Render initial frame
     my_plugin_gui_render(plugin);
@@ -721,7 +612,6 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     
     glfwHideWindow(self->window);
     self->gui_visible = false;
-    self->needs_redraw = false;
     
     return true;
 }
@@ -756,9 +646,6 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
         return NULL;
     }
-
-    // Store host reference
-    self->host = host;
 
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
