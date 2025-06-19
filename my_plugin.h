@@ -12,6 +12,9 @@ struct GLFWwindow;
 typedef struct {
     clap_plugin_t plugin;
     
+    // Host reference
+    const clap_host_t* host;
+    
 #ifdef HAVE_GLFW
     // GUI-related data
     struct GLFWwindow* window;
@@ -24,6 +27,9 @@ typedef struct {
     
     // Parent window for embedding
     clap_window_t parent_window;
+    
+    // Rendering state
+    bool needs_redraw;
 #endif
     
     // Add any other plugin-specific data here
