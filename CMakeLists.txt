@@ -115,8 +115,9 @@ else()
 endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp graphics/skia_graphics.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+target_include_directories(my_clap_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Link GLFW and OpenGL if available
 if (GLFW_AVAILABLE AND TARGET glfw)
@@ -132,6 +133,16 @@ if (GLFW_AVAILABLE AND TARGET glfw)
         else()
             message(WARNING "OpenGL not found. GUI support will be limited.")
             message(STATUS "GUI support enabled with GLFW only (no OpenGL)")
+        endif()
+        
+        # Find and link X11 libraries for Linux
+        find_package(X11 QUIET)
+        if(X11_FOUND)
+            target_link_libraries(my_clap_plugin PRIVATE ${X11_LIBRARIES})
+            target_compile_definitions(my_clap_plugin PRIVATE HAVE_X11=1)
+            message(STATUS "Including X11 support")
+        else()
+            message(WARNING "X11 not found. Platform-specific rendering may be limited.")
         endif()
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # On Windows, try to find OpenGL but don't fail if not found
