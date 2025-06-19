@@ -49,7 +49,8 @@ jobs:
             libxxf86vm-dev \
             libxfixes-dev \
             pkg-config \
-            build-essential; then
+            build-essential \
+            mesa-utils; then
             echo "GUI dependencies installed successfully"
             break
           else
@@ -61,7 +62,7 @@ jobs:
         # Verify critical packages are installed and show detailed info
         echo "=== Verifying GUI dependencies ==="
         MISSING_PACKAGES=""
-        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev; do
+        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev mesa-utils; do
           if ! dpkg -l | grep -q "$pkg"; then
             MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
           else
@@ -79,6 +80,11 @@ jobs:
         else
           echo "All critical GUI packages are installed"
         fi
+        
+        # Additional OpenGL diagnostics
+        echo "=== OpenGL Diagnostics ==="
+        dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
+        glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
         
         # Download and setup clap-validator with retry
         echo "=== Setting up CLAP tools ==="
@@ -118,9 +124,9 @@ jobs:
           echo "=== Checking installed packages ==="
           dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
           echo "=== Checking X11 availability ==="
-          find /usr -name "X11" -type d 2>/dev/null | head -5
+          find /usr -name "X11" -type d 2>/dev/null | head -5 || echo "X11 not found"
           echo "=== Checking OpenGL availability ==="
-          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5
+          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5 || echo "OpenGL libraries not found"
         elif [ "$RUNNER_OS" = "Windows" ]; then
           echo "=== Windows Build Environment ==="
           echo "MSVC setup:"
@@ -207,7 +213,8 @@ jobs:
             libxxf86vm-dev \
             libxfixes-dev \
             pkg-config \
-            build-essential; then
+            build-essential \
+            mesa-utils; then
             echo "GUI dependencies installed successfully"
             break
           else
@@ -219,7 +226,7 @@ jobs:
         # Verify critical packages are installed and show detailed info
         echo "=== Verifying GUI dependencies ==="
         MISSING_PACKAGES=""
-        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev; do
+        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev mesa-utils; do
           if ! dpkg -l | grep -q "$pkg"; then
             MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
           else
@@ -237,6 +244,11 @@ jobs:
         else
           echo "All critical GUI packages are installed"
         fi
+        
+        # Additional OpenGL diagnostics
+        echo "=== OpenGL Diagnostics ==="
+        dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
+        glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
         
         # Download and setup clap-validator with retry
         echo "=== Setting up CLAP tools ==="
@@ -276,9 +288,9 @@ jobs:
           echo "=== Checking installed packages ==="
           dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
           echo "=== Checking X11 availability ==="
-          find /usr -name "X11" -type d 2>/dev/null | head -5
+          find /usr -name "X11" -type d 2>/dev/null | head -5 || echo "X11 not found"
           echo "=== Checking OpenGL availability ==="
-          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5
+          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5 || echo "OpenGL libraries not found"
         elif [ "$RUNNER_OS" = "Windows" ]; then
           echo "=== Windows Test Environment ==="
           echo "MSVC setup:"
