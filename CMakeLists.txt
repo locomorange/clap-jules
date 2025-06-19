@@ -111,7 +111,9 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
     
     # Platform-specific libraries
     if(WIN32)
-        # Windows specific libraries (OpenGL::GL already linked above)
+        # Windows specific libraries
+        # Note: We need both OpenGL::GL and opengl32 for full compatibility
+        target_link_libraries(my_clap_plugin PRIVATE opengl32)
     elseif(APPLE)
         # macOS specific libraries
         find_library(COCOA_LIBRARY Cocoa)

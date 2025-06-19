@@ -4,6 +4,18 @@
 #ifdef CLAP_JULES_HAS_GLFW
 // Let GLFW handle OpenGL headers for cross-platform compatibility
 #include <GLFW/glfw3.h>
+#elif defined(CLAP_JULES_HAS_SKIA)
+// Include OpenGL headers directly when Skia is available but GLFW is not
+#ifdef _WIN32
+#include <GL/gl.h>
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
+#elif defined(__APPLE__)
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
 #endif
 
 namespace clap_jules {
