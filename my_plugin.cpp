@@ -49,6 +49,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 #ifdef HAVE_GLFW
 // --- Forward declarations of GUI functions ---
 static void my_plugin_gui_render(const clap_plugin_t *plugin);
+static void my_plugin_gui_window_refresh_callback(GLFWwindow* window);
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
 static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
 static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
@@ -99,6 +100,7 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->gui_height = 300;
     self->gui_api = NULL;
     self->is_floating = false;
+    self->needs_refresh = false;
     
     // Initialize GLFW if not already done
     if (!glfwInit()) {
@@ -236,11 +238,35 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
-    // Keep this simple to avoid blocking the host
+#ifdef HAVE_GLFW
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Only poll events if GUI is created and visible - this handles window movement/resize events
+    if (self->gui_created && self->gui_visible && self->window) {
+        glfwPollEvents();
+        
+        // Only render if refresh was requested (not continuous rendering)
+        if (self->needs_refresh) {
+            my_plugin_gui_render(plugin);
+            self->needs_refresh = false;
+        }
+    }
+#endif
 }
 
 #ifdef HAVE_GLFW
 // --- GUI Extension Implementation ---
+
+// GLFW window refresh callback for handling window redraws
+static void my_plugin_gui_window_refresh_callback(GLFWwindow* window) {
+    // Get plugin instance from window user pointer
+    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
+    if (self && self->gui_created && self->gui_visible) {
+        // Mark that we need a refresh and render immediately
+        self->needs_refresh = true;
+        my_plugin_gui_render(&self->plugin);
+    }
+}
 
 static void my_plugin_gui_render(const clap_plugin_t *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
@@ -399,6 +425,10 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     
     // Make context current for OpenGL operations
     glfwMakeContextCurrent(self->window);
+    
+    // Set up window callbacks for proper refresh handling
+    glfwSetWindowUserPointer(self->window, self);
+    glfwSetWindowRefreshCallback(self->window, my_plugin_gui_window_refresh_callback);
     
     // Check if we can get OpenGL context
     const char* gl_version = (const char*)glGetString(GL_VERSION);

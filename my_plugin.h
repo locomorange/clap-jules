@@ -24,6 +24,9 @@ typedef struct {
     
     // Parent window for embedding
     clap_window_t parent_window;
+    
+    // Minimal rendering state for window refresh
+    bool needs_refresh;
 #endif
     
     // Add any other plugin-specific data here
