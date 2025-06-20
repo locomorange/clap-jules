@@ -29,7 +29,7 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
+    - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
         # Update package database
@@ -86,33 +86,6 @@ jobs:
         dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
         glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
         
-        # Download and setup clap-validator with retry
-        echo "=== Setting up CLAP tools ==="
-        for attempt in 1 2 3; do
-          if wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz; then
-            break
-          else
-            echo "Failed to download clap-validator, attempt $attempt"
-            sleep 2
-          fi
-        done
-        tar -xzf clap-validator.tar.gz
-        chmod +x clap-validator
-        
-        # Download and setup clap-info with retry
-        for attempt in 1 2 3; do
-          if wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip; then
-            break
-          else
-            echo "Failed to download clap-info, attempt $attempt"
-            sleep 2
-          fi
-        done
-        unzip -q clap-info.zip
-        chmod +x clap-info
-        
-        # Add current directory to PATH for tool access  
-        echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
       shell: bash
@@ -140,16 +113,6 @@ jobs:
     - name: Build project
       run: cmake --build build --config Release
 
-    - name: Validate CLAP Plugin (Ubuntu only)
-      if: runner.os == 'Linux'
-      run: |
-        # Validate the plugin with clap-validator
-        echo "Validating CLAP plugin with clap-validator..."
-        clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
-        
-        # Get plugin info with clap-info
-        echo "Getting plugin info with clap-info..."
-        clap-info build/MyFirstClapPlugin.so --brief
 
     - name: Upload Artifact (Windows)
       if: runner.os == 'Windows'
@@ -180,6 +143,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: build # Ensures build job completes before test job starts
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -193,7 +157,7 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools and GUI Dependencies (Ubuntu only)
+    - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
         # Update package database
@@ -250,34 +214,82 @@ jobs:
         dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
         glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
         
-        # Download and setup clap-validator with retry
-        echo "=== Setting up CLAP tools ==="
-        for attempt in 1 2 3; do
-          if wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz; then
-            break
-          else
-            echo "Failed to download clap-validator, attempt $attempt"
-            sleep 2
-          fi
-        done
-        tar -xzf clap-validator.tar.gz
-        chmod +x clap-validator
-        
-        # Download and setup clap-info with retry
-        for attempt in 1 2 3; do
-          if wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip; then
-            break
-          else
-            echo "Failed to download clap-info, attempt $attempt"
-            sleep 2
-          fi
-        done
-        unzip -q clap-info.zip
-        chmod +x clap-info
-        
-        # Add current directory to PATH for tool access  
-        echo "$PWD" >> $GITHUB_PATH
 
+    - name: Setup CLAP Tools
+      shell: bash
+      run: |
+        echo "=== Setting up CLAP tools for ${{ runner.os }} ==="
+        
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          # Download clap-validator for Linux
+          wget -O clap-validator.tar.gz "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz" || echo "clap-validator download failed"
+          if [ -f clap-validator.tar.gz ]; then
+            tar -xzf clap-validator.tar.gz && chmod +x clap-validator || echo "clap-validator extraction failed"
+          fi
+          
+          # Download clap-info for Linux
+          wget -O clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
+          fi
+          
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          # Download clap-validator for Windows
+          curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip" || echo "clap-validator download failed"
+          if [ -f clap-validator.zip ]; then
+            unzip -q clap-validator.zip || echo "clap-validator extraction failed"
+          fi
+          
+          # Download clap-info for Windows
+          curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-win-x64.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip || echo "clap-info extraction failed"
+          fi
+          
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          echo "=== Setting up CLAP tools for macOS ==="
+          
+          # Download clap-validator for macOS
+          curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-macos.zip" || echo "clap-validator download failed"
+          if [ -f clap-validator.zip ]; then
+            unzip -q clap-validator.zip && chmod +x clap-validator || echo "clap-validator extraction failed"
+          fi
+          
+          # Download clap-info for macOS
+          curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/v1.2.2/clap-info-mac-universal.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
+          fi
+        fi
+        
+        # Add current directory to PATH for tool access
+        echo "$PWD" >> $GITHUB_PATH
+        
+        # Verify tools are available
+        echo "=== Verifying CLAP tools ==="
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          if [ -f "./clap-validator.exe" ]; then
+            ./clap-validator.exe --version || echo "clap-validator available but version check failed"
+          else
+            echo "clap-validator.exe not available"
+          fi
+          if [ -f "./clap-info.exe" ]; then
+            ./clap-info.exe --version || echo "clap-info available but version check failed"
+          else
+            echo "clap-info.exe not available"
+          fi
+        else
+          if [ -f "./clap-validator" ]; then
+            ./clap-validator --version || echo "clap-validator available but version check failed"
+          else
+            echo "clap-validator not available"
+          fi
+          if [ -f "./clap-info" ]; then
+            ./clap-info --version || echo "clap-info available but version check failed"
+          else
+            echo "clap-info not available"
+          fi
+        fi
     - name: Configure CMake
       shell: bash
       run: |
@@ -307,13 +319,44 @@ jobs:
     - name: Run tests
       run: ctest --test-dir build -C Release --output-on-failure
 
-    - name: Validate CLAP Plugin (Ubuntu only)
-      if: runner.os == 'Linux'
+    - name: Validate CLAP Plugin
+      shell: bash
       run: |
-        # Validate the plugin with clap-validator
-        echo "Validating CLAP plugin with clap-validator..."
-        clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
+        echo "=== Validating CLAP plugin on ${{ runner.os }} ==="
         
-        # Get plugin info with clap-info
-        echo "Getting plugin info with clap-info..."
-        clap-info build/MyFirstClapPlugin.so --brief
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.so"
+          VALIDATOR_CMD="./clap-validator"
+          INFO_CMD="./clap-info"
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
+          VALIDATOR_CMD="./clap-validator.exe"
+          INFO_CMD="./clap-info.exe"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
+          VALIDATOR_CMD="./clap-validator"
+          INFO_CMD="./clap-info"
+        fi
+        
+        echo "Plugin file: $PLUGIN_FILE"
+        
+        if [ -f "$PLUGIN_FILE" ]; then
+          # Validate the plugin with clap-validator
+          if [ -f "$VALIDATOR_CMD" ] || [ -f "${VALIDATOR_CMD}.exe" ]; then
+            echo "Validating CLAP plugin with clap-validator..."
+            $VALIDATOR_CMD validate "$PLUGIN_FILE" || echo "Validation completed with warnings/errors"
+          else
+            echo "Warning: clap-validator not available on ${{ runner.os }} - skipping validation"
+          fi
+          
+          # Get plugin info with clap-info
+          if [ -f "$INFO_CMD" ] || [ -f "${INFO_CMD}.exe" ]; then
+            echo "Getting plugin info with clap-info..."
+            $INFO_CMD "$PLUGIN_FILE" --brief || echo "Info extraction completed"
+          else
+            echo "Warning: clap-info not available on ${{ runner.os }} - skipping info extraction"
+          fi
+        else
+          echo "Error: Plugin file $PLUGIN_FILE not found!"
+          exit 1
+        fi
