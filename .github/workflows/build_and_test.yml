@@ -340,38 +340,104 @@ jobs:
           
           # Try to download clap-validator for macOS (may fail)
           echo "Attempting to download clap-validator for macOS..."
-          if curl -L -o clap-validator.zip https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-macos.zip 2>/dev/null; then
-            if [ -f clap-validator.zip ] && [ $(stat -f%z "clap-validator.zip") -gt 100 ]; then
-              echo "clap-validator downloaded successfully ($(stat -f%z "clap-validator.zip") bytes)"
-              if unzip -q clap-validator.zip; then
-                chmod +x clap-validator
-                echo "clap-validator extracted successfully"
+          VALIDATOR_URL="https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-macos.zip"
+          echo "Trying URL: $VALIDATOR_URL"
+          
+          # First check if the URL exists with a HEAD request
+          if curl -L --head --silent --fail "$VALIDATOR_URL" >/dev/null 2>&1; then
+            echo "URL exists, downloading..."
+            if curl -L -o clap-validator.zip "$VALIDATOR_URL"; then
+              if [ -f clap-validator.zip ] && [ $(stat -f%z "clap-validator.zip") -gt 1000 ]; then
+                echo "clap-validator downloaded successfully ($(stat -f%z "clap-validator.zip") bytes)"
+                if unzip -q clap-validator.zip; then
+                  chmod +x clap-validator
+                  echo "clap-validator extracted successfully"
+                else
+                  echo "Failed to extract clap-validator.zip"
+                fi
               else
-                echo "Failed to extract clap-validator.zip"
+                echo "Downloaded clap-validator.zip is too small ($(stat -f%z "clap-validator.zip" 2>/dev/null || echo 0) bytes) - likely a 404 page"
+                rm -f clap-validator.zip
               fi
             else
-              echo "Downloaded clap-validator.zip is missing or too small - validation will be skipped"
+              echo "Failed to download clap-validator from $VALIDATOR_URL"
             fi
           else
-            echo "macOS clap-validator binary not available - validation will be skipped"
+            echo "clap-validator URL does not exist: $VALIDATOR_URL"
+            echo "Trying alternative URL format..."
+            # Try alternative URL format
+            ALT_VALIDATOR_URL="https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-macos.zip"
+            echo "Trying alternative URL: $ALT_VALIDATOR_URL"
+            if curl -L --head --silent --fail "$ALT_VALIDATOR_URL" >/dev/null 2>&1; then
+              echo "Alternative URL exists, downloading..."
+              if curl -L -o clap-validator.zip "$ALT_VALIDATOR_URL"; then
+                if [ -f clap-validator.zip ] && [ $(stat -f%z "clap-validator.zip") -gt 1000 ]; then
+                  echo "clap-validator downloaded successfully ($(stat -f%z "clap-validator.zip") bytes)"
+                  if unzip -q clap-validator.zip; then
+                    chmod +x clap-validator
+                    echo "clap-validator extracted successfully"
+                  else
+                    echo "Failed to extract clap-validator.zip"
+                  fi
+                else
+                  echo "Downloaded clap-validator.zip is too small - likely a 404 page"
+                  rm -f clap-validator.zip
+                fi
+              fi
+            else
+              echo "macOS clap-validator binary not available at either URL - validation will be skipped"
+            fi
           fi
           
           # Try to download clap-info for macOS (may fail)
           echo "Attempting to download clap-info for macOS..."
-          if curl -L -o clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-macos-x64.zip 2>/dev/null; then
-            if [ -f clap-info.zip ] && [ $(stat -f%z "clap-info.zip") -gt 100 ]; then
-              echo "clap-info downloaded successfully ($(stat -f%z "clap-info.zip") bytes)"
-              if unzip -q clap-info.zip; then
-                chmod +x clap-info
-                echo "clap-info extracted successfully"
+          INFO_URL="https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-macos-x64.zip"
+          echo "Trying URL: $INFO_URL"
+          
+          # First check if the URL exists with a HEAD request
+          if curl -L --head --silent --fail "$INFO_URL" >/dev/null 2>&1; then
+            echo "URL exists, downloading..."
+            if curl -L -o clap-info.zip "$INFO_URL"; then
+              if [ -f clap-info.zip ] && [ $(stat -f%z "clap-info.zip") -gt 1000 ]; then
+                echo "clap-info downloaded successfully ($(stat -f%z "clap-info.zip") bytes)"
+                if unzip -q clap-info.zip; then
+                  chmod +x clap-info
+                  echo "clap-info extracted successfully"
+                else
+                  echo "Failed to extract clap-info.zip"
+                fi
               else
-                echo "Failed to extract clap-info.zip"
+                echo "Downloaded clap-info.zip is too small ($(stat -f%z "clap-info.zip" 2>/dev/null || echo 0) bytes) - likely a 404 page"
+                rm -f clap-info.zip
               fi
             else
-              echo "Downloaded clap-info.zip is missing or too small - info extraction will be skipped"
+              echo "Failed to download clap-info from $INFO_URL"
             fi
           else
-            echo "macOS clap-info binary not available - info extraction will be skipped"
+            echo "clap-info URL does not exist: $INFO_URL"
+            echo "Trying alternative URL format..."
+            # Try alternative URL format
+            ALT_INFO_URL="https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-macos.zip"
+            echo "Trying alternative URL: $ALT_INFO_URL"
+            if curl -L --head --silent --fail "$ALT_INFO_URL" >/dev/null 2>&1; then
+              echo "Alternative URL exists, downloading..."
+              if curl -L -o clap-info.zip "$ALT_INFO_URL"; then
+                if [ -f clap-info.zip ] && [ $(stat -f%z "clap-info.zip") -gt 1000 ]; then
+                  echo "clap-info downloaded successfully ($(stat -f%z "clap-info.zip") bytes)"
+                  if unzip -q clap-info.zip; then
+                    chmod +x clap-info
+                    echo "clap-info extracted successfully"
+                  else
+                    echo "Failed to extract clap-info.zip"
+                  fi
+                else
+                  echo "Downloaded clap-info.zip is too small - likely a 404 page"
+                  rm -f clap-info.zip
+                fi
+              fi
+            else
+              echo "macOS clap-info binary not available at either URL - info extraction will be skipped"
+            fi
           fi
         fi
         
