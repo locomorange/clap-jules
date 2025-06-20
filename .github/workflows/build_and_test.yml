@@ -221,115 +221,29 @@ jobs:
         echo "=== Setting up CLAP tools for ${{ runner.os }} ==="
         
         if [ "$RUNNER_OS" = "Linux" ]; then
-          # Download and setup clap-validator for Linux
-          echo "Downloading clap-validator for Linux..."
-          VALIDATOR_DOWNLOADED=false
-          for attempt in 1 2 3; do
-            if wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz; then
-              # Verify the downloaded file exists and has reasonable size
-              if [ -f clap-validator.tar.gz ] && [ $(wc -c < "clap-validator.tar.gz") -gt 100 ]; then
-                echo "clap-validator downloaded successfully ($(wc -c < "clap-validator.tar.gz") bytes)"
-                if tar -xzf clap-validator.tar.gz; then
-                  chmod +x clap-validator
-                  VALIDATOR_DOWNLOADED=true
-                  break
-                else
-                  echo "Failed to extract clap-validator.tar.gz"
-                fi
-              else
-                echo "Downloaded clap-validator.tar.gz is missing or too small"
-              fi
-            else
-              echo "Failed to download clap-validator, attempt $attempt"
-              sleep 2
-            fi
-          done
-          
-          if [ "$VALIDATOR_DOWNLOADED" = false ]; then
-            echo "Warning: clap-validator could not be downloaded or extracted - validation will be skipped"
+          # Download clap-validator for Linux
+          wget -O clap-validator.tar.gz "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz" || echo "clap-validator download failed"
+          if [ -f clap-validator.tar.gz ]; then
+            tar -xzf clap-validator.tar.gz && chmod +x clap-validator || echo "clap-validator extraction failed"
           fi
           
-          # Download and setup clap-info for Linux
-          echo "Downloading clap-info for Linux..."
-          INFO_DOWNLOADED=false
-          for attempt in 1 2 3; do
-            if wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip; then
-              # Verify the downloaded file exists and has reasonable size
-              if [ -f clap-info.zip ] && [ $(stat -c%s "clap-info.zip") -gt 100 ]; then
-                echo "clap-info downloaded successfully ($(stat -c%s "clap-info.zip") bytes)"
-                if unzip -q clap-info.zip; then
-                  chmod +x clap-info
-                  INFO_DOWNLOADED=true
-                  break
-                else
-                  echo "Failed to extract clap-info.zip"
-                fi
-              else
-                echo "Downloaded clap-info.zip is missing or too small"
-              fi
-            else
-              echo "Failed to download clap-info, attempt $attempt"
-              sleep 2
-            fi
-          done
-          
-          if [ "$INFO_DOWNLOADED" = false ]; then
-            echo "Warning: clap-info could not be downloaded or extracted - info extraction will be skipped"
+          # Download clap-info for Linux
+          wget -O clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
           fi
           
         elif [ "$RUNNER_OS" = "Windows" ]; then
-          # Download and setup clap-validator for Windows
-          echo "Downloading clap-validator for Windows..."
-          VALIDATOR_DOWNLOADED=false
-          for attempt in 1 2 3; do
-            if curl -L -o clap-validator.zip https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip; then
-              # Verify the downloaded file exists and has reasonable size
-              if [ -f clap-validator.zip ] && [ $(stat -c%s "clap-validator.zip") -gt 100 ]; then
-                echo "clap-validator downloaded successfully ($(stat -c%s "clap-validator.zip") bytes)"
-                if unzip -q clap-validator.zip; then
-                  VALIDATOR_DOWNLOADED=true
-                  break
-                else
-                  echo "Failed to extract clap-validator.zip"
-                fi
-              else
-                echo "Downloaded clap-validator.zip is missing or too small"
-              fi
-            else
-              echo "Failed to download clap-validator, attempt $attempt"
-              sleep 2
-            fi
-          done
-          
-          if [ "$VALIDATOR_DOWNLOADED" = false ]; then
-            echo "Warning: clap-validator could not be downloaded or extracted - validation will be skipped"
+          # Download clap-validator for Windows
+          curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip" || echo "clap-validator download failed"
+          if [ -f clap-validator.zip ]; then
+            unzip -q clap-validator.zip || echo "clap-validator extraction failed"
           fi
           
-          # Download and setup clap-info for Windows
-          echo "Downloading clap-info for Windows..."
-          INFO_DOWNLOADED=false
-          for attempt in 1 2 3; do
-            if curl -L -o clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-win-x64.zip; then
-              # Verify the downloaded file exists and has reasonable size
-              if [ -f clap-info.zip ] && [ $(stat -c%s "clap-info.zip") -gt 100 ]; then
-                echo "clap-info downloaded successfully ($(stat -c%s "clap-info.zip") bytes)"
-                if unzip -q clap-info.zip; then
-                  INFO_DOWNLOADED=true
-                  break
-                else
-                  echo "Failed to extract clap-info.zip"
-                fi
-              else
-                echo "Downloaded clap-info.zip is missing or too small"
-              fi
-            else
-              echo "Failed to download clap-info, attempt $attempt"
-              sleep 2
-            fi
-          done
-          
-          if [ "$INFO_DOWNLOADED" = false ]; then
-            echo "Warning: clap-info could not be downloaded or extracted - info extraction will be skipped"
+          # Download clap-info for Windows
+          curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-win-x64.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip || echo "clap-info extraction failed"
           fi
           
         elif [ "$RUNNER_OS" = "macOS" ]; then
