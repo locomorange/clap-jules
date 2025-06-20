@@ -7,8 +7,8 @@ on:
     # branches: [ main, master ]
 
 env:
-  CLAP_VALIDATOR_VERSION: '0.4.0'
-  CLAP_INFO_VERSION: 'v1.3.0'
+  CLAP_VALIDATOR_VERSION: '0.3.2'
+  CLAP_INFO_VERSION: 'v1.2.2'
 
 jobs:
   build:
