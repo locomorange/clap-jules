@@ -143,6 +143,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: build # Ensures build job completes before test job starts
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
