@@ -227,8 +227,8 @@ jobs:
           for attempt in 1 2 3; do
             if wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz; then
               # Verify the downloaded file exists and has reasonable size
-              if [ -f clap-validator.tar.gz ] && [ $(stat -c%s "clap-validator.tar.gz") -gt 100 ]; then
-                echo "clap-validator downloaded successfully ($(stat -c%s "clap-validator.tar.gz") bytes)"
+              if [ -f clap-validator.tar.gz ] && [ $(wc -c < "clap-validator.tar.gz") -gt 100 ]; then
+                echo "clap-validator downloaded successfully ($(wc -c < "clap-validator.tar.gz") bytes)"
                 if tar -xzf clap-validator.tar.gz; then
                   chmod +x clap-validator
                   VALIDATOR_DOWNLOADED=true
