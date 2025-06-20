@@ -7,8 +7,8 @@ on:
     # branches: [ main, master ]
 
 env:
-  CLAP_VALIDATOR_VERSION: '0.3.2'
-  CLAP_INFO_VERSION: 'v1.2.2'
+  CLAP_VALIDATOR_VERSION: '0.4.0'
+  CLAP_INFO_VERSION: 'v1.3.0'
 
 jobs:
   build:
@@ -223,58 +223,117 @@ jobs:
         if [ "$RUNNER_OS" = "Linux" ]; then
           # Download and setup clap-validator for Linux
           echo "Downloading clap-validator for Linux..."
+          VALIDATOR_DOWNLOADED=false
           for attempt in 1 2 3; do
             if wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz; then
-              break
+              # Verify the downloaded file exists and has reasonable size
+              if [ -f clap-validator.tar.gz ] && [ $(stat -c%s "clap-validator.tar.gz") -gt 100 ]; then
+                echo "clap-validator downloaded successfully ($(stat -c%s "clap-validator.tar.gz") bytes)"
+                if tar -xzf clap-validator.tar.gz; then
+                  chmod +x clap-validator
+                  VALIDATOR_DOWNLOADED=true
+                  break
+                else
+                  echo "Failed to extract clap-validator.tar.gz"
+                fi
+              else
+                echo "Downloaded clap-validator.tar.gz is missing or too small"
+              fi
             else
               echo "Failed to download clap-validator, attempt $attempt"
               sleep 2
             fi
           done
-          tar -xzf clap-validator.tar.gz
-          chmod +x clap-validator
+          
+          if [ "$VALIDATOR_DOWNLOADED" = false ]; then
+            echo "Warning: clap-validator could not be downloaded or extracted - validation will be skipped"
+          fi
           
           # Download and setup clap-info for Linux
           echo "Downloading clap-info for Linux..."
+          INFO_DOWNLOADED=false
           for attempt in 1 2 3; do
             if wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip; then
-              break
+              # Verify the downloaded file exists and has reasonable size
+              if [ -f clap-info.zip ] && [ $(stat -c%s "clap-info.zip") -gt 100 ]; then
+                echo "clap-info downloaded successfully ($(stat -c%s "clap-info.zip") bytes)"
+                if unzip -q clap-info.zip; then
+                  chmod +x clap-info
+                  INFO_DOWNLOADED=true
+                  break
+                else
+                  echo "Failed to extract clap-info.zip"
+                fi
+              else
+                echo "Downloaded clap-info.zip is missing or too small"
+              fi
             else
               echo "Failed to download clap-info, attempt $attempt"
               sleep 2
             fi
           done
-          unzip -q clap-info.zip
-          chmod +x clap-info
+          
+          if [ "$INFO_DOWNLOADED" = false ]; then
+            echo "Warning: clap-info could not be downloaded or extracted - info extraction will be skipped"
+          fi
           
         elif [ "$RUNNER_OS" = "Windows" ]; then
           # Download and setup clap-validator for Windows
           echo "Downloading clap-validator for Windows..."
+          VALIDATOR_DOWNLOADED=false
           for attempt in 1 2 3; do
             if curl -L -o clap-validator.zip https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip; then
-              break
+              # Verify the downloaded file exists and has reasonable size
+              if [ -f clap-validator.zip ] && [ $(stat -c%s "clap-validator.zip") -gt 100 ]; then
+                echo "clap-validator downloaded successfully ($(stat -c%s "clap-validator.zip") bytes)"
+                if unzip -q clap-validator.zip; then
+                  VALIDATOR_DOWNLOADED=true
+                  break
+                else
+                  echo "Failed to extract clap-validator.zip"
+                fi
+              else
+                echo "Downloaded clap-validator.zip is missing or too small"
+              fi
             else
               echo "Failed to download clap-validator, attempt $attempt"
               sleep 2
             fi
           done
-          unzip -q clap-validator.zip
+          
+          if [ "$VALIDATOR_DOWNLOADED" = false ]; then
+            echo "Warning: clap-validator could not be downloaded or extracted - validation will be skipped"
+          fi
           
           # Download and setup clap-info for Windows
           echo "Downloading clap-info for Windows..."
+          INFO_DOWNLOADED=false
           for attempt in 1 2 3; do
             if curl -L -o clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-win-x64.zip; then
-              break
+              # Verify the downloaded file exists and has reasonable size
+              if [ -f clap-info.zip ] && [ $(stat -c%s "clap-info.zip") -gt 100 ]; then
+                echo "clap-info downloaded successfully ($(stat -c%s "clap-info.zip") bytes)"
+                if unzip -q clap-info.zip; then
+                  INFO_DOWNLOADED=true
+                  break
+                else
+                  echo "Failed to extract clap-info.zip"
+                fi
+              else
+                echo "Downloaded clap-info.zip is missing or too small"
+              fi
             else
               echo "Failed to download clap-info, attempt $attempt"
               sleep 2
             fi
           done
-          unzip -q clap-info.zip
+          
+          if [ "$INFO_DOWNLOADED" = false ]; then
+            echo "Warning: clap-info could not be downloaded or extracted - info extraction will be skipped"
+          fi
           
         elif [ "$RUNNER_OS" = "macOS" ]; then
           # Note: macOS binaries might not be available for these specific versions
-          # This is a fallback - we'll try to build from source or use alternative methods
           echo "Warning: macOS binaries for CLAP tools may not be available."
           echo "For clap-validator version ${{ env.CLAP_VALIDATOR_VERSION }} and clap-info version ${{ env.CLAP_INFO_VERSION }}"
           echo "Attempting to download macOS binaries..."
@@ -282,8 +341,17 @@ jobs:
           # Try to download clap-validator for macOS (may fail)
           echo "Attempting to download clap-validator for macOS..."
           if curl -L -o clap-validator.zip https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-macos.zip 2>/dev/null; then
-            unzip -q clap-validator.zip
-            chmod +x clap-validator
+            if [ -f clap-validator.zip ] && [ $(stat -f%z "clap-validator.zip") -gt 100 ]; then
+              echo "clap-validator downloaded successfully ($(stat -f%z "clap-validator.zip") bytes)"
+              if unzip -q clap-validator.zip; then
+                chmod +x clap-validator
+                echo "clap-validator extracted successfully"
+              else
+                echo "Failed to extract clap-validator.zip"
+              fi
+            else
+              echo "Downloaded clap-validator.zip is missing or too small - validation will be skipped"
+            fi
           else
             echo "macOS clap-validator binary not available - validation will be skipped"
           fi
@@ -291,8 +359,17 @@ jobs:
           # Try to download clap-info for macOS (may fail)
           echo "Attempting to download clap-info for macOS..."
           if curl -L -o clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-macos-x64.zip 2>/dev/null; then
-            unzip -q clap-info.zip
-            chmod +x clap-info
+            if [ -f clap-info.zip ] && [ $(stat -f%z "clap-info.zip") -gt 100 ]; then
+              echo "clap-info downloaded successfully ($(stat -f%z "clap-info.zip") bytes)"
+              if unzip -q clap-info.zip; then
+                chmod +x clap-info
+                echo "clap-info extracted successfully"
+              else
+                echo "Failed to extract clap-info.zip"
+              fi
+            else
+              echo "Downloaded clap-info.zip is missing or too small - info extraction will be skipped"
+            fi
           else
             echo "macOS clap-info binary not available - info extraction will be skipped"
           fi
