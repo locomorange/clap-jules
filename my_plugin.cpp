@@ -405,6 +405,13 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     // Configure GLFW window hints
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // Start hidden
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+
+    // Add conditional decoration hint
+    if (self->is_floating == false) {
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    } else {
+        glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+    }
     
     // Create GLFW window
     self->window = glfwCreateWindow(
