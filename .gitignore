@@ -44,3 +44,7 @@ clap-info
 clap-info.zip
 clap-validator
 clap-validator.tar.gz
+
+# CLAP Host build artifacts (should not be committed)
+clap-host-repo/
+screenshots/

@@ -118,6 +118,19 @@ This project includes automated setup for essential CLAP development tools in th
 
 Both tools are automatically downloaded and configured in the GitHub Actions workflow for Ubuntu/Linux builds. They provide validation feedback and detailed plugin analysis to ensure CLAP compatibility and quality.
 
+### CLAP Host Integration Testing
+- **Purpose**: Integration testing with reference CLAP host and GUI screenshot capture
+- **Repository**: https://github.com/free-audio/clap-host
+- **Usage**: Automatically builds clap-host, loads the plugin, and captures screenshots
+- **Platforms**: Windows, macOS, Linux with platform-specific screenshot methods
+- **Artifacts**: Screenshots and error logs are uploaded as workflow artifacts
+
+The workflow automatically:
+1. Builds the CLAP host reference implementation on all platforms
+2. Loads the built plugin into the host application
+3. Captures screenshots showing the plugin interface with window decorations
+4. Uploads screenshots and error logs as artifacts for manual inspection
+
 ## Building
 
 ```bash
