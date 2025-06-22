@@ -10,6 +10,7 @@ jobs:
   clap-host-test:
     name: CLAP Host Test and Screenshot on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -66,7 +67,7 @@ jobs:
         # Verify Qt6 installation
         echo "=== Verifying Qt6 Installation ==="
         dpkg -l | grep -E "qt6|libqt6" | head -10 || echo "Qt6 not found in package list"
-        find /usr -name "Qt6*" -type d 2>/dev/null | head -5 || echo "Qt6 directories not found"
+        pkg-config --modversion Qt6Core || echo "Qt6Core not found via pkg-config"
 
     - name: Setup CLAP Host Dependencies (macOS)
       if: runner.os == 'macOS'
@@ -94,24 +95,45 @@ jobs:
         cd clap-host-repo
         echo "=== Building CLAP Host on ${{ runner.os }} ==="
         
+        # Create screenshots directory for potential error logs
+        mkdir -p ../screenshots
+        
         # Check available presets
         echo "Available CMake presets:"
         cmake --list-presets 2>/dev/null || echo "No presets available"
         
         # Try dynamic build first
-        if cmake --preset ninja-system 2>/dev/null; then
-          echo "Using ninja-system preset"
-          cmake --build --preset ninja-system
-        else
-          echo "ninja-system preset not available, using manual configuration"
-          cmake . -B builds/manual -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build builds/manual --config Release
+        BUILD_SUCCESS=false
+        if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-configure-log-${{ runner.os }}.txt; then
+          echo "ninja-system preset configuration successful"
+          if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-build-log-${{ runner.os }}.txt; then
+            echo "ninja-system preset build successful"
+            BUILD_SUCCESS=true
+          fi
+        fi
+        
+        # Fallback to manual configuration if preset failed
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "ninja-system preset failed, trying manual configuration"
+          if cmake . -B builds/manual -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-manual-configure-log-${{ runner.os }}.txt; then
+            echo "Manual configuration successful"
+            if cmake --build builds/manual --config Release 2>&1 | tee ../screenshots/cmake-manual-build-log-${{ runner.os }}.txt; then
+              echo "Manual build successful"
+              BUILD_SUCCESS=true
+            fi
+          fi
+        fi
+        
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "ERROR: All build attempts failed"
+          echo "Build failed on ${{ runner.os }}" > ../screenshots/build-failed-${{ runner.os }}.txt
+          exit 1
         fi
         
         # Find the built executable
         echo "=== Finding CLAP Host executable ==="
-        find builds -name "clap-host*" -type f 2>/dev/null || echo "No clap-host executable found"
-        find . -name "clap-host*" -type f 2>/dev/null || echo "No clap-host executable found anywhere"
+        find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found"
+        find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found anywhere"
         
     - name: Build CLAP Host (Windows)
       if: runner.os == 'Windows'
@@ -120,28 +142,57 @@ jobs:
         cd clap-host-repo
         echo "=== Building CLAP Host on Windows ==="
         
+        # Create screenshots directory for potential error logs
+        mkdir -p ../screenshots
+        
         # Check available presets  
         echo "Available CMake presets:"
         cmake --list-presets 2>/dev/null || echo "No presets available"
         
-        # Use vcpkg static build approach for Windows
-        if cmake --preset vs-vcpkg 2>/dev/null; then
-          echo "Using vs-vcpkg preset"
-          cmake --build --preset vs-vcpkg --config Release
-        elif [ -f "scripts/build.sh" ]; then
-          echo "Using build script"
+        # Try different build approaches
+        BUILD_SUCCESS=false
+        
+        # Try vs-vcpkg preset first
+        if cmake --preset vs-vcpkg 2>&1 | tee ../screenshots/cmake-vs-vcpkg-configure-log-windows.txt; then
+          echo "vs-vcpkg preset configuration successful"
+          if cmake --build --preset vs-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-vs-vcpkg-build-log-windows.txt; then
+            echo "vs-vcpkg preset build successful"
+            BUILD_SUCCESS=true
+          fi
+        fi
+        
+        # Try build script if vs-vcpkg failed
+        if [ "$BUILD_SUCCESS" = "false" ] && [ -f "scripts/build.sh" ]; then
+          echo "Trying build script"
           chmod +x scripts/build.sh
-          ./scripts/build.sh
-        else
-          echo "Manual build for Windows"
-          cmake . -B builds/windows -DCMAKE_BUILD_TYPE=Release
-          cmake --build builds/windows --config Release
+          if ./scripts/build.sh 2>&1 | tee ../screenshots/build-script-log-windows.txt; then
+            echo "Build script successful"
+            BUILD_SUCCESS=true
+          fi
+        fi
+        
+        # Manual build as last resort
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "Trying manual build for Windows"
+          if cmake . -B builds/windows -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-manual-configure-log-windows.txt; then
+            echo "Manual configuration successful"
+            if cmake --build builds/windows --config Release 2>&1 | tee ../screenshots/cmake-manual-build-log-windows.txt; then
+              echo "Manual build successful"
+              BUILD_SUCCESS=true
+            fi
+          fi
+        fi
+        
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "ERROR: All build attempts failed on Windows"
+          echo "Build failed on Windows" > ../screenshots/build-failed-windows.txt
+          exit 1
         fi
         
         # Find the built executable
         echo "=== Finding CLAP Host executable ==="
-        find builds -name "clap-host*" -type f 2>/dev/null || echo "No clap-host executable found"
-        find . -name "clap-host*" -type f 2>/dev/null || echo "No clap-host executable found anywhere"
+        find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-windows.txt || echo "No clap-host executable found"
+        find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-windows.txt || echo "No clap-host executable found anywhere"
 
     - name: Build Plugin for Testing
       shell: bash
