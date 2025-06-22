@@ -5,6 +5,7 @@ on:
     # branches: [ main, master ]
   # push:
     # branches: [ main, master ]
+  workflow_dispatch:  # Allows manual trigger for testing
 
 jobs:
   clap-host-test:

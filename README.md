@@ -131,6 +131,12 @@ The workflow automatically:
 3. Captures screenshots showing the plugin interface with window decorations
 4. Uploads screenshots and error logs as artifacts for manual inspection
 
+For local testing, use the provided script:
+```bash
+./test_clap_host.sh
+```
+This script will build both the plugin and clap-host, then launch the plugin in the host for manual testing.
+
 ## Building
 
 ```bash
