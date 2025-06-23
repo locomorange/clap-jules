@@ -400,13 +400,15 @@ jobs:
         echo "Installing Qt6 and build dependencies..."
         sudo apt-get update -y
         
-        # Install Qt6 and essential build tools
+        # Install Qt6, audio libraries, and essential build tools
         sudo apt-get install -y --no-install-recommends \
           qt6-base-dev \
           qt6-base-private-dev \
           libqt6core6 \
           libqt6gui6 \
           libqt6widgets6 \
+          librtaudio-dev \
+          librtmidi-dev \
           libx11-dev \
           libxcursor-dev \
           libxrandr-dev \
@@ -430,43 +432,55 @@ jobs:
           imagemagick \
           scrot
 
-        # Verify Qt6 installation
-        echo "=== Qt6 Installation Verification ==="
-        pkg-config --exists Qt6Core && echo "Qt6Core found" || echo "Qt6Core NOT found"
+        # Verify Qt6 and audio library installation
+        echo "=== Installation Verification ==="
+        pkg-config --exists Qt6Core && echo "✓ Qt6Core found" || echo "✗ Qt6Core NOT found"
+        pkg-config --exists rtaudio && echo "✓ rtaudio found" || echo "✗ rtaudio NOT found"
+        pkg-config --exists rtmidi && echo "✓ rtmidi found" || echo "✗ rtmidi NOT found"
         pkg-config --modversion Qt6Core || echo "Qt6Core version check failed"
-        find /usr -name "Qt6CoreConfig.cmake" 2>/dev/null || echo "Qt6CoreConfig.cmake not found"
+        pkg-config --modversion rtaudio || echo "rtaudio version check failed"
+        pkg-config --modversion rtmidi || echo "rtmidi version check failed"
 
     - name: Setup Qt6 and Dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
         echo "Installing Qt6 and build dependencies on macOS..."
         brew update
-        brew install qt6 pkg-config ninja cmake git curl
+        brew install qt6 pkg-config rtaudio rtmidi ninja cmake git curl
         
         # Set Qt6 environment variables
         echo "$(brew --prefix qt6)/bin" >> $GITHUB_PATH
         echo "CMAKE_PREFIX_PATH=$(brew --prefix qt6)" >> $GITHUB_ENV
         
-        # Verify Qt6 installation
-        echo "=== Qt6 Installation Verification ==="
-        brew list qt6 || echo "Qt6 not installed via brew"
-        find $(brew --prefix qt6) -name "Qt6CoreConfig.cmake" 2>/dev/null || echo "Qt6CoreConfig.cmake not found"
+        # Verify installation
+        echo "=== Installation Verification ==="
+        brew list qt6 && echo "✓ Qt6 installed" || echo "✗ Qt6 not installed"
+        brew list rtaudio && echo "✓ rtaudio installed" || echo "✗ rtaudio not installed"
+        brew list rtmidi && echo "✓ rtmidi installed" || echo "✗ rtmidi not installed"
+        pkg-config --exists Qt6Core && echo "✓ Qt6Core pkg-config found" || echo "✗ Qt6Core pkg-config not found"
+        pkg-config --exists rtaudio && echo "✓ rtaudio pkg-config found" || echo "✗ rtaudio pkg-config not found"
+        pkg-config --exists rtmidi && echo "✓ rtmidi pkg-config found" || echo "✗ rtmidi pkg-config not found"
 
     - name: Setup Qt6 and Dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
         echo "Setting up build tools on Windows..."
-        # Use vcpkg to install Qt6
-        git clone https://github.com/Microsoft/vcpkg.git vcpkg
-        .\vcpkg\bootstrap-vcpkg.bat
-        echo "$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_PATH
+        # Initialize vcpkg for the clap-host project
+        git clone https://github.com/Microsoft/vcpkg.git vcpkg-install
+        .\vcpkg-install\bootstrap-vcpkg.bat
         
-        # Install Qt6 via vcpkg
-        .\vcpkg\vcpkg install qt6-base:x64-windows qt6-tools:x64-windows
+        # Install Qt6 and audio libraries via vcpkg
+        # Using the correct package names for vcpkg
+        echo "Installing dependencies via vcpkg..."
+        .\vcpkg-install\vcpkg install qt6-base[core]:x64-windows qt6-widgets:x64-windows rtaudio:x64-windows rtmidi:x64-windows
         
-        # Set environment variables
-        echo "CMAKE_TOOLCHAIN_FILE=$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+        # Set environment variables for cmake
+        echo "CMAKE_TOOLCHAIN_FILE=$env:GITHUB_WORKSPACE\vcpkg-install\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
         echo "VCPKG_TARGET_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+        
+        # Verify installation
+        echo "=== Verifying vcpkg packages ==="
+        .\vcpkg-install\vcpkg list
 
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows'
@@ -487,38 +501,35 @@ jobs:
         
         mkdir -p ../screenshots
         
-        # Set Qt6 paths
-        if [ "${{ runner.os }}" = "macOS" ]; then
-          export CMAKE_PREFIX_PATH="$(brew --prefix qt6):$CMAKE_PREFIX_PATH"
-          export Qt6_DIR="$(brew --prefix qt6)/lib/cmake/Qt6"
-        else
-          export Qt6_DIR="/usr/lib/x86_64-linux-gnu/cmake/Qt6"
-        fi
-        
-        echo "Qt6_DIR: $Qt6_DIR"
-        echo "CMAKE_PREFIX_PATH: $CMAKE_PREFIX_PATH"
-        
-        # Try manual build with Qt6 paths
+        # Use ninja-system preset for dynamic build (recommended for Linux/macOS)
         BUILD_SUCCESS=false
         
-        echo "Attempting build with explicit Qt6 paths..."
-        if cmake . -B builds/release -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DQt6_DIR="$Qt6_DIR" \
-          -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
-          2>&1 | tee ../screenshots/cmake-configure-log-${{ runner.os }}.txt; then
+        echo "Building with ninja-system preset (using system libraries)..."
+        if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
           echo "Configuration successful"
-          if cmake --build builds/release --config Release 2>&1 | tee ../screenshots/cmake-build-log-${{ runner.os }}.txt; then
-            echo "Build successful"
+          if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-${{ runner.os }}.txt; then
+            echo "Build successful with ninja-system preset"
             BUILD_SUCCESS=true
           fi
         fi
         
-        # Fallback to preset if manual build failed
+        # Fallback to manual build if preset failed
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "Manual build failed, trying ninja-system preset"
-          if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
-            if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-${{ runner.os }}.txt; then
+          echo "Preset failed, trying manual cmake configuration..."
+          
+          # Set Qt6 paths for manual build
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            export CMAKE_PREFIX_PATH="$(brew --prefix qt6):$CMAKE_PREFIX_PATH"
+          fi
+          
+          if cmake . -B builds/manual -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUsePkgConfig=TRUE \
+            -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+            2>&1 | tee ../screenshots/cmake-manual-configure-log-${{ runner.os }}.txt; then
+            echo "Manual configuration successful"
+            if cmake --build builds/manual --config Release 2>&1 | tee ../screenshots/cmake-manual-build-log-${{ runner.os }}.txt; then
+              echo "Manual build successful"
               BUILD_SUCCESS=true
             fi
           fi
@@ -543,19 +554,39 @@ jobs:
         
         mkdir -p ../screenshots
         
-        # Try manual build with vcpkg
+        # Use vcpkg for Windows builds (static build approach)
         BUILD_SUCCESS=false
         
-        echo "Attempting build with vcpkg toolchain..."
+        echo "Building with external vcpkg toolchain..."
         if cmake . -B builds/release \
            -DCMAKE_BUILD_TYPE=Release \
            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+           -DUsePkgConfig=FALSE \
            2>&1 | tee ../screenshots/cmake-configure-log-windows.txt; then
           echo "Configuration successful"
           if cmake --build builds/release --config Release 2>&1 | tee ../screenshots/cmake-build-log-windows.txt; then
-            echo "Build successful"
+            echo "Build successful with external vcpkg"
             BUILD_SUCCESS=true
+          fi
+        fi
+        
+        # Fallback to built-in vcpkg if external failed
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "External vcpkg failed, trying built-in vcpkg via preset..."
+          
+          # Initialize built-in vcpkg if it doesn't exist
+          if [ ! -d "vcpkg" ]; then
+            git clone https://github.com/Microsoft/vcpkg.git vcpkg
+            cd vcpkg && ./bootstrap-vcpkg.bat && cd ..
+          fi
+          
+          # Try ninja-vcpkg preset
+          if cmake --preset ninja-vcpkg 2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-windows.txt; then
+            if cmake --build --preset ninja-vcpkg 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-windows.txt; then
+              echo "Build successful with ninja-vcpkg preset"
+              BUILD_SUCCESS=true
+            fi
           fi
         fi
         
