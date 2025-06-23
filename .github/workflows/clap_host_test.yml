@@ -11,7 +11,7 @@ jobs:
   clap-host-test:
     name: CLAP Host Test and Screenshot on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -29,8 +29,9 @@ jobs:
         # Update package database
         sudo apt-get update -y
         
-        # Install clap-host dependencies along with existing GUI dependencies
-        echo "Installing clap-host and GUI dependencies..."
+        # Install only essential build tools and GUI dependencies
+        # Let clap-host handle rtaudio/rtmidi via vcpkg to avoid version conflicts
+        echo "Installing build tools and GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
             libx11-dev \
@@ -45,15 +46,13 @@ jobs:
             pkg-config \
             build-essential \
             mesa-utils \
-            qt6-base-dev \
-            qt6-base-dev-tools \
-            libqt6widgets6 \
-            libqt6core6 \
-            libqt6gui6 \
-            librtaudio-dev \
-            librtmidi-dev \
             ninja-build \
             cmake \
+            git \
+            curl \
+            zip \
+            unzip \
+            tar \
             xvfb \
             x11-utils \
             imagemagick; then
@@ -65,22 +64,35 @@ jobs:
           fi
         done
         
-        # Verify Qt6 installation
-        echo "=== Verifying Qt6 Installation ==="
-        dpkg -l | grep -E "qt6|libqt6" | head -10 || echo "Qt6 not found in package list"
-        pkg-config --modversion Qt6Core || echo "Qt6Core not found via pkg-config"
+        # Install vcpkg for dependency management
+        echo "=== Setting up vcpkg ==="
+        git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        ./vcpkg/bootstrap-vcpkg.sh
+        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
 
     - name: Setup CLAP Host Dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        echo "Installing clap-host dependencies on macOS..."
-        brew install qt6 pkg-config rtaudio rtmidi ninja cmake
+        echo "Installing essential build tools on macOS..."
+        # Only install build tools, let clap-host handle audio dependencies
+        brew install pkg-config ninja cmake git curl
         
-        # Verify installation
-        echo "=== Verifying Dependencies ==="
-        brew list | grep -E "(qt6|rtaudio|rtmidi|ninja|cmake)" || echo "Some dependencies not found"
+        # Install vcpkg for dependency management
+        echo "=== Setting up vcpkg ==="
+        git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        ./vcpkg/bootstrap-vcpkg.sh
+        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
 
     - name: Setup CLAP Host Dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "Setting up vcpkg and build tools on Windows..."
+        # Install vcpkg for dependency management
+        git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        .\vcpkg\bootstrap-vcpkg.bat
+        echo "$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_PATH
+      
+    - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
@@ -99,27 +111,53 @@ jobs:
         # Create screenshots directory for potential error logs
         mkdir -p ../screenshots
         
+        # Set vcpkg toolchain
+        export VCPKG_ROOT="$(pwd)/../vcpkg"
+        export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+        
+        echo "Using vcpkg at: $VCPKG_ROOT"
+        echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+        
         # Check available presets
         echo "Available CMake presets:"
         cmake --list-presets 2>/dev/null || echo "No presets available"
         
-        # Try dynamic build first
+        # Try vcpkg-based build first
         BUILD_SUCCESS=false
-        if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-configure-log-${{ runner.os }}.txt; then
-          echo "ninja-system preset configuration successful"
-          if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-build-log-${{ runner.os }}.txt; then
-            echo "ninja-system preset build successful"
+        
+        # Manual build with vcpkg toolchain
+        echo "Trying manual build with vcpkg toolchain"
+        if cmake . -B builds/vcpkg-build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+          -DVCPKG_TARGET_TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-linux' }} \
+          2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-${{ runner.os }}.txt; then
+          echo "vcpkg configuration successful"
+          if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-${{ runner.os }}.txt; then
+            echo "vcpkg build successful"
             BUILD_SUCCESS=true
           fi
         fi
         
-        # Fallback to manual configuration if preset failed
+        # Fallback to preset if vcpkg manual build failed
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "ninja-system preset failed, trying manual configuration"
-          if cmake . -B builds/manual -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-manual-configure-log-${{ runner.os }}.txt; then
-            echo "Manual configuration successful"
-            if cmake --build builds/manual --config Release 2>&1 | tee ../screenshots/cmake-manual-build-log-${{ runner.os }}.txt; then
-              echo "Manual build successful"
+          echo "vcpkg manual build failed, trying ninja-system preset"
+          if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
+            echo "ninja-system preset configuration successful"
+            if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-${{ runner.os }}.txt; then
+              echo "ninja-system preset build successful"
+              BUILD_SUCCESS=true
+            fi
+          fi
+        fi
+        
+        # Last resort: simple cmake build without specific dependencies
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "All advanced builds failed, trying simple build"
+          if cmake . -B builds/simple -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-${{ runner.os }}.txt; then
+            echo "Simple configuration successful"
+            if cmake --build builds/simple --config Release 2>&1 | tee ../screenshots/cmake-simple-build-log-${{ runner.os }}.txt; then
+              echo "Simple build successful"
               BUILD_SUCCESS=true
             fi
           fi
@@ -146,6 +184,13 @@ jobs:
         # Create screenshots directory for potential error logs
         mkdir -p ../screenshots
         
+        # Set vcpkg toolchain
+        export VCPKG_ROOT="$(pwd)/../vcpkg"
+        export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+        
+        echo "Using vcpkg at: $VCPKG_ROOT"
+        echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+        
         # Check available presets  
         echo "Available CMake presets:"
         cmake --list-presets 2>/dev/null || echo "No presets available"
@@ -153,16 +198,33 @@ jobs:
         # Try different build approaches
         BUILD_SUCCESS=false
         
-        # Try vs-vcpkg preset first
-        if cmake --preset vs-vcpkg 2>&1 | tee ../screenshots/cmake-vs-vcpkg-configure-log-windows.txt; then
-          echo "vs-vcpkg preset configuration successful"
-          if cmake --build --preset vs-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-vs-vcpkg-build-log-windows.txt; then
-            echo "vs-vcpkg preset build successful"
+        # Try manual build with vcpkg first
+        echo "Trying manual build with vcpkg toolchain"
+        if cmake . -B builds/vcpkg-build \
+           -DCMAKE_BUILD_TYPE=Release \
+           -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+           -DVCPKG_TARGET_TRIPLET=x64-windows \
+           2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-windows.txt; then
+          echo "vcpkg configuration successful"
+          if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-windows.txt; then
+            echo "vcpkg build successful"
             BUILD_SUCCESS=true
           fi
         fi
         
-        # Try build script if vs-vcpkg failed
+        # Try vs-vcpkg preset if manual vcpkg failed
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "Trying vs-vcpkg preset"
+          if cmake --preset vs-vcpkg 2>&1 | tee ../screenshots/cmake-vs-vcpkg-configure-log-windows.txt; then
+            echo "vs-vcpkg preset configuration successful"
+            if cmake --build --preset vs-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-vs-vcpkg-build-log-windows.txt; then
+              echo "vs-vcpkg preset build successful"
+              BUILD_SUCCESS=true
+            fi
+          fi
+        fi
+        
+        # Try build script if presets failed
         if [ "$BUILD_SUCCESS" = "false" ] && [ -f "scripts/build.sh" ]; then
           echo "Trying build script"
           chmod +x scripts/build.sh
@@ -174,7 +236,7 @@ jobs:
         
         # Manual build as last resort
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "Trying manual build for Windows"
+          echo "Trying simple manual build for Windows"
           if cmake . -B builds/windows -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-manual-configure-log-windows.txt; then
             echo "Manual configuration successful"
             if cmake --build builds/windows --config Release 2>&1 | tee ../screenshots/cmake-manual-build-log-windows.txt; then
@@ -331,16 +393,38 @@ jobs:
       run: |
         Write-Host "=== Testing CLAP Host with Plugin on Windows ==="
         
-        # Find clap-host executable
-        $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host*" -File -Recurse
+        # Find clap-host executable with better pattern matching
+        $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host*.exe" -File -Recurse -ErrorAction SilentlyContinue
+        if (-not $clapHostFiles) {
+          # Try without .exe extension
+          $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host" -File -Recurse -ErrorAction SilentlyContinue
+        }
+        
         if (-not $clapHostFiles) {
           Write-Host "Error: clap-host executable not found!"
           Write-Host "=== Directory listing ==="
-          Get-ChildItem -Path "clap-host-repo" -Name "*clap*" -File -Recurse | Select-Object -First 10
+          Get-ChildItem -Path "clap-host-repo/builds" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20
           exit 1
         }
-        $clapHostPath = Join-Path "clap-host-repo" ($clapHostFiles | Select-Object -First 1)
-        Write-Host "Found clap-host at: $clapHostPath"
+        
+        $clapHostExe = $clapHostFiles | Select-Object -First 1
+        $clapHostPath = Get-ChildItem -Path "clap-host-repo" -Name $clapHostExe -File -Recurse | Select-Object -First 1
+        $clapHostFullPath = Join-Path "clap-host-repo" $clapHostPath
+        Write-Host "Found clap-host at: $clapHostFullPath"
+        
+        # Verify executable is valid
+        if (Test-Path $clapHostFullPath) {
+          Write-Host "Executable exists, checking if it's valid..."
+          try {
+            $fileInfo = Get-ItemProperty $clapHostFullPath
+            Write-Host "File size: $($fileInfo.Length) bytes"
+          } catch {
+            Write-Host "Warning: Could not get file info: $_"
+          }
+        } else {
+          Write-Host "Error: Executable path does not exist: $clapHostFullPath"
+          exit 1
+        }
         
         # Plugin path
         $pluginFile = Join-Path (Get-Location) "build/Release/MyFirstClapPlugin.clap"
@@ -351,7 +435,8 @@ jobs:
         # Test clap-host help first
         Write-Host "=== Testing clap-host help ==="
         try {
-          & $clapHostPath --help
+          $helpResult = & $clapHostFullPath --help 2>1
+          Write-Host "Help output: $helpResult"
         } catch {
           Write-Host "Help command failed: $_"
         }
@@ -359,8 +444,9 @@ jobs:
         # Run clap-host with plugin and take screenshot  
         Write-Host "Running clap-host and taking screenshot..."
         try {
-          $process = Start-Process -FilePath $clapHostPath -ArgumentList "-p", $pluginFile -PassThru -NoNewWindow
-          Start-Sleep -Seconds 15  # Wait for GUI to load
+          $process = Start-Process -FilePath $clapHostFullPath -ArgumentList "-p", $pluginFile -PassThru -WindowStyle Normal -ErrorAction Stop
+          Write-Host "Started clap-host process with PID: $($process.Id)"
+          Start-Sleep -Seconds 20  # Wait for GUI to load
           
           # Take screenshot using .NET
           Add-Type -AssemblyName System.Windows.Forms
@@ -384,7 +470,7 @@ jobs:
           Write-Host "Warning: Screenshot capture failed: $_"
           "CLAP Host test failed: $_" | Out-File -FilePath "screenshots/error-windows.txt"
           try {
-            & $clapHostPath --version | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
+            & $clapHostFullPath --version 2>1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
           } catch {
             "Version check failed: $_" | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
           }
