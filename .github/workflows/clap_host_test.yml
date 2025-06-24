@@ -479,8 +479,8 @@ jobs:
           $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host*.exe" -File -Recurse -ErrorAction SilentlyContinue
           if ($clapHostFiles) {
             $clapHostExe = $clapHostFiles | Select-Object -First 1
-            $clapHostPath = Get-ChildItem -Path "clap-host-repo" -Name $clapHostExe -File -Recurse | Select-Object -First 1
-            $clapHostFullPath = Join-Path "clap-host-repo" $clapHostPath.FullName.Replace((Get-Location).Path + "\clap-host-repo\", "")
+            $foundFile = Get-ChildItem -Path "clap-host-repo" -Filter $clapHostExe -File -Recurse | Select-Object -First 1
+            $clapHostFullPath = $foundFile.FullName
             Write-Host "Found clap-host via recursive search: $clapHostFullPath"
           }
         }
