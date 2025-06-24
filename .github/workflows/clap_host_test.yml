@@ -8,10 +8,67 @@ on:
   workflow_dispatch:  # Allows manual trigger for testing
 
 jobs:
+  build-plugin:
+    name: Build Plugin for CLAP Host Testing on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Set up MSVC (Windows only)
+      if: runner.os == 'Windows'
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Build Plugin
+      shell: bash
+      run: |
+        echo "=== Building plugin for clap-host testing ==="
+        cmake . -B build
+        cmake --build build --config Release
+
+        # Verify plugin exists
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.so"
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
+        fi
+
+        echo "Plugin file: $PLUGIN_FILE"
+        if [ -f "$PLUGIN_FILE" ]; then
+          echo "Plugin built successfully"
+          ls -la "$PLUGIN_FILE"
+        else
+          echo "Error: Plugin file not found!"
+          ls -la build/ || echo "build directory not found"
+          exit 1
+        fi
+
+    - name: Upload Plugin Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: plugin-${{ matrix.os }}-${{ github.sha }}
+        path: |
+          build/MyFirstClapPlugin.so
+          build/Release/MyFirstClapPlugin.clap
+          build/MyFirstClapPlugin.dylib
+        retention-days: 1
+        if-no-files-found: ignore
+
   clap-host-test:
     name: CLAP Host Test and Screenshot on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    needs: build-plugin
     strategy:
       fail-fast: false
       matrix:
@@ -22,6 +79,12 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+
+    - name: Download Plugin Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: plugin-${{ matrix.os }}-${{ github.sha }}
+        path: build/
 
     - name: Setup CLAP Host Dependencies (Linux)
       if: runner.os == 'Linux'
@@ -258,13 +321,10 @@ jobs:
         find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-windows.txt || echo "No clap-host executable found"
         find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-windows.txt || echo "No clap-host executable found anywhere"
 
-    - name: Build Plugin for Testing
+    - name: Verify Plugin Artifact
       shell: bash
       run: |
-        echo "=== Building plugin for testing ==="
-        cmake . -B build
-        cmake --build build --config Release
-
+        echo "=== Verifying plugin artifact ==="
         # Verify plugin exists
         if [ "$RUNNER_OS" = "Linux" ]; then
           PLUGIN_FILE="build/MyFirstClapPlugin.so"
@@ -274,12 +334,13 @@ jobs:
           PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
         fi
 
-        echo "Plugin file: $PLUGIN_FILE"
+        echo "Expected plugin file: $PLUGIN_FILE"
         if [ -f "$PLUGIN_FILE" ]; then
-          echo "Plugin built successfully"
+          echo "Plugin artifact found successfully"
           ls -la "$PLUGIN_FILE"
         else
           echo "Error: Plugin file not found!"
+          echo "Contents of build directory:"
           ls -la build/ || echo "build directory not found"
           exit 1
         fi
@@ -394,37 +455,53 @@ jobs:
       run: |
         Write-Host "=== Testing CLAP Host with Plugin on Windows ==="
 
-        # Find clap-host executable with better pattern matching
-        $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host*.exe" -File -Recurse -ErrorAction SilentlyContinue
-        if (-not $clapHostFiles) {
-          # Try without .exe extension
-          $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host" -File -Recurse -ErrorAction SilentlyContinue
+        # Find clap-host executable by checking expected build output locations
+        $possiblePaths = @(
+          "clap-host-repo\builds\vs-vcpkg\host\Release\clap-host.exe",
+          "clap-host-repo\builds\vs-vcpkg\Release\clap-host.exe", 
+          "clap-host-repo\builds\vcpkg-build\Release\clap-host.exe",
+          "clap-host-repo\builds\vcpkg-build\host\Release\clap-host.exe",
+          "clap-host-repo\builds\windows\Release\clap-host.exe"
+        )
+
+        $clapHostFullPath = $null
+        foreach ($path in $possiblePaths) {
+          if (Test-Path $path) {
+            $clapHostFullPath = $path
+            Write-Host "Found clap-host at expected location: $clapHostFullPath"
+            break
+          }
         }
 
-        if (-not $clapHostFiles) {
+        # If not found in expected locations, search recursively as fallback
+        if (-not $clapHostFullPath) {
+          Write-Host "Not found in expected locations, searching recursively..."
+          $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host*.exe" -File -Recurse -ErrorAction SilentlyContinue
+          if ($clapHostFiles) {
+            $clapHostExe = $clapHostFiles | Select-Object -First 1
+            $clapHostPath = Get-ChildItem -Path "clap-host-repo" -Name $clapHostExe -File -Recurse | Select-Object -First 1
+            $clapHostFullPath = Join-Path "clap-host-repo" $clapHostPath.FullName.Replace((Get-Location).Path + "\clap-host-repo\", "")
+            Write-Host "Found clap-host via recursive search: $clapHostFullPath"
+          }
+        }
+
+        if (-not $clapHostFullPath -or -not (Test-Path $clapHostFullPath)) {
           Write-Host "Error: clap-host executable not found!"
-          Write-Host "=== Directory listing ==="
-          Get-ChildItem -Path "clap-host-repo/builds" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20
+          Write-Host "=== Directory listing of builds folder ==="
+          Get-ChildItem -Path "clap-host-repo/builds" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*clap-host*" } | Select-Object FullName -First 10
+          Write-Host "=== All .exe files in clap-host-repo ==="
+          Get-ChildItem -Path "clap-host-repo" -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName -First 10
           exit 1
         }
 
-        $clapHostExe = $clapHostFiles | Select-Object -First 1
-        $clapHostPath = Get-ChildItem -Path "clap-host-repo" -Name $clapHostExe -File -Recurse | Select-Object -First 1
-        $clapHostFullPath = Join-Path "clap-host-repo" $clapHostPath
-        Write-Host "Found clap-host at: $clapHostFullPath"
+        Write-Host "Using clap-host executable: $clapHostFullPath"
 
         # Verify executable is valid
-        if (Test-Path $clapHostFullPath) {
-          Write-Host "Executable exists, checking if it's valid..."
-          try {
-            $fileInfo = Get-ItemProperty $clapHostFullPath
-            Write-Host "File size: $($fileInfo.Length) bytes"
-          } catch {
-            Write-Host "Warning: Could not get file info: $_"
-          }
-        } else {
-          Write-Host "Error: Executable path does not exist: $clapHostFullPath"
-          exit 1
+        try {
+          $fileInfo = Get-ItemProperty $clapHostFullPath
+          Write-Host "File size: $($fileInfo.Length) bytes"
+        } catch {
+          Write-Host "Warning: Could not get file info: $_"
         }
 
         # Plugin path
