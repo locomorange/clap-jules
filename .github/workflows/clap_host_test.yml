@@ -381,12 +381,43 @@ jobs:
 
         # Run clap-host with plugin and take screenshot after a delay
         echo "=== Running clap-host with plugin ==="
-        timeout 30s bash -c "
-          '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+        timeout 45s bash -c "
+          echo 'Testing clap-host arguments support...'
+          '$CLAP_HOST_EXEC' --help > ../screenshots/clap-host-help-linux.txt 2>&1 || echo 'Help command failed'
+          
+          echo 'Starting clap-host with GUI arguments...'
+          if grep -q 'show-gui' ../screenshots/clap-host-help-linux.txt 2>/dev/null; then
+            echo 'Using GUI-specific arguments'
+            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' --show-gui --no-minimized &
+          else
+            echo 'Using basic arguments'
+            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+          fi
+          
           CLAP_PID=\$!
-          sleep 15  # Wait for GUI to load
+          echo \"Started clap-host with PID: \$CLAP_PID\"
+          
+          # Wait and check if process is still running
+          sleep 5
+          if kill -0 \$CLAP_PID 2>/dev/null; then
+            echo 'Process is running, waiting for GUI to load...'
+            sleep 20  # Wait for GUI to load
+          else
+            echo 'Warning: clap-host process may have exited early, retrying with basic args...'
+            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+            CLAP_PID=\$!
+            echo \"Restarted clap-host with PID: \$CLAP_PID\"
+            sleep 15
+          fi
+          
+          echo 'Checking for GUI windows...'
+          xwininfo -root -tree | grep -i clap > ../screenshots/clap-windows-linux.txt 2>&1 || echo 'No CLAP windows found'
+          
+          echo 'Taking screenshot...'
           import -window root screenshots/clap-host-linux-screenshot.png 2>/dev/null || echo 'Screenshot failed'
+          
           kill \$CLAP_PID 2>/dev/null || true
+          echo 'Screenshot capture completed'
         " || echo "Screenshot capture completed (timeout expected)"
 
         # Stop virtual display
@@ -431,12 +462,40 @@ jobs:
 
         # Run clap-host with plugin and take screenshot
         echo "Running clap-host and taking screenshot..."
-        timeout 30s bash -c "
-          '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+        timeout 45s bash -c "
+          echo 'Testing clap-host arguments support...'
+          '$CLAP_HOST_EXEC' --help > ../screenshots/clap-host-help-macos.txt 2>&1 || echo 'Help command failed'
+          
+          echo 'Starting clap-host with GUI arguments...'
+          if grep -q 'show-gui' ../screenshots/clap-host-help-macos.txt 2>/dev/null; then
+            echo 'Using GUI-specific arguments'
+            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' --show-gui --no-minimized &
+          else
+            echo 'Using basic arguments'
+            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+          fi
+          
           CLAP_PID=\$!
-          sleep 15  # Wait for GUI to load
+          echo \"Started clap-host with PID: \$CLAP_PID\"
+          
+          # Wait and check if process is still running
+          sleep 5
+          if kill -0 \$CLAP_PID 2>/dev/null; then
+            echo 'Process is running, waiting for GUI to load...'
+            sleep 20  # Wait for GUI to load
+          else
+            echo 'Warning: clap-host process may have exited early, retrying with basic args...'
+            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+            CLAP_PID=\$!
+            echo \"Restarted clap-host with PID: \$CLAP_PID\"
+            sleep 15
+          fi
+          
+          echo 'Taking screenshot...'
           screencapture -x screenshots/clap-host-macos-screenshot.png
+          
           kill \$CLAP_PID 2>/dev/null || true
+          echo 'Screenshot capture completed'
         " || echo "Screenshot capture completed (timeout expected)"
 
         # Verify screenshot was created
@@ -522,33 +581,94 @@ jobs:
         # Run clap-host with plugin and take screenshot
         Write-Host "Running clap-host and taking screenshot..."
         try {
-          $process = Start-Process -FilePath $clapHostFullPath -ArgumentList "-p", $pluginFile -PassThru -WindowStyle Normal -ErrorAction Stop
+          # First try with GUI-specific arguments if supported
+          Write-Host "Testing clap-host arguments support..."
+          $helpOutput = & $clapHostFullPath --help 2>&1 | Out-String
+          Write-Host "Available arguments: $helpOutput"
+          
+          # Determine arguments based on help output
+          $arguments = @("-p", $pluginFile)
+          if ($helpOutput -match "--show-gui") {
+            $arguments += "--show-gui"
+            Write-Host "Adding --show-gui argument"
+          }
+          if ($helpOutput -match "--no-minimized") {
+            $arguments += "--no-minimized"
+            Write-Host "Adding --no-minimized argument"
+          }
+          
+          Write-Host "Starting clap-host with arguments: $($arguments -join ' ')"
+          
+          $process = Start-Process -FilePath $clapHostFullPath -ArgumentList $arguments -PassThru -WindowStyle Normal -ErrorAction Stop
           Write-Host "Started clap-host process with PID: $($process.Id)"
-          Start-Sleep -Seconds 20  # Wait for GUI to load
+          
+          # Wait and check if process is still running
+          Start-Sleep -Seconds 5
+          if ($process.HasExited) {
+            Write-Host "Warning: clap-host process exited early with code: $($process.ExitCode)"
+            
+            # Try without GUI arguments
+            Write-Host "Retrying without GUI-specific arguments..."
+            $basicArguments = @("-p", $pluginFile)
+            $process = Start-Process -FilePath $clapHostFullPath -ArgumentList $basicArguments -PassThru -WindowStyle Normal -ErrorAction Stop
+            Write-Host "Restarted clap-host with basic arguments, PID: $($process.Id)"
+            Start-Sleep -Seconds 5
+          }
+          
+          if (-not $process.HasExited) {
+            Write-Host "Process is running, waiting for GUI to fully load..."
+            Start-Sleep -Seconds 25  # Extended wait for GUI to load
+            
+            # Check for GUI windows
+            Write-Host "Checking for CLAP GUI windows..."
+            try {
+              $clapProcesses = Get-Process | Where-Object { $_.ProcessName -like "*clap*" }
+              $clapProcesses | ForEach-Object { 
+                Write-Host " - Process: $($_.ProcessName), PID: $($_.Id), HasMainWindow: $($_.MainWindowTitle -ne ''), WindowTitle: '$($_.MainWindowTitle)'" 
+              }
+            } catch {
+              Write-Host "Failed to enumerate processes: $_"
+            }
+          } else {
+            Write-Host "Process exited, capturing version info..."
+            & $clapHostFullPath --version 2>&1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
+          }
 
           # Take screenshot using .NET
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
 
+          Write-Host "Capturing screenshot..."
           $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          Write-Host "Screen bounds: Width=$($bounds.Width), Height=$($bounds.Height)"
+          
           $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
           $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-          $bitmap.Save("screenshots/clap-host-windows-screenshot.png")
+          
+          $screenshotPath = "screenshots/clap-host-windows-screenshot.png"
+          $bitmap.Save($screenshotPath)
+          Write-Host "Screenshot saved to: $screenshotPath"
 
           $graphics.Dispose()
           $bitmap.Dispose()
 
           # Stop clap-host
-          Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+          if (-not $process.HasExited) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            Write-Host "Stopped clap-host process"
+          }
 
           Write-Host "Screenshot captured successfully"
-          Get-ChildItem "screenshots/clap-host-windows-screenshot.png"
+          if (Test-Path $screenshotPath) {
+            $fileInfo = Get-ChildItem $screenshotPath
+            Write-Host "Screenshot file size: $($fileInfo.Length) bytes"
+          }
         } catch {
           Write-Host "Warning: Screenshot capture failed: $_"
           "CLAP Host test failed: $_" | Out-File -FilePath "screenshots/error-windows.txt"
           try {
-            & $clapHostFullPath --version 2>1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
+            & $clapHostFullPath --version 2>&1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
           } catch {
             "Version check failed: $_" | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
           }
@@ -563,4 +683,20 @@ jobs:
           clap-host-repo/builds/*/CMakeCache.txt
           clap-host-repo/builds/*/CMakeFiles/config.log
         retention-days: 30
+        if-no-files-found: warn
+
+    - name: Upload CLAP Host Executable for Reuse
+      uses: actions/upload-artifact@v4
+      with:
+        name: clap-host-executable-${{ matrix.os }}-${{ github.sha }}
+        path: |
+          clap-host-repo/builds/vs-vcpkg/host/Release/clap-host.exe
+          clap-host-repo/builds/vs-vcpkg/Release/clap-host.exe
+          clap-host-repo/builds/vcpkg-build/Release/clap-host.exe
+          clap-host-repo/builds/vcpkg-build/host/Release/clap-host.exe
+          clap-host-repo/builds/windows/Release/clap-host.exe
+          clap-host-repo/builds/vcpkg-build/clap-host
+          clap-host-repo/builds/simple/clap-host
+          clap-host-repo/builds/ninja-system/clap-host
+        retention-days: 7
         if-no-files-found: warn
