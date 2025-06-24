@@ -701,27 +701,28 @@ jobs:
           }
           
           # Create a diagnostic report
-          $diagnosticReport = @"
-CLAP Host Windows Test Report
-============================
-Executable: $clapHostFullPath
-Plugin: $pluginFile
-Process Started: $($process.StartTime)
-Process Exited: $($process.HasExited)
-Exit Code: $($process.ExitCode)
-Screenshot Created: $(Test-Path $screenshotPath)
-"@
-          $diagnosticReport | Out-File -FilePath "screenshots/clap-host-diagnostic-windows.txt"
+          Write-Host "Creating diagnostic report..."
+          $diagnosticLines = @(
+            "CLAP Host Windows Test Report",
+            "============================",
+            "Executable: $clapHostFullPath",
+            "Plugin: $pluginFile", 
+            "Process Started: $($process.StartTime)",
+            "Process Exited: $($process.HasExited)",
+            "Exit Code: $($process.ExitCode)",
+            "Screenshot Created: $(Test-Path $screenshotPath)"
+          )
+          $diagnosticLines | Out-File -FilePath "screenshots/clap-host-diagnostic-windows.txt"
           
         } catch {
           Write-Host "Warning: Screenshot capture failed: $_"
-          $errorDetails = @"
-CLAP Host test failed: $_
-Error at: $(Get-Date)
-Exception: $($_.Exception.Message)
-Stack Trace: $($_.ScriptStackTrace)
-"@
-          $errorDetails | Out-File -FilePath "screenshots/error-windows.txt"
+          $errorLines = @(
+            "CLAP Host test failed: $_",
+            "Error at: $(Get-Date)",
+            "Exception: $($_.Exception.Message)",
+            "Stack Trace: $($_.ScriptStackTrace)"
+          )
+          $errorLines | Out-File -FilePath "screenshots/error-windows.txt"
           
           try {
             & $clapHostFullPath --version 2>&1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
