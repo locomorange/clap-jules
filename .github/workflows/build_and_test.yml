@@ -365,7 +365,7 @@ jobs:
     name: CLAP Host Integration Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build # Runs after plugin build completes
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -390,8 +390,10 @@ jobs:
         path: |
           clap-host-repo/builds/
           clap-host-repo/vcpkg_installed/
-        key: clap-host-${{ runner.os }}-${{ hashFiles('**/vcpkg.json', '**/CMakeLists.txt') }}
+          vcpkg/installed/
+        key: clap-host-${{ runner.os }}-qt6-${{ hashFiles('**/vcpkg.json', '**/CMakeLists.txt') }}
         restore-keys: |
+          clap-host-${{ runner.os }}-qt6-
           clap-host-${{ runner.os }}-
 
     - name: Setup CLAP Host Dependencies (Linux)
@@ -441,6 +443,14 @@ jobs:
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
+        
+        # Install Qt6 via vcpkg for clap-host
+        echo "=== Installing Qt6 via vcpkg ==="
+        if [ ! -d "vcpkg/installed/x64-linux/include/QtCore" ]; then
+          ./vcpkg/vcpkg install qt6-base[core,widgets] --triplet=x64-linux
+        else
+          echo "Qt6 already installed via vcpkg"
+        fi
 
     - name: Setup CLAP Host Dependencies (macOS)
       if: runner.os == 'macOS'
@@ -454,6 +464,14 @@ jobs:
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
+        
+        # Install Qt6 via vcpkg for clap-host
+        echo "=== Installing Qt6 via vcpkg ==="
+        if [ ! -d "vcpkg/installed/arm64-osx/include/QtCore" ]; then
+          ./vcpkg/vcpkg install qt6-base[core,widgets] --triplet=arm64-osx
+        else
+          echo "Qt6 already installed via vcpkg"
+        fi
 
     - name: Setup CLAP Host Dependencies (Windows)
       if: runner.os == 'Windows'
@@ -463,6 +481,14 @@ jobs:
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         .\vcpkg\bootstrap-vcpkg.bat
         echo "$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_PATH
+        
+        # Install Qt6 via vcpkg for clap-host
+        echo "=== Installing Qt6 via vcpkg ==="  
+        if (!(Test-Path "vcpkg\installed\x64-windows\include\QtCore")) {
+          .\vcpkg\vcpkg install qt6-base[core,widgets] --triplet=x64-windows
+        } else {
+          echo "Qt6 already installed via vcpkg"
+        }
 
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows'
@@ -472,10 +498,14 @@ jobs:
       if: steps.clap-host-cache.outputs.cache-hit != 'true'
       run: |
         echo "Cloning clap-host repository..."
-        git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
+        if [ ! -d "clap-host-repo" ]; then
+          git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
+        else
+          echo "clap-host-repo already exists"
+        fi
 
     - name: Build CLAP Host (Linux/macOS)
-      if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os != 'Windows'
       shell: bash
       run: |
         cd clap-host-repo
@@ -484,37 +514,42 @@ jobs:
         # Create screenshots directory for potential error logs
         mkdir -p ../screenshots
 
-        # Set vcpkg toolchain
+        # Set vcpkg toolchain to our external vcpkg with Qt6
         export VCPKG_ROOT="$(pwd)/../vcpkg"
         export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+        export VCPKG_TARGET_TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-linux' }}
 
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+        echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
+
+        # Verify Qt6 is available in vcpkg
+        echo "=== Verifying Qt6 in vcpkg ==="
+        ls -la "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET/include/" | grep -i qt || echo "Qt6 not found in vcpkg"
 
         # Check available presets
         echo "Available CMake presets:"
         cmake --list-presets 2>/dev/null || echo "No presets available"
 
-        # Try vcpkg-based build first
+        # Try external vcpkg build first (most likely to work with our Qt6)
         BUILD_SUCCESS=false
 
-        # Manual build with vcpkg toolchain
-        echo "Trying manual build with vcpkg toolchain"
-        if cmake . -B builds/vcpkg-build -G Ninja \
+        echo "Trying external vcpkg build with Qt6"
+        if cmake . -B builds/external-vcpkg -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-          -DVCPKG_TARGET_TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-linux' }} \
-          2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-${{ runner.os }}.txt; then
-          echo "vcpkg configuration successful"
-          if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-${{ runner.os }}.txt; then
-            echo "vcpkg build successful"
+          -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+          2>&1 | tee ../screenshots/cmake-external-vcpkg-configure-log-${{ runner.os }}.txt; then
+          echo "External vcpkg configuration successful"
+          if cmake --build builds/external-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-external-vcpkg-build-log-${{ runner.os }}.txt; then
+            echo "External vcpkg build successful"
             BUILD_SUCCESS=true
           fi
         fi
 
-        # Fallback to preset if vcpkg manual build failed
+        # Fallback to preset if external vcpkg build failed
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "vcpkg manual build failed, trying ninja-system preset"
+          echo "External vcpkg build failed, trying ninja-system preset"
           if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
             echo "ninja-system preset configuration successful"
             if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-${{ runner.os }}.txt; then
@@ -548,7 +583,7 @@ jobs:
         find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found anywhere"
 
     - name: Build CLAP Host (Windows)
-      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows'
       shell: bash
       run: |
         cd clap-host-repo
@@ -557,12 +592,18 @@ jobs:
         # Create screenshots directory for potential error logs
         mkdir -p ../screenshots
 
-        # Set vcpkg toolchain
+        # Set vcpkg toolchain to our external vcpkg with Qt6
         export VCPKG_ROOT="$(pwd)/../vcpkg"
         export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+        export VCPKG_TARGET_TRIPLET="x64-windows"
 
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+        echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
+
+        # Verify Qt6 is available in vcpkg
+        echo "=== Verifying Qt6 in vcpkg ==="
+        ls -la "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET/include/" | grep -i qt || echo "Qt6 not found in vcpkg"
 
         # Check available presets
         echo "Available CMake presets:"
@@ -571,25 +612,25 @@ jobs:
         # Try different build approaches
         BUILD_SUCCESS=false
 
-        # Try manual build with external vcpkg first
-        echo "Trying manual build with external vcpkg"
-        if cmake . -B builds/vcpkg-build \
+        # Try external vcpkg build first 
+        echo "Trying external vcpkg build with Qt6"
+        if cmake . -B builds/external-vcpkg \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-          -DVCPKG_TARGET_TRIPLET=x64-windows \
-          2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-windows.txt; then
-          echo "vcpkg configuration successful"
-          if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-windows.txt; then
-            echo "vcpkg build successful"
+          -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+          2>&1 | tee ../screenshots/cmake-external-vcpkg-configure-log-windows.txt; then
+          echo "External vcpkg configuration successful"
+          if cmake --build builds/external-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-external-vcpkg-build-log-windows.txt; then
+            echo "External vcpkg build successful"
             BUILD_SUCCESS=true
           fi
         fi
 
-        # Fallback to ninja-vcpkg preset if manual vcpkg failed
+        # Fallback to ninja-vcpkg preset if external vcpkg failed
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "External vcpkg manual build failed, trying ninja-vcpkg preset"
+          echo "External vcpkg build failed, trying ninja-vcpkg preset"
           
-          # Initialize built-in vcpkg if it doesn't exist
+          # Initialize built-in vcpkg if it doesn't exist and external failed
           if [ ! -d "vcpkg" ]; then
             git clone https://github.com/Microsoft/vcpkg.git vcpkg
             cd vcpkg && ./bootstrap-vcpkg.bat && cd ..
