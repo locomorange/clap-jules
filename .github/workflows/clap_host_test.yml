@@ -569,68 +569,102 @@ jobs:
         # Create screenshot directory
         New-Item -ItemType Directory -Force -Path "screenshots"
 
-        # Test clap-host help first
+        # Test clap-host help first and save output
         Write-Host "=== Testing clap-host help ==="
         try {
-          $helpResult = & $clapHostFullPath --help 2>1
-          Write-Host "Help output: $helpResult"
+          $helpResult = & $clapHostFullPath --help 2>&1
+          $helpResult | Out-File -FilePath "screenshots/clap-host-help-windows.txt"
+          Write-Host "Help output saved to screenshots/clap-host-help-windows.txt"
+          Write-Host "Help preview: $($helpResult -join "`n" | Select-String -Pattern '.*' | Select-Object -First 10)"
         } catch {
           Write-Host "Help command failed: $_"
+          "Help command failed: $_" | Out-File -FilePath "screenshots/clap-host-help-windows.txt"
         }
 
         # Run clap-host with plugin and take screenshot
         Write-Host "Running clap-host and taking screenshot..."
         try {
-          # First try with GUI-specific arguments if supported
-          Write-Host "Testing clap-host arguments support..."
-          $helpOutput = & $clapHostFullPath --help 2>&1 | Out-String
-          Write-Host "Available arguments: $helpOutput"
+          # Get help output to understand available arguments
+          $helpOutput = ""
+          if (Test-Path "screenshots/clap-host-help-windows.txt") {
+            $helpOutput = Get-Content "screenshots/clap-host-help-windows.txt" -Raw
+          }
           
-          # Determine arguments based on help output
+          Write-Host "=== Starting CLAP Host with GUI ==="
+          
+          # Use basic plugin loading arguments that work reliably
           $arguments = @("-p", $pluginFile)
-          if ($helpOutput -match "--show-gui") {
-            $arguments += "--show-gui"
-            Write-Host "Adding --show-gui argument"
-          }
-          if ($helpOutput -match "--no-minimized") {
-            $arguments += "--no-minimized"
-            Write-Host "Adding --no-minimized argument"
-          }
+          Write-Host "Starting clap-host with plugin: $pluginFile"
+          Write-Host "Arguments: $($arguments -join ' ')"
           
-          Write-Host "Starting clap-host with arguments: $($arguments -join ' ')"
+          # Start clap-host process with appropriate settings for GUI applications
+          $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
+          $processStartInfo.FileName = $clapHostFullPath
+          $processStartInfo.Arguments = $arguments -join ' '
+          $processStartInfo.UseShellExecute = $true
+          $processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
+          $processStartInfo.CreateNoWindow = $false
           
-          $process = Start-Process -FilePath $clapHostFullPath -ArgumentList $arguments -PassThru -WindowStyle Normal -ErrorAction Stop
+          $process = [System.Diagnostics.Process]::Start($processStartInfo)
           Write-Host "Started clap-host process with PID: $($process.Id)"
           
-          # Wait and check if process is still running
-          Start-Sleep -Seconds 5
+          # Wait for process to initialize
+          Start-Sleep -Seconds 3
+          
+          # Check process status
+          $process.Refresh()
           if ($process.HasExited) {
             Write-Host "Warning: clap-host process exited early with code: $($process.ExitCode)"
             
-            # Try without GUI arguments
-            Write-Host "Retrying without GUI-specific arguments..."
-            $basicArguments = @("-p", $pluginFile)
-            $process = Start-Process -FilePath $clapHostFullPath -ArgumentList $basicArguments -PassThru -WindowStyle Normal -ErrorAction Stop
-            Write-Host "Restarted clap-host with basic arguments, PID: $($process.Id)"
-            Start-Sleep -Seconds 5
+            # Try alternative approach - run without shell execute for better process control
+            Write-Host "Retrying with alternative process launch method..."
+            $process2 = Start-Process -FilePath $clapHostFullPath -ArgumentList $arguments -PassThru -NoNewWindow -ErrorAction Stop
+            Write-Host "Restarted clap-host with PID: $($process2.Id)"
+            Start-Sleep -Seconds 3
+            $process2.Refresh()
+            
+            if (-not $process2.HasExited) {
+              $process = $process2
+              Write-Host "Second attempt successful, process is running"
+            } else {
+              Write-Host "Second attempt also failed, exit code: $($process2.ExitCode)"
+            }
+          } else {
+            Write-Host "Process is running normally"
           }
           
+          # Extended wait for GUI initialization
           if (-not $process.HasExited) {
-            Write-Host "Process is running, waiting for GUI to fully load..."
-            Start-Sleep -Seconds 25  # Extended wait for GUI to load
+            Write-Host "Waiting for GUI to fully initialize..."
+            Start-Sleep -Seconds 15
             
-            # Check for GUI windows
-            Write-Host "Checking for CLAP GUI windows..."
+            # Check for GUI windows and processes
+            Write-Host "=== Checking for CLAP GUI windows ==="
             try {
-              $clapProcesses = Get-Process | Where-Object { $_.ProcessName -like "*clap*" }
-              $clapProcesses | ForEach-Object { 
-                Write-Host " - Process: $($_.ProcessName), PID: $($_.Id), HasMainWindow: $($_.MainWindowTitle -ne ''), WindowTitle: '$($_.MainWindowTitle)'" 
+              $allProcesses = Get-Process | Where-Object { $_.ProcessName -like "*clap*" -or $_.Id -eq $process.Id }
+              $allProcesses | ForEach-Object { 
+                $hasWindow = $_.MainWindowTitle -ne ""
+                Write-Host " - Process: $($_.ProcessName), PID: $($_.Id), HasMainWindow: $hasWindow, WindowTitle: '$($_.MainWindowTitle)'"
+                if ($hasWindow) {
+                  Write-Host "   -> GUI window detected!"
+                }
+              }
+              
+              # Also check for any windows with CLAP in the title
+              Add-Type -AssemblyName Microsoft.VisualBasic
+              $windows = [Microsoft.VisualBasic.Interaction]::AppActivate("clap") 2>$null
+              if ($windows) {
+                Write-Host "Found window with 'clap' in title"
               }
             } catch {
               Write-Host "Failed to enumerate processes: $_"
             }
+            
+            # Additional wait for GUI rendering
+            Write-Host "Additional wait for GUI rendering..."
+            Start-Sleep -Seconds 10
           } else {
-            Write-Host "Process exited, capturing version info..."
+            Write-Host "Process exited before GUI could load, capturing version info..."
             & $clapHostFullPath --version 2>&1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
           }
 
@@ -638,7 +672,7 @@ jobs:
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
 
-          Write-Host "Capturing screenshot..."
+          Write-Host "=== Capturing screenshot ==="
           $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           Write-Host "Screen bounds: Width=$($bounds.Width), Height=$($bounds.Height)"
           
@@ -655,6 +689,7 @@ jobs:
 
           # Stop clap-host
           if (-not $process.HasExited) {
+            Write-Host "Stopping clap-host process..."
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
             Write-Host "Stopped clap-host process"
           }
@@ -664,9 +699,30 @@ jobs:
             $fileInfo = Get-ChildItem $screenshotPath
             Write-Host "Screenshot file size: $($fileInfo.Length) bytes"
           }
+          
+          # Create a diagnostic report
+          $diagnosticReport = @"
+CLAP Host Windows Test Report
+============================
+Executable: $clapHostFullPath
+Plugin: $pluginFile
+Process Started: $($process.StartTime)
+Process Exited: $($process.HasExited)
+Exit Code: $($process.ExitCode)
+Screenshot Created: $(Test-Path $screenshotPath)
+"@
+          $diagnosticReport | Out-File -FilePath "screenshots/clap-host-diagnostic-windows.txt"
+          
         } catch {
           Write-Host "Warning: Screenshot capture failed: $_"
-          "CLAP Host test failed: $_" | Out-File -FilePath "screenshots/error-windows.txt"
+          $errorDetails = @"
+CLAP Host test failed: $_
+Error at: $(Get-Date)
+Exception: $($_.Exception.Message)
+Stack Trace: $($_.ScriptStackTrace)
+"@
+          $errorDetails | Out-File -FilePath "screenshots/error-windows.txt"
+          
           try {
             & $clapHostFullPath --version 2>&1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
           } catch {
@@ -698,5 +754,23 @@ jobs:
           clap-host-repo/builds/vcpkg-build/clap-host
           clap-host-repo/builds/simple/clap-host
           clap-host-repo/builds/ninja-system/clap-host
-        retention-days: 7
+        retention-days: 30
         if-no-files-found: warn
+
+    - name: Create CLAP Host Build Summary
+      shell: bash
+      run: |
+        echo "=== CLAP Host Build Summary for ${{ matrix.os }} ==="
+        echo "Build completed at: $(date)"
+        echo "Commit SHA: ${{ github.sha }}"
+        echo ""
+        echo "Built executables:"
+        find clap-host-repo -name "clap-host*" -type f 2>/dev/null | while read file; do
+          echo "  - $file ($(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo "unknown size") bytes)"
+        done
+        echo ""
+        echo "Artifact name: clap-host-executable-${{ matrix.os }}-${{ github.sha }}"
+        echo "Artifact retention: 30 days"
+        echo "Reuse instructions:"
+        echo "  - Use 'actions/download-artifact@v4' with name 'clap-host-executable-${{ matrix.os }}-${{ github.sha }}'"
+        echo "  - Executable will be available at the same relative paths as above"
