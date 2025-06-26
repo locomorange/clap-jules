@@ -1,3 +1,22 @@
+// Platform-specific includes that define types used in my_plugin.h
+// must come before my_plugin.h
+#ifdef HAVE_GLFW
+    // Platform-specific includes must come before GLFW native header
+    #ifdef _WIN32
+        #ifndef WIN32_LEAN_AND_MEAN
+            #define WIN32_LEAN_AND_MEAN
+        #endif
+        #include <windows.h>
+        #define GLFW_EXPOSE_NATIVE_WIN32
+    #endif
+
+    #ifdef __linux__
+        #include <X11/Xlib.h>
+        #include <X11/Xutil.h> // For XQueryPointer if not covered by Xlib.h alone for DefaultRootWindow
+        #define GLFW_EXPOSE_NATIVE_X11
+    #endif
+#endif // HAVE_GLFW
+
 #include "my_plugin.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
@@ -6,21 +25,7 @@
 #ifdef HAVE_GLFW
 #include <clap/ext/gui.h>
 
-// Platform-specific includes must come before GLFW
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#endif
-
-#ifdef __linux__
-#include <X11/Xlib.h>
-#define GLFW_EXPOSE_NATIVE_X11
-#endif
-
-// GLFW includes
+// GLFW includes (after platform headers and my_plugin.h if it depends on them)
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
@@ -50,6 +55,8 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 // --- Forward declarations of GUI functions ---
 static void my_plugin_gui_render(const clap_plugin_t *plugin);
 static void my_plugin_gui_window_refresh_callback(GLFWwindow* window);
+static void small_window_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+static void small_window_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
 static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
 static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
@@ -69,7 +76,7 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio-effect", nullptr}; // Corrected to "audio-effect"
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
@@ -101,6 +108,12 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->gui_api = NULL;
     self->is_floating = false;
     self->needs_refresh = false;
+    self->small_window = NULL; // Initialize small window
+    self->small_window_x = 50;  // Initial position for small window
+    self->small_window_y = 50;
+    self->is_dragging_small_window = false;
+    self->drag_offset_x = 0;
+    self->drag_offset_y = 0;
     
     // Initialize GLFW if not already done
     if (!glfwInit()) {
@@ -241,15 +254,25 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
 #ifdef HAVE_GLFW
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
-    // Only poll events if GUI is created and visible - this handles window movement/resize events
-    if (self->gui_created && self->gui_visible && self->window) {
+    // Only poll events if GUI is created and visible.
+    if (self->gui_created && self->gui_visible) {
+        // Poll events globally. This should cover all GLFW windows.
         glfwPollEvents();
         
-        // Only render if refresh was requested (not continuous rendering)
+        // If a refresh is needed for the main plugin GUI, render everything.
+        // The my_plugin_gui_render function handles drawing both the main window
+        // and the small window if it exists.
         if (self->needs_refresh) {
             my_plugin_gui_render(plugin);
             self->needs_refresh = false;
         }
+        // Note: The small window currently does not have its own independent refresh callback
+        // or 'needs_refresh' flag. Its visual updates (beyond dragging) are tied to the
+        // main window's refresh cycle or will happen during the next main window refresh.
+        // If the small window required more frequent or independent updates,
+        // it would need its own refresh mechanism (e.g., its own refresh callback setting a flag,
+        // or direct rendering calls if certain events occur). For now, dragging updates its position,
+        // and its content is redrawn when the main GUI is redrawn.
     }
 #endif
 }
@@ -348,6 +371,34 @@ static void my_plugin_gui_render(const clap_plugin_t *plugin) {
     
     // Swap buffers to display the rendered frame
     glfwSwapBuffers(self->window);
+
+    // Render the small window if it exists
+    if (self->small_window) {
+        glfwMakeContextCurrent(self->small_window);
+        int small_width, small_height;
+        glfwGetFramebufferSize(self->small_window, &small_width, &small_height);
+        glViewport(0, 0, small_width, small_height);
+
+        // Clear small window with a different color
+        glClearColor(0.8f, 0.7f, 0.3f, 1.0f); // Yellowish
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Draw a simple border or something to indicate it's a different window
+        glColor3f(0.1f, 0.1f, 0.1f); // Dark gray
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(-0.95f, -0.95f);
+        glVertex2f(0.95f, -0.95f);
+        glVertex2f(0.95f, 0.95f);
+        glVertex2f(-0.95f, 0.95f);
+        glEnd();
+
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+            printf("MyPlugin: OpenGL error after rendering small window: %d\n", error);
+        }
+
+        glfwSwapBuffers(self->small_window);
+    }
 }
 
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
@@ -451,6 +502,65 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     // Set up basic OpenGL state
     glClearColor(0.2f, 0.3f, 0.4f, 1.0f); // Dark blue background
     
+    // Create the small, undecorated window
+    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    self->small_window = glfwCreateWindow(150, 100, "Small Window", NULL, self->window /* share context with main window */);
+    if (!self->small_window) {
+        const char* error_desc;
+        int error_code = glfwGetError(&error_desc);
+        printf("MyPlugin: Failed to create small GLFW window - Error %d: %s\n",
+               error_code, error_desc ? error_desc : "Unknown error");
+        // Continue without the small window if creation fails
+    } else {
+        glfwSetWindowUserPointer(self->small_window, self);
+        glfwSetMouseButtonCallback(self->small_window, small_window_mouse_button_callback);
+        glfwSetCursorPosCallback(self->small_window, small_window_cursor_pos_callback);
+        // Initial position before parenting, will be relative to screen.
+        // After parenting, this position might need to be 0,0 or relative to parent.
+        glfwSetWindowPos(self->small_window, self->small_window_x, self->small_window_y);
+        printf("MyPlugin: Small GUI window created successfully (pre-parenting)\n");
+
+        // --- Native Parenting Logic ---
+#ifdef _WIN32
+        HWND main_hwnd = glfwGetWin32Window(self->window);
+        HWND small_hwnd = glfwGetWin32Window(self->small_window);
+        if (main_hwnd && small_hwnd) {
+            self->small_hwnd = small_hwnd; // Store native handle
+            printf("MyPlugin: Attempting Win32 SetParent...\n");
+            SetParent(small_hwnd, main_hwnd);
+            // Adjust styles for a child window
+            LONG_PTR style = GetWindowLongPtr(small_hwnd, GWL_STYLE);
+            style = style & ~WS_POPUP; // Remove popup style
+            style = style | WS_CHILD;   // Add child style
+            SetWindowLongPtr(small_hwnd, GWL_STYLE, style);
+
+            // Set position relative to parent (e.g., 0,0 or self->small_window_x, self->small_window_y)
+            // SetWindowPos is more robust for this. SWP_NOSIZE | SWP_NOZORDER
+            SetWindowPos(small_hwnd, NULL, self->small_window_x, self->small_window_y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW);
+            printf("MyPlugin: Win32 SetParent and style adjustment attempted.\n");
+        } else {
+            printf("MyPlugin: Failed to get HWND for native parenting.\n");
+        }
+#elif __linux__
+        Display* display = glfwGetX11Display();
+        Window main_x11_window = glfwGetX11Window(self->window);
+        Window small_x11_window = glfwGetX11Window(self->small_window);
+        if (display && main_x11_window && small_x11_window) {
+            self->x11_display = display; // Store X11 display
+            self->small_x11_window = small_x11_window; // Store native handle
+            printf("MyPlugin: Attempting X11 ReparentWindow...\n");
+            XReparentWindow(display, small_x11_window, main_x11_window, self->small_window_x, self->small_window_y);
+            XMapWindow(display, small_x11_window); // Ensure it's mapped after reparenting
+            XFlush(display);
+            printf("MyPlugin: X11 ReparentWindow attempted.\n");
+        } else {
+            printf("MyPlugin: Failed to get X11 handles for native parenting.\n");
+        }
+#endif
+    }
+    // Restore decoration hint for any subsequent windows
+    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+
     self->gui_created = true;
     printf("MyPlugin: GUI created successfully\n");
     return true;
@@ -467,6 +577,10 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     if (self->window) {
         glfwDestroyWindow(self->window);
         self->window = NULL;
+    }
+    if (self->small_window) { // Destroy the small window
+        glfwDestroyWindow(self->small_window);
+        self->small_window = NULL;
     }
     
     self->gui_created = false;
@@ -631,6 +745,9 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     }
     
     glfwShowWindow(self->window);
+    if (self->small_window) {
+        glfwShowWindow(self->small_window);
+    }
     self->gui_visible = true;
     
     // Render initial frame
@@ -648,10 +765,162 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     }
     
     glfwHideWindow(self->window);
+    if (self->small_window) {
+        glfwHideWindow(self->small_window);
+    }
     self->gui_visible = false;
     
     return true;
 }
+
+// --- Helper function for getting screen cursor position ---
+static bool my_plugin_get_screen_cursor_position(my_plugin_t* self, int* x, int* y) {
+    if (!x || !y) return false;
+
+#ifdef _WIN32
+    POINT cursorPos;
+    if (GetCursorPos(&cursorPos)) {
+        *x = cursorPos.x;
+        *y = cursorPos.y;
+        return true;
+    } else {
+        printf("MyPlugin: GetCursorPos failed.\n");
+        return false;
+    }
+#elif __linux__
+    if (self && self->x11_display) { // Check self for x11_display
+        Window root_return, child_return;
+        int root_x_return, root_y_return, win_x_return, win_y_return;
+        unsigned int mask_return;
+        if (XQueryPointer(self->x11_display, DefaultRootWindow(self->x11_display),
+                          &root_return, &child_return,
+                          &root_x_return, &root_y_return,
+                          &win_x_return, &win_y_return, &mask_return)) {
+            *x = root_x_return;
+            *y = root_y_return;
+            return true;
+        } else {
+            printf("MyPlugin: XQueryPointer failed.\n");
+            return false;
+        }
+    } else {
+        printf("MyPlugin: X11 display not available for screen cursor query.\n");
+        return false;
+    }
+#else
+    printf("MyPlugin: Platform not supported for native screen cursor position helper.\n");
+    // Fallback: try to use GLFW's understanding if possible, though less ideal.
+    // This would require the GLFWwindow* context, which this helper doesn't have.
+    // For now, just indicate failure for unsupported platforms.
+    return false;
+#endif
+    return false; // Ensure all paths return a value, e.g. if not WIN32 or __linux__
+}
+
+// --- Mouse Callback Functions for Small Window ---
+static void small_window_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
+    if (!self) return;
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            self->is_dragging_small_window = true;
+
+            // Store initial small window position (which should be parent-relative)
+            self->initial_small_window_relative_x = self->small_window_x;
+            self->initial_small_window_relative_y = self->small_window_y;
+
+            // Get and store initial mouse cursor screen coordinates using the helper
+            if (!my_plugin_get_screen_cursor_position(self, &self->initial_drag_screen_x, &self->initial_drag_screen_y)) {
+                self->is_dragging_small_window = false; // Cancel drag
+                printf("MyPlugin: Failed to get initial screen cursor position via helper.\n");
+                // Potentially use fallback if defined, or just return.
+                // For now, if the helper fails, we cancel the drag.
+                // This could happen if X11 display isn't set yet, or GetCursorPos fails.
+                return;
+            }
+
+            // The old drag_offset_x/y were relative to the small window's client area.
+            // For the new logic, we primarily use screen coordinates for delta calculation
+            // and apply it to the initial parent-relative position.
+            // So, drag_offset_x/y might not be strictly needed in the new approach
+            // unless we want to maintain the exact click point within the window as the drag handle.
+            // For now, we'll rely on the screen coordinate delta.
+            printf("MyPlugin: Small window drag started. Initial screen cursor: (%d, %d), initial window relative: (%d, %d)\n",
+                   self->initial_drag_screen_x, self->initial_drag_screen_y,
+                   self->initial_small_window_relative_x, self->initial_small_window_relative_y);
+
+        } else if (action == GLFW_RELEASE) {
+            self->is_dragging_small_window = false;
+            printf("MyPlugin: Small window drag ended\n");
+        }
+    }
+}
+
+static void small_window_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos) {
+    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
+    if (!self || !self->is_dragging_small_window) return;
+
+    // `xpos` and `ypos` from GLFW are relative to the client area of the small window.
+    // We need current screen cursor position for our new logic.
+
+    // `xpos` and `ypos` from GLFW are relative to the client area of the small window.
+    // We need current screen cursor position for our new logic.
+
+    int current_screen_cursor_x = 0;
+    int current_screen_cursor_y = 0;
+
+    if (!my_plugin_get_screen_cursor_position(self, &current_screen_cursor_x, &current_screen_cursor_y)) {
+        printf("MyPlugin: Failed to get current screen cursor position via helper during drag.\n");
+        // If we can't get the current cursor position, we can't calculate the delta.
+        // Options:
+        // 1. Stop the drag (self->is_dragging_small_window = false;)
+        // 2. Skip this update and hope the next one works.
+        // 3. Fallback to old logic (problematic).
+        // For now, just return and skip this update.
+        return;
+    }
+
+    // Calculate delta movement in screen coordinates
+    int delta_x = current_screen_cursor_x - self->initial_drag_screen_x;
+    int delta_y = current_screen_cursor_y - self->initial_drag_screen_y;
+
+    // Calculate new target parent-relative coordinates
+    int new_relative_x = self->initial_small_window_relative_x + delta_x;
+    int new_relative_y = self->initial_small_window_relative_y + delta_y;
+
+    // Move the small window using native calls
+#ifdef _WIN32
+    if (self->small_hwnd) {
+        SetWindowPos(self->small_hwnd, NULL, new_relative_x, new_relative_y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+    } else {
+        printf("MyPlugin: Small window HWND not available for SetWindowPos.\n");
+        // Fallback or error
+    }
+#elif __linux__
+    if (self->x11_display && self->small_x11_window) {
+        XMoveWindow(self->x11_display, self->small_x11_window, new_relative_x, new_relative_y);
+        XFlush(self->x11_display); // Ensure the move command is processed
+    } else {
+        printf("MyPlugin: X11 display or small window handle not available for XMoveWindow.\n");
+        // Fallback or error
+    }
+#else
+    // If native calls are not available (e.g. on other platforms, or if setup failed)
+    // then the drag won't work with this new logic.
+    // The earlier fallback in this function already tried to use old GLFW method.
+    printf("MyPlugin: Native window move not supported on this platform. Drag will not work as intended.\n");
+    // No operation here as the fallback was already attempted.
+#endif
+
+    // Update stored parent-relative position
+    self->small_window_x = new_relative_x;
+    self->small_window_y = new_relative_y;
+
+    // No need to update drag_offset_x/y as they were for the old method.
+    // The screen coordinates are absolute, and deltas are calculated from drag start.
+}
+
 #endif // HAVE_GLFW
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
