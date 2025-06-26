@@ -27,6 +27,14 @@ typedef struct {
     
     // Minimal rendering state for window refresh
     bool needs_refresh;
+
+    // Small draggable window
+    struct GLFWwindow* small_window;
+    int small_window_x;
+    int small_window_y;
+    bool is_dragging_small_window;
+    double drag_offset_x;
+    double drag_offset_y;
 #endif
     
     // Add any other plugin-specific data here

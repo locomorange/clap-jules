@@ -28,6 +28,9 @@ CMakeUserPresets.json
 *.so
 *.dylib
 *.dll
+
+# Clap validator archive
+clap-validator-*.tar.gz
 *.mod
 *.smod
 *.lai

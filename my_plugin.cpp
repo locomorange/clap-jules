@@ -50,6 +50,8 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 // --- Forward declarations of GUI functions ---
 static void my_plugin_gui_render(const clap_plugin_t *plugin);
 static void my_plugin_gui_window_refresh_callback(GLFWwindow* window);
+static void small_window_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+static void small_window_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
 static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
 static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
@@ -69,7 +71,7 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio-effect", nullptr}; // Corrected to "audio-effect"
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
@@ -101,6 +103,12 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->gui_api = NULL;
     self->is_floating = false;
     self->needs_refresh = false;
+    self->small_window = NULL; // Initialize small window
+    self->small_window_x = 50;  // Initial position for small window
+    self->small_window_y = 50;
+    self->is_dragging_small_window = false;
+    self->drag_offset_x = 0;
+    self->drag_offset_y = 0;
     
     // Initialize GLFW if not already done
     if (!glfwInit()) {
@@ -241,15 +249,25 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
 #ifdef HAVE_GLFW
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     
-    // Only poll events if GUI is created and visible - this handles window movement/resize events
-    if (self->gui_created && self->gui_visible && self->window) {
+    // Only poll events if GUI is created and visible.
+    if (self->gui_created && self->gui_visible) {
+        // Poll events globally. This should cover all GLFW windows.
         glfwPollEvents();
         
-        // Only render if refresh was requested (not continuous rendering)
+        // If a refresh is needed for the main plugin GUI, render everything.
+        // The my_plugin_gui_render function handles drawing both the main window
+        // and the small window if it exists.
         if (self->needs_refresh) {
             my_plugin_gui_render(plugin);
             self->needs_refresh = false;
         }
+        // Note: The small window currently does not have its own independent refresh callback
+        // or 'needs_refresh' flag. Its visual updates (beyond dragging) are tied to the
+        // main window's refresh cycle or will happen during the next main window refresh.
+        // If the small window required more frequent or independent updates,
+        // it would need its own refresh mechanism (e.g., its own refresh callback setting a flag,
+        // or direct rendering calls if certain events occur). For now, dragging updates its position,
+        // and its content is redrawn when the main GUI is redrawn.
     }
 #endif
 }
@@ -348,6 +366,34 @@ static void my_plugin_gui_render(const clap_plugin_t *plugin) {
     
     // Swap buffers to display the rendered frame
     glfwSwapBuffers(self->window);
+
+    // Render the small window if it exists
+    if (self->small_window) {
+        glfwMakeContextCurrent(self->small_window);
+        int small_width, small_height;
+        glfwGetFramebufferSize(self->small_window, &small_width, &small_height);
+        glViewport(0, 0, small_width, small_height);
+
+        // Clear small window with a different color
+        glClearColor(0.8f, 0.7f, 0.3f, 1.0f); // Yellowish
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Draw a simple border or something to indicate it's a different window
+        glColor3f(0.1f, 0.1f, 0.1f); // Dark gray
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(-0.95f, -0.95f);
+        glVertex2f(0.95f, -0.95f);
+        glVertex2f(0.95f, 0.95f);
+        glVertex2f(-0.95f, 0.95f);
+        glEnd();
+
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+            printf("MyPlugin: OpenGL error after rendering small window: %d\n", error);
+        }
+
+        glfwSwapBuffers(self->small_window);
+    }
 }
 
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
@@ -451,6 +497,26 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     // Set up basic OpenGL state
     glClearColor(0.2f, 0.3f, 0.4f, 1.0f); // Dark blue background
     
+    // Create the small, undecorated window
+    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    self->small_window = glfwCreateWindow(150, 100, "Small Window", NULL, self->window /* share context with main window */);
+    if (!self->small_window) {
+        const char* error_desc;
+        int error_code = glfwGetError(&error_desc);
+        printf("MyPlugin: Failed to create small GLFW window - Error %d: %s\n",
+               error_code, error_desc ? error_desc : "Unknown error");
+        // Continue without the small window if creation fails
+    } else {
+        glfwSetWindowUserPointer(self->small_window, self);
+        glfwSetMouseButtonCallback(self->small_window, small_window_mouse_button_callback);
+        glfwSetCursorPosCallback(self->small_window, small_window_cursor_pos_callback);
+        glfwSetWindowPos(self->small_window, self->small_window_x, self->small_window_y);
+        printf("MyPlugin: Small GUI window created successfully\n");
+    }
+    // Restore decoration hint for any subsequent windows (though not strictly necessary here)
+    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+
+
     self->gui_created = true;
     printf("MyPlugin: GUI created successfully\n");
     return true;
@@ -467,6 +533,10 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     if (self->window) {
         glfwDestroyWindow(self->window);
         self->window = NULL;
+    }
+    if (self->small_window) { // Destroy the small window
+        glfwDestroyWindow(self->small_window);
+        self->small_window = NULL;
     }
     
     self->gui_created = false;
@@ -631,6 +701,9 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     }
     
     glfwShowWindow(self->window);
+    if (self->small_window) {
+        glfwShowWindow(self->small_window);
+    }
     self->gui_visible = true;
     
     // Render initial frame
@@ -648,10 +721,63 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     }
     
     glfwHideWindow(self->window);
+    if (self->small_window) {
+        glfwHideWindow(self->small_window);
+    }
     self->gui_visible = false;
     
     return true;
 }
+
+// --- Mouse Callback Functions for Small Window ---
+static void small_window_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
+    if (!self) return;
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            self->is_dragging_small_window = true;
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            // No need to convert to window coordinates for undecorated windows usually,
+            // but if decoration/title bar existed, we'd need to be more careful.
+            // For a simple undecorated window, cursor pos relative to window is fine.
+            self->drag_offset_x = xpos;
+            self->drag_offset_y = ypos;
+            printf("MyPlugin: Small window drag started (offset: %.1f, %.1f)\n", self->drag_offset_x, self->drag_offset_y);
+        } else if (action == GLFW_RELEASE) {
+            self->is_dragging_small_window = false;
+            printf("MyPlugin: Small window drag ended\n");
+        }
+    }
+}
+
+static void small_window_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos) {
+    my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
+    if (!self || !self->is_dragging_small_window) return;
+
+    // Get current screen position of the cursor
+    // GLFW cursor position is relative to the client area of the window.
+    // To move the window, we need screen coordinates.
+    // However, for dragging, we can calculate the delta and apply it to current window position.
+
+    int current_win_x, current_win_y;
+    glfwGetWindowPos(window, &current_win_x, &current_win_y);
+
+    // Calculate new window position based on drag
+    // The new window top-left should be where the cursor is, minus the initial offset within the window
+    // when the drag started.
+    int new_x = current_win_x + (int)(xpos - self->drag_offset_x);
+    int new_y = current_win_y + (int)(ypos - self->drag_offset_y);
+
+    glfwSetWindowPos(window, new_x, new_y);
+
+    // Update stored position (optional, if not relying solely on glfwGetWindowPos for render)
+    self->small_window_x = new_x;
+    self->small_window_y = new_y;
+    // We don't re-set drag_offset_x/y here, they are relative to the start of the drag.
+}
+
 #endif // HAVE_GLFW
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
