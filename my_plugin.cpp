@@ -510,12 +510,48 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         glfwSetWindowUserPointer(self->small_window, self);
         glfwSetMouseButtonCallback(self->small_window, small_window_mouse_button_callback);
         glfwSetCursorPosCallback(self->small_window, small_window_cursor_pos_callback);
+        // Initial position before parenting, will be relative to screen.
+        // After parenting, this position might need to be 0,0 or relative to parent.
         glfwSetWindowPos(self->small_window, self->small_window_x, self->small_window_y);
-        printf("MyPlugin: Small GUI window created successfully\n");
-    }
-    // Restore decoration hint for any subsequent windows (though not strictly necessary here)
-    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+        printf("MyPlugin: Small GUI window created successfully (pre-parenting)\n");
 
+        // --- Native Parenting Logic ---
+#ifdef _WIN32
+        HWND main_hwnd = glfwGetWin32Window(self->window);
+        HWND small_hwnd = glfwGetWin32Window(self->small_window);
+        if (main_hwnd && small_hwnd) {
+            printf("MyPlugin: Attempting Win32 SetParent...\n");
+            SetParent(small_hwnd, main_hwnd);
+            // Adjust styles for a child window
+            LONG_PTR style = GetWindowLongPtr(small_hwnd, GWL_STYLE);
+            style = style & ~WS_POPUP; // Remove popup style
+            style = style | WS_CHILD;   // Add child style
+            SetWindowLongPtr(small_hwnd, GWL_STYLE, style);
+
+            // Set position relative to parent (e.g., 0,0 or self->small_window_x, self->small_window_y)
+            // SetWindowPos is more robust for this. SWP_NOSIZE | SWP_NOZORDER
+            SetWindowPos(small_hwnd, NULL, self->small_window_x, self->small_window_y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW);
+            printf("MyPlugin: Win32 SetParent and style adjustment attempted.\n");
+        } else {
+            printf("MyPlugin: Failed to get HWND for native parenting.\n");
+        }
+#elif __linux__
+        Display* display = glfwGetX11Display();
+        Window main_x11_window = glfwGetX11Window(self->window);
+        Window small_x11_window = glfwGetX11Window(self->small_window);
+        if (display && main_x11_window && small_x11_window) {
+            printf("MyPlugin: Attempting X11 ReparentWindow...\n");
+            XReparentWindow(display, small_x11_window, main_x11_window, self->small_window_x, self->small_window_y);
+            XMapWindow(display, small_x11_window); // Ensure it's mapped after reparenting
+            XFlush(display);
+            printf("MyPlugin: X11 ReparentWindow attempted.\n");
+        } else {
+            printf("MyPlugin: Failed to get X11 handles for native parenting.\n");
+        }
+#endif
+    }
+    // Restore decoration hint for any subsequent windows
+    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
 
     self->gui_created = true;
     printf("MyPlugin: GUI created successfully\n");
