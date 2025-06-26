@@ -1,3 +1,22 @@
+// Platform-specific includes that define types used in my_plugin.h
+// must come before my_plugin.h
+#ifdef HAVE_GLFW
+    // Platform-specific includes must come before GLFW native header
+    #ifdef _WIN32
+        #ifndef WIN32_LEAN_AND_MEAN
+            #define WIN32_LEAN_AND_MEAN
+        #endif
+        #include <windows.h>
+        #define GLFW_EXPOSE_NATIVE_WIN32
+    #endif
+
+    #ifdef __linux__
+        #include <X11/Xlib.h>
+        #include <X11/Xutil.h> // For XQueryPointer if not covered by Xlib.h alone for DefaultRootWindow
+        #define GLFW_EXPOSE_NATIVE_X11
+    #endif
+#endif // HAVE_GLFW
+
 #include "my_plugin.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
@@ -6,21 +25,7 @@
 #ifdef HAVE_GLFW
 #include <clap/ext/gui.h>
 
-// Platform-specific includes must come before GLFW
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#endif
-
-#ifdef __linux__
-#include <X11/Xlib.h>
-#define GLFW_EXPOSE_NATIVE_X11
-#endif
-
-// GLFW includes
+// GLFW includes (after platform headers and my_plugin.h if it depends on them)
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
@@ -520,6 +525,7 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         HWND main_hwnd = glfwGetWin32Window(self->window);
         HWND small_hwnd = glfwGetWin32Window(self->small_window);
         if (main_hwnd && small_hwnd) {
+            self->small_hwnd = small_hwnd; // Store native handle
             printf("MyPlugin: Attempting Win32 SetParent...\n");
             SetParent(small_hwnd, main_hwnd);
             // Adjust styles for a child window
@@ -540,6 +546,8 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         Window main_x11_window = glfwGetX11Window(self->window);
         Window small_x11_window = glfwGetX11Window(self->small_window);
         if (display && main_x11_window && small_x11_window) {
+            self->x11_display = display; // Store X11 display
+            self->small_x11_window = small_x11_window; // Store native handle
             printf("MyPlugin: Attempting X11 ReparentWindow...\n");
             XReparentWindow(display, small_x11_window, main_x11_window, self->small_window_x, self->small_window_y);
             XMapWindow(display, small_x11_window); // Ensure it's mapped after reparenting
@@ -765,6 +773,50 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     return true;
 }
 
+// --- Helper function for getting screen cursor position ---
+static bool my_plugin_get_screen_cursor_position(my_plugin_t* self, int* x, int* y) {
+    if (!x || !y) return false;
+
+#ifdef _WIN32
+    POINT cursorPos;
+    if (GetCursorPos(&cursorPos)) {
+        *x = cursorPos.x;
+        *y = cursorPos.y;
+        return true;
+    } else {
+        printf("MyPlugin: GetCursorPos failed.\n");
+        return false;
+    }
+#elif __linux__
+    if (self && self->x11_display) { // Check self for x11_display
+        Window root_return, child_return;
+        int root_x_return, root_y_return, win_x_return, win_y_return;
+        unsigned int mask_return;
+        if (XQueryPointer(self->x11_display, DefaultRootWindow(self->x11_display),
+                          &root_return, &child_return,
+                          &root_x_return, &root_y_return,
+                          &win_x_return, &win_y_return, &mask_return)) {
+            *x = root_x_return;
+            *y = root_y_return;
+            return true;
+        } else {
+            printf("MyPlugin: XQueryPointer failed.\n");
+            return false;
+        }
+    } else {
+        printf("MyPlugin: X11 display not available for screen cursor query.\n");
+        return false;
+    }
+#else
+    printf("MyPlugin: Platform not supported for native screen cursor position helper.\n");
+    // Fallback: try to use GLFW's understanding if possible, though less ideal.
+    // This would require the GLFWwindow* context, which this helper doesn't have.
+    // For now, just indicate failure for unsupported platforms.
+    return false;
+#endif
+    return false; // Ensure all paths return a value, e.g. if not WIN32 or __linux__
+}
+
 // --- Mouse Callback Functions for Small Window ---
 static void small_window_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
@@ -773,14 +825,31 @@ static void small_window_mouse_button_callback(GLFWwindow* window, int button, i
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (action == GLFW_PRESS) {
             self->is_dragging_small_window = true;
-            double xpos, ypos;
-            glfwGetCursorPos(window, &xpos, &ypos);
-            // No need to convert to window coordinates for undecorated windows usually,
-            // but if decoration/title bar existed, we'd need to be more careful.
-            // For a simple undecorated window, cursor pos relative to window is fine.
-            self->drag_offset_x = xpos;
-            self->drag_offset_y = ypos;
-            printf("MyPlugin: Small window drag started (offset: %.1f, %.1f)\n", self->drag_offset_x, self->drag_offset_y);
+
+            // Store initial small window position (which should be parent-relative)
+            self->initial_small_window_relative_x = self->small_window_x;
+            self->initial_small_window_relative_y = self->small_window_y;
+
+            // Get and store initial mouse cursor screen coordinates using the helper
+            if (!my_plugin_get_screen_cursor_position(self, &self->initial_drag_screen_x, &self->initial_drag_screen_y)) {
+                self->is_dragging_small_window = false; // Cancel drag
+                printf("MyPlugin: Failed to get initial screen cursor position via helper.\n");
+                // Potentially use fallback if defined, or just return.
+                // For now, if the helper fails, we cancel the drag.
+                // This could happen if X11 display isn't set yet, or GetCursorPos fails.
+                return;
+            }
+
+            // The old drag_offset_x/y were relative to the small window's client area.
+            // For the new logic, we primarily use screen coordinates for delta calculation
+            // and apply it to the initial parent-relative position.
+            // So, drag_offset_x/y might not be strictly needed in the new approach
+            // unless we want to maintain the exact click point within the window as the drag handle.
+            // For now, we'll rely on the screen coordinate delta.
+            printf("MyPlugin: Small window drag started. Initial screen cursor: (%d, %d), initial window relative: (%d, %d)\n",
+                   self->initial_drag_screen_x, self->initial_drag_screen_y,
+                   self->initial_small_window_relative_x, self->initial_small_window_relative_y);
+
         } else if (action == GLFW_RELEASE) {
             self->is_dragging_small_window = false;
             printf("MyPlugin: Small window drag ended\n");
@@ -792,26 +861,64 @@ static void small_window_cursor_pos_callback(GLFWwindow* window, double xpos, do
     my_plugin_t* self = (my_plugin_t*)glfwGetWindowUserPointer(window);
     if (!self || !self->is_dragging_small_window) return;
 
-    // Get current screen position of the cursor
-    // GLFW cursor position is relative to the client area of the window.
-    // To move the window, we need screen coordinates.
-    // However, for dragging, we can calculate the delta and apply it to current window position.
+    // `xpos` and `ypos` from GLFW are relative to the client area of the small window.
+    // We need current screen cursor position for our new logic.
 
-    int current_win_x, current_win_y;
-    glfwGetWindowPos(window, &current_win_x, &current_win_y);
+    // `xpos` and `ypos` from GLFW are relative to the client area of the small window.
+    // We need current screen cursor position for our new logic.
 
-    // Calculate new window position based on drag
-    // The new window top-left should be where the cursor is, minus the initial offset within the window
-    // when the drag started.
-    int new_x = current_win_x + (int)(xpos - self->drag_offset_x);
-    int new_y = current_win_y + (int)(ypos - self->drag_offset_y);
+    int current_screen_cursor_x = 0;
+    int current_screen_cursor_y = 0;
 
-    glfwSetWindowPos(window, new_x, new_y);
+    if (!my_plugin_get_screen_cursor_position(self, &current_screen_cursor_x, &current_screen_cursor_y)) {
+        printf("MyPlugin: Failed to get current screen cursor position via helper during drag.\n");
+        // If we can't get the current cursor position, we can't calculate the delta.
+        // Options:
+        // 1. Stop the drag (self->is_dragging_small_window = false;)
+        // 2. Skip this update and hope the next one works.
+        // 3. Fallback to old logic (problematic).
+        // For now, just return and skip this update.
+        return;
+    }
 
-    // Update stored position (optional, if not relying solely on glfwGetWindowPos for render)
-    self->small_window_x = new_x;
-    self->small_window_y = new_y;
-    // We don't re-set drag_offset_x/y here, they are relative to the start of the drag.
+    // Calculate delta movement in screen coordinates
+    int delta_x = current_screen_cursor_x - self->initial_drag_screen_x;
+    int delta_y = current_screen_cursor_y - self->initial_drag_screen_y;
+
+    // Calculate new target parent-relative coordinates
+    int new_relative_x = self->initial_small_window_relative_x + delta_x;
+    int new_relative_y = self->initial_small_window_relative_y + delta_y;
+
+    // Move the small window using native calls
+#ifdef _WIN32
+    if (self->small_hwnd) {
+        SetWindowPos(self->small_hwnd, NULL, new_relative_x, new_relative_y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+    } else {
+        printf("MyPlugin: Small window HWND not available for SetWindowPos.\n");
+        // Fallback or error
+    }
+#elif __linux__
+    if (self->x11_display && self->small_x11_window) {
+        XMoveWindow(self->x11_display, self->small_x11_window, new_relative_x, new_relative_y);
+        XFlush(self->x11_display); // Ensure the move command is processed
+    } else {
+        printf("MyPlugin: X11 display or small window handle not available for XMoveWindow.\n");
+        // Fallback or error
+    }
+#else
+    // If native calls are not available (e.g. on other platforms, or if setup failed)
+    // then the drag won't work with this new logic.
+    // The earlier fallback in this function already tried to use old GLFW method.
+    printf("MyPlugin: Native window move not supported on this platform. Drag will not work as intended.\n");
+    // No operation here as the fallback was already attempted.
+#endif
+
+    // Update stored parent-relative position
+    self->small_window_x = new_relative_x;
+    self->small_window_y = new_relative_y;
+
+    // No need to update drag_offset_x/y as they were for the old method.
+    // The screen coordinates are absolute, and deltas are calculated from drag start.
 }
 
 #endif // HAVE_GLFW
