@@ -2,6 +2,9 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <unistd.h> // For fork, exec
+#include <sys/wait.h> // For waitpid
+#include <signal.h> // For kill
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -36,14 +39,25 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
+    
     // Initialize your plugin state here
+    
+    // Launch Flutter UI as a demonstration
+    // In a real plugin, this might be triggered by a GUI button or parameter
+    launch_flutter_ui(self);
+    
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
+    
+    // Close Flutter UI if open
+    close_flutter_ui(self);
+    
     // Free any resources allocated in init
 }
 
@@ -170,6 +184,10 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->plugin.get_extension = my_plugin_get_extension;
     self->plugin.on_main_thread = my_plugin_on_main_thread;
 
+    // Initialize Flutter UI state
+    self->ui_visible = false;
+    self->flutter_process = NULL;
+
     printf("MyPlugin: Plugin instance created successfully.\n");
     return &self->plugin;
 }
@@ -208,3 +226,56 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         return NULL;
     }
 };
+
+// --- Flutter UI Integration ---
+bool launch_flutter_ui(my_plugin_t* plugin) {
+    if (plugin->ui_visible) {
+        printf("MyPlugin: Flutter UI is already visible\n");
+        return true;
+    }
+
+    printf("MyPlugin: Launching Flutter UI...\n");
+    
+    // For now, we'll create a simple demonstration
+    // In a real implementation, this would launch the Flutter app
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process - attempt to run Flutter app or fallback message
+        printf("MyPlugin: Flutter UI process started (PID: %d)\n", getpid());
+        
+        // Try to launch Flutter app from our flutter_ui directory
+        // This is a placeholder - in production you'd use Flutter's embedder API
+        execl("/bin/echo", "echo", "Flutter UI would be displayed here", (char*)NULL);
+        
+        // If execl fails, we'll exit
+        exit(1);
+    } else if (pid > 0) {
+        // Parent process
+        plugin->flutter_process = (void*)(intptr_t)pid;
+        plugin->ui_visible = true;
+        printf("MyPlugin: Flutter UI launched with PID: %d\n", pid);
+        return true;
+    } else {
+        // Fork failed
+        printf("MyPlugin: Failed to launch Flutter UI\n");
+        return false;
+    }
+}
+
+void close_flutter_ui(my_plugin_t* plugin) {
+    if (!plugin->ui_visible) {
+        return;
+    }
+
+    printf("MyPlugin: Closing Flutter UI...\n");
+    
+    if (plugin->flutter_process) {
+        pid_t pid = (pid_t)(intptr_t)plugin->flutter_process;
+        kill(pid, SIGTERM);
+        waitpid(pid, NULL, 0);
+        plugin->flutter_process = NULL;
+    }
+    
+    plugin->ui_visible = false;
+    printf("MyPlugin: Flutter UI closed\n");
+}
