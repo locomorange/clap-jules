@@ -38,10 +38,6 @@ jobs:
           libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
           libasound2-dev libpulse-dev
 
-    - name: Install Dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install pkg-config
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -127,10 +123,6 @@ jobs:
           libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
           libasound2-dev libpulse-dev
 
-    - name: Install Dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install pkg-config
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
