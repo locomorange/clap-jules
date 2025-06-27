@@ -33,6 +33,12 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
     
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
         message(STATUS "Found Brisk, adding subdirectory")
+        
+        # Disable Brisk resource compilation to avoid pack_resource tool dependency
+        set(BRISK_RESOURCES OFF CACHE BOOL "Disable Brisk resource compilation" FORCE)
+        set(BRISK_WEBGPU OFF CACHE BOOL "Disable WebGPU for compatibility" FORCE)
+        set(BRISK_INTERACTIVE_TESTS OFF CACHE BOOL "Disable interactive tests" FORCE)
+        
         add_subdirectory(libs/brisk)
     endif()
     
