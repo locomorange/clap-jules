@@ -27,25 +27,21 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
 endif()
 
 # Add KFR and Brisk (C++20 enabled) - requires CMake 3.22+
+# Note: Brisk has complex dependencies (pack_resource tool, vcpkg, etc.) that cause CI issues
+# For now, we skip Brisk integration and use minimal implementation
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
-    # Include CMakeDependentOption module required by Brisk
-    include(CMakeDependentOption)
-    
-    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
-        message(STATUS "Found Brisk, adding subdirectory")
-        
-        # Disable Brisk resource compilation to avoid pack_resource tool dependency
-        set(BRISK_RESOURCES OFF CACHE BOOL "Disable Brisk resource compilation" FORCE)
-        set(BRISK_WEBGPU OFF CACHE BOOL "Disable WebGPU for compatibility" FORCE)
-        set(BRISK_INTERACTIVE_TESTS OFF CACHE BOOL "Disable interactive tests" FORCE)
-        
-        add_subdirectory(libs/brisk)
-    endif()
-    
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
         message(STATUS "Found KFR, adding subdirectory")
         add_subdirectory(libs/kfr)
     endif()
+    
+    # TODO: Enable Brisk when build environment supports all dependencies
+    # if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
+    #     message(STATUS "Found Brisk, adding subdirectory")
+    #     add_subdirectory(libs/brisk)
+    # endif()
+    
+    message(STATUS "Brisk integration temporarily disabled due to build dependencies")
 else()
     message(STATUS "CMake ${CMAKE_VERSION} < 3.22, skipping Brisk and KFR (require CMake 3.22+)")
 endif()
@@ -72,6 +68,9 @@ if (TARGET kfr)
     target_link_libraries(my_clap_plugin PRIVATE kfr)
     target_compile_definitions(my_clap_plugin PRIVATE KFR_ENABLED=1)
 endif()
+
+# Note: Currently no external libraries are linked due to build complexity
+# MVVM architecture is maintained for future integration
 
 # Set C++ standard for the plugin
 target_compile_features(my_clap_plugin PRIVATE cxx_std_20)
