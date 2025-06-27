@@ -28,6 +28,9 @@ endif()
 
 # Add KFR and Brisk (C++20 enabled) - requires CMake 3.22+
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
+    # Include CMakeDependentOption module required by Brisk
+    include(CMakeDependentOption)
+    
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
         message(STATUS "Found Brisk, adding subdirectory")
         add_subdirectory(libs/brisk)
