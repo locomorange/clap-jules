@@ -1,7 +1,14 @@
 #pragma once
 
 #include <clap/clap.h>
-#include <sys/types.h>  // For pid_t
+
+#ifdef _WIN32
+  // Windows does not have pid_t, define it or use a Windows equivalent
+  typedef int pid_t;
+#else
+  #include <sys/types.h>  // For pid_t
+  #include <clap/ext/posix-fd-support.h>
+#endif
 
 // Basic plugin structure
 typedef struct {

@@ -3,9 +3,15 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 #include <clap/ext/gui.h>  // For GUI extension
-#include <unistd.h>   // For fork, exec
-#include <sys/wait.h> // For wait functions
-#include <signal.h>   // For kill
+
+#ifdef _WIN32
+  // Windows: include relevant headers for process management
+  #include <windows.h>
+#else
+  #include <unistd.h>   // For fork, exec
+  #include <sys/wait.h> // For wait functions
+  #include <signal.h>   // For kill
+#endif
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -288,7 +294,12 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
         printf("MyPlugin: GUI already visible\n");
         return true;
     }
-    
+
+#ifdef _WIN32
+    // TODO: Implement launching the Flutter app on Windows using CreateProcess or similar
+    printf("MyPlugin: GUI show is not implemented for Windows yet.\n");
+    return false;
+#else
     // Launch Flutter app
     pid_t pid = fork();
     if (pid == 0) {
@@ -323,6 +334,7 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
         printf("MyPlugin: Failed to fork process\n");
         return false;
     }
+#endif
 }
 
 static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
@@ -332,7 +344,17 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     if (!self->gui_visible) {
         return true;
     }
-    
+
+#ifdef _WIN32
+    // TODO: Implement terminating the Flutter app on Windows
+    printf("MyPlugin: GUI hide is not implemented for Windows yet.\n");
+    if (self->flutter_pid != -1) { // Assuming -1 means no process
+        // Potentially use TerminateProcess if a handle is stored
+        // Or send a close message if the Flutter app supports it
+    }
+    self->gui_visible = false;
+    return false; // Or true if successfully "hidden"
+#else
     if (self->flutter_pid > 0) {
         printf("MyPlugin: Terminating Flutter app (PID %d)\n", self->flutter_pid);
         kill(self->flutter_pid, SIGTERM);
@@ -345,6 +367,7 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     }
     
     self->gui_visible = false;
+#endif
     return true;
 }
 
