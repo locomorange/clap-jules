@@ -26,16 +26,8 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
     add_compile_definitions(BOOST_DI_CFG_DIAGNOSTICS_LEVEL=0)
 endif()
 
-# KFR and Brisk require CMake 3.22+, so we'll include only headers for now
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/include")
-    message(STATUS "Found KFR headers, adding include directory")
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/include)
-endif()
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
-    message(STATUS "Found Brisk headers, adding include directory")
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include)
-endif()
+# Note: KFR and Brisk are available as submodules but require CMake 3.22+ and C++20
+# For compatibility with current environment, we use minimal implementation
 
 # Add include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -3,17 +3,8 @@
 #include "plugin/plugin_view_model.hpp"
 #include <memory>
 
-// Try to include Brisk headers, fallback to minimal implementation if not available
-#if __has_include(<brisk/gui/GuiWindow.hpp>)
-#include <brisk/gui/GuiWindow.hpp>
-#include <brisk/widgets/Button.hpp>
-#include <brisk/widgets/Slider.hpp>
-#include <brisk/widgets/Text.hpp>
-#include <brisk/widgets/Layouts.hpp>
-#define BRISK_AVAILABLE 1
-#else
+// Minimal implementation without external GUI dependencies
 #define BRISK_AVAILABLE 0
-#endif
 
 namespace plugin {
 
