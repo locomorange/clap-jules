@@ -3,6 +3,7 @@
 #include "brisk/core/BasicTypes.hpp"
 #include <memory>
 #include <functional>
+#include <string>
 
 namespace brisk {
 
