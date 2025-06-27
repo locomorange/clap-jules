@@ -294,19 +294,24 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     if (pid == 0) {
         // Child process - launch Flutter app
         char flutter_path[1024];
-        snprintf(flutter_path, sizeof(flutter_path), "%s/flutter_ui_app", 
-                 getenv("CLAP_PLUGIN_DIR") ? getenv("CLAP_PLUGIN_DIR") : ".");
         
-        printf("MyPlugin: Launching Flutter app: %s\n", flutter_path);
-        execl(flutter_path, "flutter_ui_app", NULL);
+        // Try multiple possible locations for the Flutter executable
+        const char* possible_paths[] = {
+            "./build/flutter_ui_app",
+            "./flutter_ui_app", 
+            "./flutter_ui/build/linux/x64/release/bundle/flutter_ui",
+            "flutter_ui_app",
+            NULL
+        };
         
-        // If exec fails, try alternative path
-        execl("./flutter_ui_app", "flutter_ui_app", NULL);
+        for (int i = 0; possible_paths[i] != NULL; i++) {
+            snprintf(flutter_path, sizeof(flutter_path), "%s", possible_paths[i]);
+            printf("MyPlugin: Trying to launch Flutter app: %s\n", flutter_path);
+            
+            execl(flutter_path, "flutter_ui", NULL);
+        }
         
-        // If both fail, try the build path
-        execl("./flutter_ui/build/linux/x64/release/bundle/flutter_ui", "flutter_ui", NULL);
-        
-        printf("MyPlugin: Failed to launch Flutter app\n");
+        printf("MyPlugin: Failed to launch Flutter app from any location\n");
         exit(1);
     } else if (pid > 0) {
         // Parent process
