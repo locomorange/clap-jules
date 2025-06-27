@@ -63,6 +63,15 @@ install(TARGETS my_clap_plugin DESTINATION ${CLAP_INSTALL_DIR})
 
 message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.")
 
+# Flutter UI integration
+find_program(FLUTTER_CMD flutter PATHS /tmp/flutter/bin /usr/bin /usr/local/bin)
+if(FLUTTER_CMD)
+    message(STATUS "Found Flutter at: ${FLUTTER_CMD}")
+    message(STATUS "Flutter UI can be built separately with: cd flutter_ui && ${FLUTTER_CMD} build linux")
+else()
+    message(WARNING "Flutter not found. Install Flutter to build UI component.")
+endif()
+
 # Google Test integration
 add_subdirectory(libs/googletest)
 enable_testing()
