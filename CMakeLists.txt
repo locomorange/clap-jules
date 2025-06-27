@@ -39,9 +39,144 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add GLFW if available and system dependencies are met
+set(GLFW_AVAILABLE FALSE)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
+    # Check if required system dependencies are available
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # Try multiple methods to detect X11 in CI environments
+        find_package(X11 QUIET)
+        if(X11_FOUND)
+            message(STATUS "X11 found via find_package: ${X11_INCLUDE_DIR}")
+            set(GLFW_DEPS_FOUND TRUE)
+        else()
+            # Fallback: Check for X11 headers manually in common locations
+            find_path(X11_MANUAL_INCLUDE_DIR 
+                NAMES X11/Xlib.h
+                PATHS /usr/include /usr/local/include /usr/X11R6/include
+                NO_DEFAULT_PATH
+            )
+            if(X11_MANUAL_INCLUDE_DIR)
+                message(STATUS "X11 found manually at: ${X11_MANUAL_INCLUDE_DIR}")
+                set(X11_FOUND TRUE)
+                set(X11_INCLUDE_DIR ${X11_MANUAL_INCLUDE_DIR})
+                set(GLFW_DEPS_FOUND TRUE)
+            else()
+                # Last resort: Check if libx11-dev package files exist
+                if(EXISTS "/usr/include/X11/Xlib.h" OR EXISTS "/usr/local/include/X11/Xlib.h")
+                    message(STATUS "X11 headers found in standard locations")
+                    set(X11_FOUND TRUE)
+                    set(GLFW_DEPS_FOUND TRUE)
+                else()
+                    message(WARNING "X11 development libraries not found. GLFW GUI support will be disabled.")
+                    set(GLFW_DEPS_FOUND FALSE)
+                endif()
+            endif()
+        endif()
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        # Windows should generally have the necessary dependencies
+        set(GLFW_DEPS_FOUND TRUE)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        # macOS should generally have the necessary dependencies
+        set(GLFW_DEPS_FOUND TRUE)
+    else()
+        set(GLFW_DEPS_FOUND FALSE)
+    endif()
+    
+    if(GLFW_DEPS_FOUND)
+        message(STATUS "Found GLFW and system dependencies, adding GUI support")
+        set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW documentation")
+        set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
+        set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
+        set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW with Wayland support")
+        add_subdirectory(libs/glfw)
+        set(GLFW_AVAILABLE TRUE)
+    else()
+        message(STATUS "GLFW system dependencies not met, building without GUI support")
+    endif()
+else()
+    message(STATUS "GLFW not found, building without GUI support")
+endif()
+
+# Add Skia integration placeholder
+# Note: Skia uses GN/Ninja build system. For now, we'll add a placeholder
+# for future integration. See docs for building Skia with CMake.
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/include/core/SkCanvas.h")
+    message(STATUS "Found Skia headers - integration ready for future implementation")
+    # TODO: Add proper Skia CMake integration
+    # This would require either:
+    # 1. Using Skia's GN build system to generate CMake files
+    # 2. Creating a custom CMake wrapper for essential Skia components
+    # 3. Using precompiled Skia libraries
+    set(SKIA_AVAILABLE TRUE)
+else()
+    set(SKIA_AVAILABLE FALSE)
+endif()
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link GLFW and OpenGL if available
+if (GLFW_AVAILABLE AND TARGET glfw)
+    target_link_libraries(my_clap_plugin PRIVATE glfw)
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_GLFW=1)
+    
+    # Link OpenGL on different platforms
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        find_package(OpenGL QUIET)
+        if(OpenGL_FOUND AND TARGET OpenGL::GL)
+            target_link_libraries(my_clap_plugin PRIVATE OpenGL::GL)
+            message(STATUS "GUI support enabled with GLFW and OpenGL")
+        else()
+            # Fallback: Try to link OpenGL manually
+            find_library(GL_LIBRARY NAMES GL OpenGL)
+            if(GL_LIBRARY)
+                target_link_libraries(my_clap_plugin PRIVATE ${GL_LIBRARY})
+                message(STATUS "GUI support enabled with GLFW and OpenGL (manual linking: ${GL_LIBRARY})")
+            else()
+                # Last resort: Try direct linking
+                target_link_libraries(my_clap_plugin PRIVATE GL)
+                message(STATUS "GUI support enabled with GLFW and OpenGL (fallback direct linking)")
+            endif()
+        endif()
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        # Add Windows system libraries for Win32 API
+        target_link_libraries(my_clap_plugin PRIVATE user32 gdi32)
+        
+        # Multiple approaches to link OpenGL on Windows
+        find_library(OPENGL32_LIBRARY NAMES opengl32 OpenGL32)
+        if(OPENGL32_LIBRARY)
+            target_link_libraries(my_clap_plugin PRIVATE ${OPENGL32_LIBRARY})
+            message(STATUS "GUI support enabled with GLFW and OpenGL (${OPENGL32_LIBRARY})")
+        else()
+            # Try CMake's built-in OpenGL finder
+            find_package(OpenGL QUIET)
+            if(OpenGL_FOUND AND OPENGL_LIBRARIES)
+                target_link_libraries(my_clap_plugin PRIVATE ${OPENGL_LIBRARIES})
+                message(STATUS "GUI support enabled with GLFW and OpenGL (via find_package)")
+            else()
+                # Last resort: direct linking
+                target_link_libraries(my_clap_plugin PRIVATE opengl32)
+                message(STATUS "GUI support enabled with GLFW and OpenGL (direct linking fallback)")
+            endif()
+        endif()
+        
+        # Add Windows-specific compile definitions
+        target_compile_definitions(my_clap_plugin PRIVATE _CRT_SECURE_NO_WARNINGS)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        find_library(OPENGL_FRAMEWORK OpenGL)
+        if(OPENGL_FRAMEWORK)
+            target_link_libraries(my_clap_plugin PRIVATE ${OPENGL_FRAMEWORK})
+            message(STATUS "GUI support enabled with GLFW and OpenGL")
+        else()
+            message(WARNING "OpenGL framework not found. GUI support will be limited.")
+            message(STATUS "GUI support enabled with GLFW only (no OpenGL)")
+        endif()
+    endif()
+else()
+    message(STATUS "Building without GUI support - GLFW not available")
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")

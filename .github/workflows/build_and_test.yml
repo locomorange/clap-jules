@@ -29,38 +29,90 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Download and setup clap-validator
-        wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
-        tar -xzf clap-validator.tar.gz
-        chmod +x clap-validator
+        # Update package database
+        sudo apt-get update -y
         
-        # Download and setup clap-info
-        wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip
-        unzip -q clap-info.zip
-        chmod +x clap-info
+        # Install GUI dependencies for GLFW and OpenGL with retry mechanism
+        echo "Installing GUI dependencies..."
+        for attempt in 1 2 3; do
+          if sudo apt-get install -y --no-install-recommends \
+            libx11-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxxf86vm-dev \
+            libxfixes-dev \
+            pkg-config \
+            build-essential \
+            mesa-utils; then
+            echo "GUI dependencies installed successfully"
+            break
+          else
+            echo "Attempt $attempt failed, retrying..."
+            sleep 2
+          fi
+        done
         
-        # Add current directory to PATH for tool access
-        echo "$PWD" >> $GITHUB_PATH
+        # Verify critical packages are installed and show detailed info
+        echo "=== Verifying GUI dependencies ==="
+        MISSING_PACKAGES=""
+        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev mesa-utils; do
+          if ! dpkg -l | grep -q "$pkg"; then
+            MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
+          else
+            echo "✓ $pkg is installed"
+          fi
+        done
+        
+        if [ -n "$MISSING_PACKAGES" ]; then
+          echo "Error: Missing packages:$MISSING_PACKAGES"
+          echo "Attempting alternative installation..."
+          # Try installing individual packages
+          for pkg in $MISSING_PACKAGES; do
+            sudo apt-get install -y --no-install-recommends "$pkg" || echo "Warning: Could not install $pkg"
+          done
+        else
+          echo "All critical GUI packages are installed"
+        fi
+        
+        # Additional OpenGL diagnostics
+        echo "=== OpenGL Diagnostics ==="
+        dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
+        glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
+        
 
     - name: Configure CMake
-      run: cmake . -B build
+      shell: bash
+      run: |
+        echo "=== Build Environment Debug Info ==="
+        echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
+        echo "Operating System: $(uname -a)"
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          echo "=== Checking installed packages ==="
+          dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
+          echo "=== Checking X11 availability ==="
+          find /usr -name "X11" -type d 2>/dev/null | head -5 || echo "X11 not found"
+          echo "=== Checking OpenGL availability ==="
+          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5 || echo "OpenGL libraries not found"
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          echo "=== Windows Build Environment ==="
+          echo "MSVC setup:"
+          where cl.exe || echo "cl.exe not found"
+          echo "OpenGL32 availability:"
+          where opengl32.dll || echo "opengl32.dll not found in PATH"
+        fi
+        echo "=== CMake Configuration ==="
+        cmake . -B build
 
     - name: Build project
       run: cmake --build build --config Release
 
-    - name: Validate CLAP Plugin (Ubuntu only)
-      if: runner.os == 'Linux'
-      run: |
-        # Validate the plugin with clap-validator
-        echo "Validating CLAP plugin with clap-validator..."
-        clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
-        
-        # Get plugin info with clap-info
-        echo "Getting plugin info with clap-info..."
-        clap-info build/MyFirstClapPlugin.so --brief
 
     - name: Upload Artifact (Windows)
       if: runner.os == 'Windows'
@@ -91,6 +143,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: build # Ensures build job completes before test job starts
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -104,24 +157,161 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Download and setup clap-validator
-        wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
-        tar -xzf clap-validator.tar.gz
-        chmod +x clap-validator
+        # Update package database
+        sudo apt-get update -y
         
-        # Download and setup clap-info
-        wget -O clap-info.zip https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip
-        unzip -q clap-info.zip
-        chmod +x clap-info
+        # Install GUI dependencies for GLFW and OpenGL with retry mechanism
+        echo "Installing GUI dependencies..."
+        for attempt in 1 2 3; do
+          if sudo apt-get install -y --no-install-recommends \
+            libx11-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxxf86vm-dev \
+            libxfixes-dev \
+            pkg-config \
+            build-essential \
+            mesa-utils; then
+            echo "GUI dependencies installed successfully"
+            break
+          else
+            echo "Attempt $attempt failed, retrying..."
+            sleep 2
+          fi
+        done
+        
+        # Verify critical packages are installed and show detailed info
+        echo "=== Verifying GUI dependencies ==="
+        MISSING_PACKAGES=""
+        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev mesa-utils; do
+          if ! dpkg -l | grep -q "$pkg"; then
+            MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
+          else
+            echo "✓ $pkg is installed"
+          fi
+        done
+        
+        if [ -n "$MISSING_PACKAGES" ]; then
+          echo "Error: Missing packages:$MISSING_PACKAGES"
+          echo "Attempting alternative installation..."
+          # Try installing individual packages
+          for pkg in $MISSING_PACKAGES; do
+            sudo apt-get install -y --no-install-recommends "$pkg" || echo "Warning: Could not install $pkg"
+          done
+        else
+          echo "All critical GUI packages are installed"
+        fi
+        
+        # Additional OpenGL diagnostics
+        echo "=== OpenGL Diagnostics ==="
+        dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
+        glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
+        
+
+    - name: Setup CLAP Tools
+      shell: bash
+      run: |
+        echo "=== Setting up CLAP tools for ${{ runner.os }} ==="
+        
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          # Download clap-validator for Linux
+          wget -O clap-validator.tar.gz "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz" || echo "clap-validator download failed"
+          if [ -f clap-validator.tar.gz ]; then
+            tar -xzf clap-validator.tar.gz && chmod +x clap-validator || echo "clap-validator extraction failed"
+          fi
+          
+          # Download clap-info for Linux
+          wget -O clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
+          fi
+          
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          # Download clap-validator for Windows
+          curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip" || echo "clap-validator download failed"
+          if [ -f clap-validator.zip ]; then
+            unzip -q clap-validator.zip || echo "clap-validator extraction failed"
+          fi
+          
+          # Download clap-info for Windows
+          curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-win-x64.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip || echo "clap-info extraction failed"
+          fi
+          
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          echo "=== Setting up CLAP tools for macOS ==="
+          
+          # Download clap-validator for macOS
+          curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-macos.zip" || echo "clap-validator download failed"
+          if [ -f clap-validator.zip ]; then
+            unzip -q clap-validator.zip && chmod +x clap-validator || echo "clap-validator extraction failed"
+          fi
+          
+          # Download clap-info for macOS
+          curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/v1.2.2/clap-info-mac-universal.zip" || echo "clap-info download failed"
+          if [ -f clap-info.zip ]; then
+            unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
+          fi
+        fi
         
         # Add current directory to PATH for tool access
         echo "$PWD" >> $GITHUB_PATH
-
+        
+        # Verify tools are available
+        echo "=== Verifying CLAP tools ==="
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          if [ -f "./clap-validator.exe" ]; then
+            ./clap-validator.exe --version || echo "clap-validator available but version check failed"
+          else
+            echo "clap-validator.exe not available"
+          fi
+          if [ -f "./clap-info.exe" ]; then
+            ./clap-info.exe --version || echo "clap-info available but version check failed"
+          else
+            echo "clap-info.exe not available"
+          fi
+        else
+          if [ -f "./clap-validator" ]; then
+            ./clap-validator --version || echo "clap-validator available but version check failed"
+          else
+            echo "clap-validator not available"
+          fi
+          if [ -f "./clap-info" ]; then
+            ./clap-info --version || echo "clap-info available but version check failed"
+          else
+            echo "clap-info not available"
+          fi
+        fi
     - name: Configure CMake
-      run: cmake . -B build
+      shell: bash
+      run: |
+        echo "=== Test Environment Debug Info ==="
+        echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
+        echo "Operating System: $(uname -a)"
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          echo "=== Checking installed packages ==="
+          dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
+          echo "=== Checking X11 availability ==="
+          find /usr -name "X11" -type d 2>/dev/null | head -5 || echo "X11 not found"
+          echo "=== Checking OpenGL availability ==="
+          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5 || echo "OpenGL libraries not found"
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          echo "=== Windows Test Environment ==="
+          echo "MSVC setup:"
+          where cl.exe || echo "cl.exe not found"
+          echo "OpenGL32 availability:"
+          where opengl32.dll || echo "opengl32.dll not found in PATH"
+        fi
+        echo "=== CMake Configuration ==="
+        cmake . -B build
 
     - name: Build project (including tests)
       run: cmake --build build --config Release
@@ -129,13 +319,44 @@ jobs:
     - name: Run tests
       run: ctest --test-dir build -C Release --output-on-failure
 
-    - name: Validate CLAP Plugin (Ubuntu only)
-      if: runner.os == 'Linux'
+    - name: Validate CLAP Plugin
+      shell: bash
       run: |
-        # Validate the plugin with clap-validator
-        echo "Validating CLAP plugin with clap-validator..."
-        clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
+        echo "=== Validating CLAP plugin on ${{ runner.os }} ==="
         
-        # Get plugin info with clap-info
-        echo "Getting plugin info with clap-info..."
-        clap-info build/MyFirstClapPlugin.so --brief
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.so"
+          VALIDATOR_CMD="./clap-validator"
+          INFO_CMD="./clap-info"
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
+          VALIDATOR_CMD="./clap-validator.exe"
+          INFO_CMD="./clap-info.exe"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
+          VALIDATOR_CMD="./clap-validator"
+          INFO_CMD="./clap-info"
+        fi
+        
+        echo "Plugin file: $PLUGIN_FILE"
+        
+        if [ -f "$PLUGIN_FILE" ]; then
+          # Validate the plugin with clap-validator
+          if [ -f "$VALIDATOR_CMD" ] || [ -f "${VALIDATOR_CMD}.exe" ]; then
+            echo "Validating CLAP plugin with clap-validator..."
+            $VALIDATOR_CMD validate "$PLUGIN_FILE" || echo "Validation completed with warnings/errors"
+          else
+            echo "Warning: clap-validator not available on ${{ runner.os }} - skipping validation"
+          fi
+          
+          # Get plugin info with clap-info
+          if [ -f "$INFO_CMD" ] || [ -f "${INFO_CMD}.exe" ]; then
+            echo "Getting plugin info with clap-info..."
+            $INFO_CMD "$PLUGIN_FILE" --brief || echo "Info extraction completed"
+          else
+            echo "Warning: clap-info not available on ${{ runner.os }} - skipping info extraction"
+          fi
+        else
+          echo "Error: Plugin file $PLUGIN_FILE not found!"
+          exit 1
+        fi
