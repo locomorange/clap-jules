@@ -1,47 +1,94 @@
 cmake_minimum_required(VERSION 3.16)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Try to find CLAP automatically, then try to find it in a fixed location.
-# This is useful for development, but you may want to remove it for production.
-# If you want to use a custom location, you can set CLAP_PATH before running cmake.
-# For example: cmake -DCLAP_PATH=/path/to/clap ..
-find_package(clap CONFIG)
-if (NOT CLAP_FOUND)
-    if (DEFINED ENV{CLAP_PATH})
-        set(CLAP_PATH $ENV{CLAP_PATH})
-    elseif(DEFINED CLAP_PATH)
-        # CLAP_PATH is already set (e.g. by cmake -DCLAP_PATH=...)
-    else()
-        # Try a default location (e.g. a submodule)
-        set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
-    endif()
-
-    if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
-        message(STATUS "Found CLAP headers in ${CLAP_PATH}/include")
-    else()
-        message(FATAL_ERROR "Could not find CLAP headers in ${CLAP_PATH}/include. Please set CLAP_PATH to the directory containing the CLAP SDK.")
-    endif()
-
-    # Add clap as a subdirectory.
-    # This will build clap if it's not already built.
-    # This also makes the clap targets available to us.
-    add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
+# Manual CLAP SDK setup to avoid version conflicts
+set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
+if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
+    message(STATUS "Found CLAP headers in ${CLAP_PATH}/include")
+    include_directories(${CLAP_PATH}/include)
+    
+    # Create a simple clap interface library
+    add_library(clap INTERFACE)
+    target_include_directories(clap INTERFACE ${CLAP_PATH}/include)
+else()
+    message(FATAL_ERROR "Could not find CLAP headers in ${CLAP_PATH}/include")
 endif()
 
-# Add clap-helpers if available
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
-    message(STATUS "Found clap-helpers, adding as subdirectory")
-    set(CLAP_HELPERS_BUILD_TESTS OFF CACHE BOOL "Don't build clap-helpers tests")
-    set(CLAP_HELPERS_NO_CLAP_IS_FATAL OFF CACHE BOOL "Don't make missing clap fatal for clap-helpers")
-    add_subdirectory(libs/clap-helpers)
+# Skip clap-helpers for now to avoid build complexity
+
+# Add Boost.DI (header-only library)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
+    message(STATUS "Found Boost.DI, adding include directory")
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include)
+    add_compile_definitions(BOOST_DI_CFG_DIAGNOSTICS_LEVEL=0)
 endif()
+
+# Add KFR and Brisk (C++20 enabled) - requires CMake 3.22+
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
+        message(STATUS "Found KFR, adding subdirectory")
+        add_subdirectory(libs/kfr)
+    endif()
+    
+    # TODO: Re-enable Brisk when pack_resource tool dependency is resolved
+    # The issue is that libs/brisk/CMakeLists.txt:137 includes compile_resources.cmake
+    # which has find_program(PACK_RESOURCE_TOOL NAMES pack_resource REQUIRED)
+    # This fails even when BRISK_RESOURCES is OFF because the include is unconditional
+    
+    # if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
+    #     message(STATUS "Found Brisk, setting up dependencies")
+    #     
+    #     # Set vcpkg triplet for dependency management
+    #     if (NOT DEFINED VCPKG_TARGET_TRIPLET)
+    #         if (WIN32)
+    #             set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "vcpkg triplet")
+    #         elseif (APPLE)
+    #             set(VCPKG_TARGET_TRIPLET "x64-osx" CACHE STRING "vcpkg triplet")
+    #         else()
+    #             set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "vcpkg triplet")
+    #         endif()
+    #     endif()
+    #     
+    #     add_subdirectory(libs/brisk)
+    # endif()
+    
+    message(STATUS "Brisk integration temporarily disabled due to pack_resource tool requirement")
+    message(STATUS "MVVM architecture is maintained for future Brisk integration")
+else()
+    message(STATUS "CMake ${CMAKE_VERSION} < 3.22, skipping Brisk and KFR (require CMake 3.22+)")
+endif()
+
+# Add include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED 
+    my_plugin.cpp
+    src/plugin/plugin_view_model.cpp
+    src/plugin/plugin_window.cpp
+)
+
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link Brisk and KFR if available
+if (TARGET brisk)
+    target_link_libraries(my_clap_plugin PRIVATE brisk)
+    target_compile_definitions(my_clap_plugin PRIVATE BRISK_ENABLED=1)
+endif()
+
+if (TARGET kfr)
+    target_link_libraries(my_clap_plugin PRIVATE kfr)
+    target_compile_definitions(my_clap_plugin PRIVATE KFR_ENABLED=1)
+endif()
+
+# Note: Currently no external libraries are linked due to build complexity
+# MVVM architecture is maintained for future integration
+
+# Set C++ standard for the plugin
+target_compile_features(my_clap_plugin PRIVATE cxx_std_20)
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")

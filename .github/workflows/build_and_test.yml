@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-22.04, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -28,6 +28,55 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+
+    - name: Install CMake 3.22+
+      uses: jwlawson/actions-setup-cmake@v1.14
+      with:
+        cmake-version: '3.22.0'
+
+    - name: Setup Brisk Dependencies (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        # Set vcpkg triplet based on platform
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-linux" >> $GITHUB_ENV
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-osx" >> $GITHUB_ENV
+        fi
+        
+        # Attempt to acquire Brisk dependencies if available
+        if [ -f "libs/brisk/acquire-deps.cmake" ]; then
+          echo "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET -P libs/brisk/acquire-deps.cmake || echo "Brisk dependency acquisition failed, will use vcpkg fallback"
+        fi
+
+    - name: Setup Brisk Dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "VCPKG_TARGET_TRIPLET=x64-windows-static" >> $env:GITHUB_ENV
+        if (Test-Path "libs/brisk/acquire-deps.cmake") {
+          Write-Host "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -P libs/brisk/acquire-deps.cmake
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Brisk dependency acquisition failed, will use vcpkg fallback"
+          }
+        }
+      shell: pwsh
+
+    - name: Install Dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+          libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
+          libasound2-dev libpulse-dev
+
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install pkg-config
+
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -46,7 +95,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build project
       run: cmake --build build --config Release
@@ -92,7 +141,7 @@ jobs:
     needs: build # Ensures build job completes before test job starts
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-22.04, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -103,6 +152,55 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+
+    - name: Install CMake 3.22+
+      uses: jwlawson/actions-setup-cmake@v1.14
+      with:
+        cmake-version: '3.22.0'
+
+    - name: Setup Brisk Dependencies (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        # Set vcpkg triplet based on platform
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-linux" >> $GITHUB_ENV
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-osx" >> $GITHUB_ENV
+        fi
+        
+        # Attempt to acquire Brisk dependencies if available
+        if [ -f "libs/brisk/acquire-deps.cmake" ]; then
+          echo "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET -P libs/brisk/acquire-deps.cmake || echo "Brisk dependency acquisition failed, will use vcpkg fallback"
+        fi
+
+    - name: Setup Brisk Dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "VCPKG_TARGET_TRIPLET=x64-windows-static" >> $env:GITHUB_ENV
+        if (Test-Path "libs/brisk/acquire-deps.cmake") {
+          Write-Host "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -P libs/brisk/acquire-deps.cmake
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Brisk dependency acquisition failed, will use vcpkg fallback"
+          }
+        }
+      shell: pwsh
+
+    - name: Install Dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+          libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
+          libasound2-dev libpulse-dev
+
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install pkg-config
+
 
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
@@ -121,7 +219,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build project (including tests)
       run: cmake --build build --config Release
