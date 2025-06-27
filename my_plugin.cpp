@@ -3,6 +3,11 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
+#include "plugin/service_configuration.hpp"
+#include "plugin/plugin_view_model.hpp"
+#include "plugin/plugin_window.hpp"
+#include "audio/audio_processor.hpp"
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -36,35 +41,122 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
-    return true;
+    
+    try {
+        // Configure dependency injection
+        plugin::ServiceConfiguration::configure();
+        
+        // Create view model and window
+        self->viewModel = plugin::ServiceConfiguration::createViewModel();
+        self->window = plugin::ServiceConfiguration::createWindow(self->viewModel);
+        
+        // Initialize plugin state
+        self->sampleRate = 44100.0;
+        self->bufferSize = 512;
+        self->isProcessing = false;
+        
+        printf("MyPlugin: MVVM architecture initialized successfully\n");
+        return true;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Failed to initialize MVVM architecture: %s\n", e.what());
+        return false;
+    }
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    try {
+        // Clean up MVVM components
+        if (self->window) {
+            self->window->hide();
+            self->window.reset();
+        }
+        
+        if (self->viewModel) {
+            self->viewModel.reset();
+        }
+        
+        printf("MyPlugin: MVVM components cleaned up successfully\n");
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error during cleanup: %s\n", e.what());
+    }
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    // Allocate and prepare resources needed for processing (e.g., buffers)
-    return true;
+    
+    try {
+        // Update plugin state
+        self->sampleRate = sample_rate;
+        self->bufferSize = max_frames_count;
+        
+        // Configure audio processing through view model
+        if (self->viewModel) {
+            self->viewModel->setSampleRate(sample_rate);
+            self->viewModel->setBufferSize(max_frames_count);
+            self->viewModel->updateStatus("Activated");
+        }
+        
+        return true;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error during activation: %s\n", e.what());
+        return false;
+    }
 }
 
 static void my_plugin_deactivate(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Deactivating plugin\n");
-    // Free resources allocated in activate
+    
+    try {
+        if (self->viewModel) {
+            self->viewModel->updateStatus("Deactivated");
+        }
+        
+        if (self->window) {
+            self->window->hide();
+        }
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error during deactivation: %s\n", e.what());
+    }
 }
 
 static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Starting processing\n");
-    return true;
+    
+    try {
+        self->isProcessing = true;
+        
+        if (self->viewModel) {
+            self->viewModel->updateStatus("Processing");
+        }
+        
+        return true;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error starting processing: %s\n", e.what());
+        return false;
+    }
 }
 
 static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Stopping processing\n");
+    
+    try {
+        self->isProcessing = false;
+        
+        if (self->viewModel) {
+            self->viewModel->updateStatus("Stopped");
+        }
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error stopping processing: %s\n", e.what());
+    }
 }
 
 static void my_plugin_reset(const struct clap_plugin *plugin) {
@@ -73,53 +165,221 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
-
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
-    return CLAP_PROCESS_CONTINUE;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    try {
+        // Process audio through MVVM architecture
+        if (self->viewModel && process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+            clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+            const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
+            
+            if (out_buf->channel_count >= 2 && in_buf->channel_count >= 2 && out_buf->data32 && in_buf->data32) {
+                // Create audio buffer wrapper for MVVM processing
+                audio::AudioBuffer buffer(process->frames_count, std::min(in_buf->channel_count, out_buf->channel_count));
+                
+                // Copy input to buffer
+                for (uint32_t ch = 0; ch < buffer.channelCount; ++ch) {
+                    for (uint32_t i = 0; i < process->frames_count; ++i) {
+                        buffer.channels[ch][i] = in_buf->data32[ch][i];
+                    }
+                }
+                
+                // Process through view model
+                self->viewModel->processAudio(buffer);
+                
+                // Copy processed buffer to output
+                for (uint32_t ch = 0; ch < buffer.channelCount; ++ch) {
+                    for (uint32_t i = 0; i < process->frames_count; ++i) {
+                        out_buf->data32[ch][i] = buffer.channels[ch][i];
+                    }
+                }
+            }
+        }
+        
+        return CLAP_PROCESS_CONTINUE;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error during processing: %s\n", e.what());
+        return CLAP_PROCESS_ERROR;
+    }
 }
 
+// GUI Extension callbacks
+static bool gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    return strcmp(api, CLAP_WINDOW_API_WIN32) == 0 || 
+           strcmp(api, CLAP_WINDOW_API_COCOA) == 0 || 
+           strcmp(api, CLAP_WINDOW_API_X11) == 0;
+}
+
+static bool gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+#ifdef _WIN32
+    *api = CLAP_WINDOW_API_WIN32;
+#elif __APPLE__
+    *api = CLAP_WINDOW_API_COCOA;
+#else
+    *api = CLAP_WINDOW_API_X11;
+#endif
+    *is_floating = false;
+    return true;
+}
+
+static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    try {
+        if (self->window) {
+            printf("MyPlugin: GUI already created\n");
+            return true;
+        }
+        
+        printf("MyPlugin: Creating GUI with API: %s\n", api);
+        // Window is already created in init, just need to show it
+        return true;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error creating GUI: %s\n", e.what());
+        return false;
+    }
+}
+
+static void gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    try {
+        if (self->window) {
+            self->window->hide();
+        }
+        printf("MyPlugin: GUI destroyed\n");
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error destroying GUI: %s\n", e.what());
+    }
+}
+
+static bool gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    printf("MyPlugin: Set scale: %f\n", scale);
+    return true; // Accept scaling but don't do anything for now
+}
+
+static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    try {
+        if (self->window) {
+            self->window->setSize(width, height);
+            return true;
+        }
+        return false;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error setting GUI size: %s\n", e.what());
+        return false;
+    }
+}
+
+static bool gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    *width = 400;
+    *height = 300;
+    return true;
+}
+
+static bool gui_can_resize(const clap_plugin_t *plugin) {
+    return true;
+}
+
+static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    hints->can_resize_horizontally = true;
+    hints->can_resize_vertically = true;
+    hints->preserve_aspect_ratio = false;
+    hints->aspect_ratio_width = 4;
+    hints->aspect_ratio_height = 3;
+    return true;
+}
+
+static bool gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    if (*width < 200) *width = 200;
+    if (*height < 150) *height = 150;
+    if (*width > 800) *width = 800;
+    if (*height > 600) *height = 600;
+    return true;
+}
+
+static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    try {
+        if (self->window) {
+            // Set parent window for embedding in DAW
+            // This would need platform-specific implementation
+            return true;
+        }
+        return false;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error setting GUI parent: %s\n", e.what());
+        return false;
+    }
+}
+
+static bool gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    return true;
+}
+
+static void gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    printf("MyPlugin: Suggested title: %s\n", title);
+}
+
+static bool gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    try {
+        if (self->window) {
+            self->window->show();
+            return true;
+        }
+        return false;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error showing GUI: %s\n", e.what());
+        return false;
+    }
+}
+
+static bool gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    try {
+        if (self->window) {
+            self->window->hide();
+            return true;
+        }
+        return false;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Error hiding GUI: %s\n", e.what());
+        return false;
+    }
+}
+
+static const struct clap_plugin_gui my_gui_extension = {
+    gui_is_api_supported,
+    gui_get_preferred_api,
+    gui_create,
+    gui_destroy,
+    gui_set_scale,
+    gui_get_size,
+    gui_can_resize,
+    gui_get_resize_hints,
+    gui_adjust_size,
+    gui_set_size,
+    gui_set_parent,
+    gui_set_transient,
+    gui_suggest_title,
+    gui_show,
+    gui_hide,
+};
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &my_gui_extension;
+    }
+    
+    return NULL;
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {

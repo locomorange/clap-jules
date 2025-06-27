@@ -29,6 +29,20 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Install Dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+          libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
+          libasound2-dev libpulse-dev
+
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install pkg-config
+
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -46,7 +60,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build project
       run: cmake --build build --config Release
@@ -104,6 +118,20 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Install Dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+          libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
+          libasound2-dev libpulse-dev
+
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install pkg-config
+
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -121,7 +149,7 @@ jobs:
         echo "$PWD" >> $GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build project (including tests)
       run: cmake --build build --config Release
