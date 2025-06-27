@@ -53,10 +53,10 @@ jobs:
     - name: Setup Brisk Dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
-        echo "VCPKG_TARGET_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+        echo "VCPKG_TARGET_TRIPLET=x64-windows-static" >> $env:GITHUB_ENV
         if (Test-Path "libs/brisk/acquire-deps.cmake") {
           Write-Host "Attempting to acquire Brisk dependencies..."
-          cmake -DVCPKG_TARGET_TRIPLET=x64-windows -P libs/brisk/acquire-deps.cmake
+          cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -P libs/brisk/acquire-deps.cmake
           if ($LASTEXITCODE -ne 0) {
             Write-Host "Brisk dependency acquisition failed, will use vcpkg fallback"
           }
@@ -177,10 +177,10 @@ jobs:
     - name: Setup Brisk Dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
-        echo "VCPKG_TARGET_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+        echo "VCPKG_TARGET_TRIPLET=x64-windows-static" >> $env:GITHUB_ENV
         if (Test-Path "libs/brisk/acquire-deps.cmake") {
           Write-Host "Attempting to acquire Brisk dependencies..."
-          cmake -DVCPKG_TARGET_TRIPLET=x64-windows -P libs/brisk/acquire-deps.cmake
+          cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -P libs/brisk/acquire-deps.cmake
           if ($LASTEXITCODE -ne 0) {
             Write-Host "Brisk dependency acquisition failed, will use vcpkg fallback"
           }

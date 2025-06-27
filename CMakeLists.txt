@@ -33,39 +33,30 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
         add_subdirectory(libs/kfr)
     endif()
     
-    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
-        message(STATUS "Found Brisk, setting up dependencies")
-        
-        # Set vcpkg triplet for dependency management
-        if (NOT DEFINED VCPKG_TARGET_TRIPLET)
-            if (WIN32)
-                set(VCPKG_TARGET_TRIPLET "x64-windows" CACHE STRING "vcpkg triplet")
-            elseif (APPLE)
-                set(VCPKG_TARGET_TRIPLET "x64-osx" CACHE STRING "vcpkg triplet")
-            else()
-                set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "vcpkg triplet")
-            endif()
-        endif()
-        
-        # Check if pack_resource tool is available
-        find_program(PACK_RESOURCE_TOOL NAMES pack_resource)
-        if (PACK_RESOURCE_TOOL)
-            message(STATUS "Found pack_resource tool: ${PACK_RESOURCE_TOOL}")
-            set(BRISK_RESOURCES ON CACHE BOOL "Enable Brisk resource compilation" FORCE)
-        else()
-            message(STATUS "pack_resource tool not found, disabling Brisk resource compilation")
-            set(BRISK_RESOURCES OFF CACHE BOOL "Disable Brisk resource compilation (tool not found)" FORCE)
-        endif()
-        
-        # Set up Brisk with conservative options for CI compatibility
-        set(BRISK_WEBGPU OFF CACHE BOOL "Disable WebGPU for compatibility" FORCE)
-        set(BRISK_INTERACTIVE_TESTS OFF CACHE BOOL "Disable interactive tests" FORCE)
-        set(BRISK_TESTS OFF CACHE BOOL "Disable Brisk tests" FORCE)
-        set(BRISK_EXAMPLES OFF CACHE BOOL "Disable Brisk examples" FORCE)
-        
-        message(STATUS "Using VCPKG_TARGET_TRIPLET: ${VCPKG_TARGET_TRIPLET}")
-        add_subdirectory(libs/brisk)
-    endif()
+    # TODO: Re-enable Brisk when pack_resource tool dependency is resolved
+    # The issue is that libs/brisk/CMakeLists.txt:137 includes compile_resources.cmake
+    # which has find_program(PACK_RESOURCE_TOOL NAMES pack_resource REQUIRED)
+    # This fails even when BRISK_RESOURCES is OFF because the include is unconditional
+    
+    # if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
+    #     message(STATUS "Found Brisk, setting up dependencies")
+    #     
+    #     # Set vcpkg triplet for dependency management
+    #     if (NOT DEFINED VCPKG_TARGET_TRIPLET)
+    #         if (WIN32)
+    #             set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "vcpkg triplet")
+    #         elseif (APPLE)
+    #             set(VCPKG_TARGET_TRIPLET "x64-osx" CACHE STRING "vcpkg triplet")
+    #         else()
+    #             set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "vcpkg triplet")
+    #         endif()
+    #     endif()
+    #     
+    #     add_subdirectory(libs/brisk)
+    # endif()
+    
+    message(STATUS "Brisk integration temporarily disabled due to pack_resource tool requirement")
+    message(STATUS "MVVM architecture is maintained for future Brisk integration")
 else()
     message(STATUS "CMake ${CMAKE_VERSION} < 3.22, skipping Brisk and KFR (require CMake 3.22+)")
 endif()
