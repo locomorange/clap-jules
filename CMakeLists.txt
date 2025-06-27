@@ -27,21 +27,45 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
 endif()
 
 # Add KFR and Brisk (C++20 enabled) - requires CMake 3.22+
-# Note: Brisk has complex dependencies (pack_resource tool, vcpkg, etc.) that cause CI issues
-# For now, we skip Brisk integration and use minimal implementation
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
         message(STATUS "Found KFR, adding subdirectory")
         add_subdirectory(libs/kfr)
     endif()
     
-    # TODO: Enable Brisk when build environment supports all dependencies
-    # if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
-    #     message(STATUS "Found Brisk, adding subdirectory")
-    #     add_subdirectory(libs/brisk)
-    # endif()
-    
-    message(STATUS "Brisk integration temporarily disabled due to build dependencies")
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
+        message(STATUS "Found Brisk, setting up dependencies")
+        
+        # Set vcpkg triplet for dependency management
+        if (NOT DEFINED VCPKG_TARGET_TRIPLET)
+            if (WIN32)
+                set(VCPKG_TARGET_TRIPLET "x64-windows" CACHE STRING "vcpkg triplet")
+            elseif (APPLE)
+                set(VCPKG_TARGET_TRIPLET "x64-osx" CACHE STRING "vcpkg triplet")
+            else()
+                set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "vcpkg triplet")
+            endif()
+        endif()
+        
+        # Check if pack_resource tool is available
+        find_program(PACK_RESOURCE_TOOL NAMES pack_resource)
+        if (PACK_RESOURCE_TOOL)
+            message(STATUS "Found pack_resource tool: ${PACK_RESOURCE_TOOL}")
+            set(BRISK_RESOURCES ON CACHE BOOL "Enable Brisk resource compilation" FORCE)
+        else()
+            message(STATUS "pack_resource tool not found, disabling Brisk resource compilation")
+            set(BRISK_RESOURCES OFF CACHE BOOL "Disable Brisk resource compilation (tool not found)" FORCE)
+        endif()
+        
+        # Set up Brisk with conservative options for CI compatibility
+        set(BRISK_WEBGPU OFF CACHE BOOL "Disable WebGPU for compatibility" FORCE)
+        set(BRISK_INTERACTIVE_TESTS OFF CACHE BOOL "Disable interactive tests" FORCE)
+        set(BRISK_TESTS OFF CACHE BOOL "Disable Brisk tests" FORCE)
+        set(BRISK_EXAMPLES OFF CACHE BOOL "Disable Brisk examples" FORCE)
+        
+        message(STATUS "Using VCPKG_TARGET_TRIPLET: ${VCPKG_TARGET_TRIPLET}")
+        add_subdirectory(libs/brisk)
+    endif()
 else()
     message(STATUS "CMake ${CMAKE_VERSION} < 3.22, skipping Brisk and KFR (require CMake 3.22+)")
 endif()

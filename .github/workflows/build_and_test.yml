@@ -34,6 +34,35 @@ jobs:
       with:
         cmake-version: '3.22.0'
 
+    - name: Setup Brisk Dependencies (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        # Set vcpkg triplet based on platform
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-linux" >> $GITHUB_ENV
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-osx" >> $GITHUB_ENV
+        fi
+        
+        # Attempt to acquire Brisk dependencies if available
+        if [ -f "libs/brisk/acquire-deps.cmake" ]; then
+          echo "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET -P libs/brisk/acquire-deps.cmake || echo "Brisk dependency acquisition failed, will use vcpkg fallback"
+        fi
+
+    - name: Setup Brisk Dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "VCPKG_TARGET_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+        if (Test-Path "libs/brisk/acquire-deps.cmake") {
+          Write-Host "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=x64-windows -P libs/brisk/acquire-deps.cmake
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Brisk dependency acquisition failed, will use vcpkg fallback"
+          }
+        }
+      shell: pwsh
+
     - name: Install Dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
@@ -128,6 +157,35 @@ jobs:
       uses: jwlawson/actions-setup-cmake@v1.14
       with:
         cmake-version: '3.22.0'
+
+    - name: Setup Brisk Dependencies (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        # Set vcpkg triplet based on platform
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-linux" >> $GITHUB_ENV
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          echo "VCPKG_TARGET_TRIPLET=x64-osx" >> $GITHUB_ENV
+        fi
+        
+        # Attempt to acquire Brisk dependencies if available
+        if [ -f "libs/brisk/acquire-deps.cmake" ]; then
+          echo "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET -P libs/brisk/acquire-deps.cmake || echo "Brisk dependency acquisition failed, will use vcpkg fallback"
+        fi
+
+    - name: Setup Brisk Dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "VCPKG_TARGET_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+        if (Test-Path "libs/brisk/acquire-deps.cmake") {
+          Write-Host "Attempting to acquire Brisk dependencies..."
+          cmake -DVCPKG_TARGET_TRIPLET=x64-windows -P libs/brisk/acquire-deps.cmake
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Brisk dependency acquisition failed, will use vcpkg fallback"
+          }
+        }
+      shell: pwsh
 
     - name: Install Dependencies (Ubuntu)
       if: runner.os == 'Linux'
