@@ -54,3 +54,5 @@ flutter_ui/.packages
 flutter_ui/.pub-cache/
 flutter_ui/.pub/
 flutter_ui/pubspec.lock
+
+clap-validator-0.3.2-ubuntu-18.04.tar.gz
