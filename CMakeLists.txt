@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Manual CLAP SDK setup to avoid version conflicts
@@ -26,8 +26,20 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
     add_compile_definitions(BOOST_DI_CFG_DIAGNOSTICS_LEVEL=0)
 endif()
 
-# Note: KFR and Brisk are available as submodules but require CMake 3.22+ and C++20
-# For compatibility with current environment, we use minimal implementation
+# Add KFR and Brisk (C++20 enabled) - requires CMake 3.22+
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.22")
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
+        message(STATUS "Found Brisk, adding subdirectory")
+        add_subdirectory(libs/brisk)
+    endif()
+    
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
+        message(STATUS "Found KFR, adding subdirectory")
+        add_subdirectory(libs/kfr)
+    endif()
+else()
+    message(STATUS "CMake ${CMAKE_VERSION} < 3.22, skipping Brisk and KFR (require CMake 3.22+)")
+endif()
 
 # Add include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -41,10 +53,19 @@ add_library(my_clap_plugin SHARED
 
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
-# Note: KFR and Brisk are header-only for our current usage
+# Link Brisk and KFR if available
+if (TARGET brisk)
+    target_link_libraries(my_clap_plugin PRIVATE brisk)
+    target_compile_definitions(my_clap_plugin PRIVATE BRISK_ENABLED=1)
+endif()
+
+if (TARGET kfr)
+    target_link_libraries(my_clap_plugin PRIVATE kfr)
+    target_compile_definitions(my_clap_plugin PRIVATE KFR_ENABLED=1)
+endif()
 
 # Set C++ standard for the plugin
-target_compile_features(my_clap_plugin PRIVATE cxx_std_17)
+target_compile_features(my_clap_plugin PRIVATE cxx_std_20)
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")

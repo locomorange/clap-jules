@@ -3,8 +3,14 @@
 #include "plugin/plugin_view_model.hpp"
 #include <memory>
 
-// Minimal implementation without external GUI dependencies
+// Enable Brisk with C++20 support (conditional on CMake version)
+#ifdef BRISK_ENABLED
+#define BRISK_AVAILABLE 1
+#include <brisk/window/Window.hpp>
+#include <brisk/widgets/Widgets.hpp>
+#else
 #define BRISK_AVAILABLE 0
+#endif
 
 namespace plugin {
 
