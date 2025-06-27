@@ -39,14 +39,23 @@ set(BRISK_MOCK ON CACHE BOOL "Use mock Brisk implementation")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED 
+set(PLUGIN_SOURCES
     my_plugin.cpp
     src/plugin/plugin_view_model.cpp
     src/plugin/plugin_window.cpp
-    src/native/native_window.cpp
     src/brisk/window.cpp
     src/brisk/widgets.cpp
 )
+
+# Add platform-specific native window implementation
+if(APPLE)
+    list(APPEND PLUGIN_SOURCES src/native/native_window.mm)
+    set_source_files_properties(src/native/native_window.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
+else()
+    list(APPEND PLUGIN_SOURCES src/native/native_window.cpp)
+endif()
+
+add_library(my_clap_plugin SHARED ${PLUGIN_SOURCES})
 
 target_link_libraries(my_clap_plugin PRIVATE clap)
 

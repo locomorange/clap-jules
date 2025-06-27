@@ -1,6 +1,8 @@
 #include "native/native_window.hpp"
 #include <iostream>
 
+#ifndef __APPLE__ // macOS implementation is in native_window.mm
+
 namespace native {
 
 NativeWindow::NativeWindow(int width, int height, const std::string& title)
@@ -8,9 +10,6 @@ NativeWindow::NativeWindow(int width, int height, const std::string& title)
 #ifdef _WIN32
     hwnd_ = nullptr;
     hdc_ = nullptr;
-#elif __APPLE__
-    window_ = nullptr;
-    view_ = nullptr;
 #else
     display_ = nullptr;
     window_ = 0;
@@ -26,17 +25,17 @@ NativeWindow::~NativeWindow() {
 
 void NativeWindow::createWindow() {
 #ifdef _WIN32
-    // Windows implementation
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = DefWindowProc;
-    wc.hInstance = GetModuleHandle(nullptr);
+    // Windows implementation - using wide character APIs
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = DefWindowProcW;
+    wc.hInstance = GetModuleHandleW(nullptr);
     wc.lpszClassName = L"CLAPPluginWindow";
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     
-    RegisterClass(&wc);
+    RegisterClassW(&wc);
     
-    hwnd_ = CreateWindowEx(
+    hwnd_ = CreateWindowExW(
         0,
         L"CLAPPluginWindow",
         L"CLAP Plugin",
@@ -44,17 +43,13 @@ void NativeWindow::createWindow() {
         CW_USEDEFAULT, CW_USEDEFAULT,
         width_, height_,
         nullptr, nullptr,
-        GetModuleHandle(nullptr),
+        GetModuleHandleW(nullptr),
         nullptr
     );
     
     if (hwnd_) {
         hdc_ = GetDC(hwnd_);
     }
-    
-#elif __APPLE__
-    // macOS implementation - simplified for now
-    std::cout << "macOS native window creation not implemented yet" << std::endl;
     
 #else
     // Linux X11 implementation
@@ -94,8 +89,6 @@ void NativeWindow::destroyWindow() {
         DestroyWindow(hwnd_);
         hwnd_ = nullptr;
     }
-#elif __APPLE__
-    // macOS cleanup
 #else
     if (gc_) {
         XFreeGC(display_, gc_);
@@ -119,9 +112,6 @@ void NativeWindow::show() {
         UpdateWindow(hwnd_);
         visible_ = true;
     }
-#elif __APPLE__
-    // macOS show
-    visible_ = true;
 #else
     if (display_ && window_) {
         XMapWindow(display_, window_);
@@ -137,9 +127,6 @@ void NativeWindow::hide() {
         ShowWindow(hwnd_, SW_HIDE);
         visible_ = false;
     }
-#elif __APPLE__
-    // macOS hide
-    visible_ = false;
 #else
     if (display_ && window_) {
         XUnmapWindow(display_, window_);
@@ -161,8 +148,6 @@ void NativeWindow::setSize(int width, int height) {
     if (hwnd_) {
         SetWindowPos(hwnd_, nullptr, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER);
     }
-#elif __APPLE__
-    // macOS resize
 #else
     if (display_ && window_) {
         XResizeWindow(display_, window_, width, height);
@@ -176,8 +161,6 @@ void NativeWindow::setPosition(int x, int y) {
     if (hwnd_) {
         SetWindowPos(hwnd_, nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
     }
-#elif __APPLE__
-    // macOS move
 #else
     if (display_ && window_) {
         XMoveWindow(display_, window_, x, y);
@@ -189,8 +172,6 @@ void NativeWindow::setPosition(int x, int y) {
 void* NativeWindow::getNativeHandle() const {
 #ifdef _WIN32
     return hwnd_;
-#elif __APPLE__
-    return window_;
 #else
     return reinterpret_cast<void*>(window_);
 #endif
@@ -201,8 +182,6 @@ void NativeWindow::setParent(void* parent) {
     if (hwnd_ && parent) {
         SetParent(hwnd_, static_cast<HWND>(parent));
     }
-#elif __APPLE__
-    // macOS parenting
 #else
     if (display_ && window_ && parent) {
         Window parentWindow = reinterpret_cast<Window>(parent);
@@ -217,8 +196,6 @@ void NativeWindow::drawText(const std::string& text, int x, int y) {
     if (hdc_) {
         TextOutA(hdc_, x, y, text.c_str(), text.length());
     }
-#elif __APPLE__
-    // macOS text drawing
 #else
     if (display_ && window_ && gc_) {
         XDrawString(display_, window_, gc_, x, y, text.c_str(), text.length());
@@ -231,8 +208,6 @@ void NativeWindow::drawRect(int x, int y, int width, int height) {
     if (hdc_) {
         Rectangle(hdc_, x, y, x + width, y + height);
     }
-#elif __APPLE__
-    // macOS rectangle drawing
 #else
     if (display_ && window_ && gc_) {
         XDrawRectangle(display_, window_, gc_, x, y, width, height);
@@ -247,8 +222,6 @@ void NativeWindow::clear() {
         GetClientRect(hwnd_, &rect);
         FillRect(hdc_, &rect, (HBRUSH)(COLOR_WINDOW + 1));
     }
-#elif __APPLE__
-    // macOS clear
 #else
     if (display_ && window_) {
         XClearWindow(display_, window_);
@@ -259,8 +232,6 @@ void NativeWindow::clear() {
 void NativeWindow::present() {
 #ifdef _WIN32
     // Windows automatically presents
-#elif __APPLE__
-    // macOS present
 #else
     if (display_) {
         XFlush(display_);
@@ -269,3 +240,5 @@ void NativeWindow::present() {
 }
 
 }
+
+#endif // #ifndef __APPLE__

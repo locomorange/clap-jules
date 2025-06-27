@@ -6,7 +6,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #elif __APPLE__
-#include <Cocoa/Cocoa.h>
+// Forward declare as opaque pointers to avoid importing Objective-C headers in C++
+// These will be cast to proper types in the .mm implementation file
 #else
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -45,8 +46,8 @@ private:
     HWND hwnd_;
     HDC hdc_;
 #elif __APPLE__
-    NSWindow* window_;
-    NSView* view_;
+    void* window_;  // NSWindow* - opaque pointer to avoid Objective-C in C++ header
+    void* view_;    // NSView* - opaque pointer to avoid Objective-C in C++ header
 #else
     Display* display_;
     Window window_;
