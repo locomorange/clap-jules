@@ -14,6 +14,7 @@ PluginWindow::PluginWindow(std::shared_ptr<PluginViewModel> viewModel)
 void PluginWindow::show() {
     if (window_) {
         window_->setVisible(true);
+        window_->render(); // Force a render when showing
     }
 }
 

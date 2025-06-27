@@ -43,9 +43,21 @@ add_library(my_clap_plugin SHARED
     my_plugin.cpp
     src/plugin/plugin_view_model.cpp
     src/plugin/plugin_window.cpp
+    src/native/native_window.cpp
+    src/brisk/window.cpp
+    src/brisk/widgets.cpp
 )
 
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link platform-specific libraries for native window
+if(WIN32)
+    target_link_libraries(my_clap_plugin PRIVATE user32 gdi32)
+elseif(APPLE)
+    target_link_libraries(my_clap_plugin PRIVATE "-framework Cocoa")
+else()
+    target_link_libraries(my_clap_plugin PRIVATE X11)
+endif()
 
 # Set C++ standard for the plugin
 target_compile_features(my_clap_plugin PRIVATE cxx_std_17)
