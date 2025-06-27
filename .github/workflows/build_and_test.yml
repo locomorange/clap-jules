@@ -34,7 +34,14 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          libx11-dev
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+          libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
+          libasound2-dev libpulse-dev
+
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install pkg-config
 
 
     - name: Setup CLAP Tools (Ubuntu only)
@@ -117,7 +124,14 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          libx11-dev
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+          libgl1-mesa-dev libglu1-mesa-dev libfontconfig1-dev \
+          libasound2-dev libpulse-dev
+
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install pkg-config
 
 
     - name: Setup CLAP Tools (Ubuntu only)
