@@ -22,8 +22,6 @@ private:
     HINSTANCE m_hinstance = nullptr;
 #endif
     
-    uint32_t m_width = 400;
-    uint32_t m_height = 300;
     bool m_is_visible = false;
     bool m_is_created = false;
 
@@ -38,6 +36,7 @@ public:
     bool set_size(uint32_t width, uint32_t height);
     bool get_size(uint32_t* width, uint32_t* height);
     void set_title(const char* title);
+    void draw_content(); // Made public for Windows callback
     
     // Platform-specific methods
 #ifdef __linux__
@@ -46,7 +45,10 @@ public:
     bool set_parent_win32(HWND parent_window);
 #endif
 
+    // Made public for Windows callback access
+    uint32_t m_width = 400;
+    uint32_t m_height = 300;
+
 private:
-    void draw_content();
     void handle_events();
 };

@@ -80,11 +80,46 @@ bool SimpleGUI::create() {
     static bool class_registered = false;
     if (!class_registered) {
         WNDCLASS wc = {};
-        wc.lpfnWndProc = DefWindowProc;
+        wc.lpfnWndProc = [](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+            switch (msg) {
+                case WM_PAINT: {
+                    PAINTSTRUCT ps;
+                    HDC hdc = BeginPaint(hwnd, &ps);
+                    
+                    // Get SimpleGUI instance from window data
+                    SimpleGUI* gui = (SimpleGUI*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+                    if (gui) {
+                        gui->draw_content();
+                    } else {
+                        // Fallback drawing
+                        RECT rect;
+                        GetClientRect(hwnd, &rect);
+                        FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+                        TextOut(hdc, 10, 10, _T("CLAP Plugin GUI"), 15);
+                    }
+                    
+                    EndPaint(hwnd, &ps);
+                    return 0;
+                }
+                case WM_SIZE: {
+                    SimpleGUI* gui = (SimpleGUI*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+                    if (gui) {
+                        gui->m_width = LOWORD(lParam);
+                        gui->m_height = HIWORD(lParam);
+                    }
+                    return 0;
+                }
+                case WM_DESTROY:
+                    return 0;
+                default:
+                    return DefWindowProc(hwnd, msg, wParam, lParam);
+            }
+        };
         wc.hInstance = m_hinstance;
         wc.lpszClassName = _T("ClapPluginGUI");
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wc.style = CS_HREDRAW | CS_VREDRAW;
         
         if (!RegisterClass(&wc)) {
             printf("SimpleGUI: Error - Failed to register window class\n");
@@ -108,6 +143,9 @@ bool SimpleGUI::create() {
         printf("SimpleGUI: Error - Cannot create Windows window\n");
         return false;
     }
+    
+    // Store this instance in window data for callbacks
+    SetWindowLongPtr(m_hwnd, GWLP_USERDATA, (LONG_PTR)this);
     
     printf("SimpleGUI: Windows window created successfully\n");
     m_is_created = true;
@@ -176,6 +214,7 @@ bool SimpleGUI::show() {
 #elif defined(_WIN32)
     ShowWindow(m_hwnd, SW_SHOW);
     UpdateWindow(m_hwnd);
+    InvalidateRect(m_hwnd, nullptr, TRUE); // Force redraw
     m_is_visible = true;
     
     printf("SimpleGUI: Windows window shown\n");
@@ -254,6 +293,26 @@ bool SimpleGUI::set_parent_x11(unsigned long parent_window) {
     
     return true;
 }
+#elif defined(_WIN32)
+bool SimpleGUI::set_parent_win32(HWND parent_window) {
+    printf("SimpleGUI: Setting Windows parent window to %p\n", parent_window);
+    
+    if (!m_is_created) {
+        printf("SimpleGUI: Window not created\n");
+        return false;
+    }
+    
+    // Set parent window
+    if (parent_window) {
+        SetParent(m_hwnd, parent_window);
+        SetWindowLong(m_hwnd, GWL_STYLE, WS_CHILD | WS_VISIBLE);
+    } else {
+        SetParent(m_hwnd, nullptr);
+        SetWindowLong(m_hwnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
+    }
+    
+    return true;
+}
 #endif
 
 void SimpleGUI::draw_content() {
@@ -279,6 +338,34 @@ void SimpleGUI::draw_content() {
     XFillRectangle(m_display, m_window, gc, 120, 145, 10, 20); // slider thumb
     
     XFlush(m_display);
+#elif defined(_WIN32)
+    if (!m_hwnd) return;
+    
+    HDC hdc = GetDC(m_hwnd);
+    if (!hdc) return;
+    
+    // Clear window with white background
+    RECT rect;
+    GetClientRect(m_hwnd, &rect);
+    FillRect(hdc, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+    
+    // Set text properties
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(0, 0, 0));
+    
+    // Draw simple content
+    TextOut(hdc, 50, 50, _T("CLAP Plugin GUI"), 15);
+    TextOut(hdc, 50, 80, _T("Hello from Plugin!"), 18);
+    
+    // Draw a simple rectangle
+    Rectangle(hdc, 50, 100, 250, 200);
+    TextOut(hdc, 70, 130, _T("Volume Control"), 14);
+    
+    // Draw a simple "slider"
+    Rectangle(hdc, 70, 150, 170, 160);
+    Rectangle(hdc, 120, 145, 130, 165); // slider thumb
+    
+    ReleaseDC(m_hwnd, hdc);
 #endif
 }
 
@@ -312,6 +399,38 @@ void SimpleGUI::handle_events() {
                 printf("SimpleGUI: Key pressed\n");
                 break;
         }
+    }
+#elif defined(_WIN32)
+    if (!m_hwnd) return;
+    
+    MSG msg;
+    while (PeekMessage(&msg, m_hwnd, 0, 0, PM_REMOVE)) {
+        switch (msg.message) {
+            case WM_PAINT: {
+                PAINTSTRUCT ps;
+                BeginPaint(m_hwnd, &ps);
+                draw_content();
+                EndPaint(m_hwnd, &ps);
+                break;
+            }
+            case WM_SIZE:
+                m_width = LOWORD(msg.lParam);
+                m_height = HIWORD(msg.lParam);
+                printf("SimpleGUI: Window resized to %ux%u\n", m_width, m_height);
+                break;
+                
+            case WM_LBUTTONDOWN:
+                printf("SimpleGUI: Mouse button pressed at (%d, %d)\n",
+                       LOWORD(msg.lParam), HIWORD(msg.lParam));
+                break;
+                
+            case WM_KEYDOWN:
+                printf("SimpleGUI: Key pressed (VK: %d)\n", (int)msg.wParam);
+                break;
+        }
+        
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 #endif
 }

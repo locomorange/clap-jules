@@ -109,9 +109,12 @@ if (UNIX AND NOT APPLE)
     target_include_directories(test_gui PRIVATE ${X11_INCLUDE_DIR})
 endif()
 
-# Add CLAP GUI test executable (disabled on Windows due to complexity)
-if (NOT WIN32)
-    add_executable(test_clap_gui test_clap_gui.cpp)
+# Add CLAP GUI test executable
+add_executable(test_clap_gui test_clap_gui.cpp)
+if (WIN32)
+    # Windows doesn't need CMAKE_DL_LIBS
+    target_include_directories(test_clap_gui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include")
+else()
     target_link_libraries(test_clap_gui PRIVATE ${CMAKE_DL_LIBS})
     target_include_directories(test_clap_gui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include")
 endif()
