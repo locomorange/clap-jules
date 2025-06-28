@@ -3,9 +3,15 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
-#include <QtWidgets/QApplication>
-#include <QtGui/QWindow>
 #include <clap/ext/gui.h>
+#include <clap/plugin-features.h>
+
+// Include Qt headers at the top
+#include <QtWidgets/QApplication>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QString>
+#include <QtGui/QWindow>
+#include <QtWidgets/QWidget>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -21,7 +27,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
@@ -47,12 +53,7 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->gui_widget = nullptr;
     self->gui_created = false;
     
-    // Initialize Qt application if not already done
-    if (!QApplication::instance()) {
-        static int argc = 1;
-        static char *argv[] = {(char*)"my_clap_plugin", nullptr};
-        static QApplication app(argc, argv);
-    }
+    // Don't initialize Qt here - do it only when GUI is needed
     
     return true;
 }
@@ -165,6 +166,28 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     printf("MyPlugin: GUI create called with api: %s, floating: %s\n", api, is_floating ? "true" : "false");
     
     if (!self->gui_widget && !self->gui_created) {
+        // Lazy Qt initialization only when GUI is actually needed
+        if (!QApplication::instance()) {
+            static int argc = 1;
+            static char *argv[] = {(char*)"my_clap_plugin", nullptr};
+            
+            // Set platform to offscreen if no display is available
+            const char* display = getenv("DISPLAY");
+            if (!display || strlen(display) == 0) {
+                // Headless environment - use offscreen platform
+                qputenv("QT_QPA_PLATFORM", "offscreen");
+                printf("MyPlugin: Using offscreen Qt platform for headless environment\n");
+            }
+            
+            try {
+                static QApplication app(argc, argv);
+                printf("MyPlugin: Qt application initialized successfully\n");
+            } catch (...) {
+                printf("MyPlugin: Failed to initialize Qt application\n");
+                return false;
+            }
+        }
+        
         self->gui_widget = new PluginWidget();
         self->gui_widget->setHost(self->host);
         self->gui_created = true;
@@ -398,7 +421,7 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
 
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
-CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
+extern "C" CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
     // init: Called once when the library is loaded.
     [](const char *plugin_path) -> bool {

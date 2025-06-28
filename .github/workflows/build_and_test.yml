@@ -38,6 +38,12 @@ jobs:
         arch: ${{ runner.os == 'Windows' && 'win64_msvc2019_64' || runner.os == 'macOS' && 'clang_64' || 'gcc_64' }}
         cache: true
 
+    - name: Install additional Qt dependencies (Linux only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxcb-cursor0 libxcb-cursor-dev xvfb
+
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -63,6 +69,9 @@ jobs:
     - name: Validate CLAP Plugin (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        # Set Qt platform to offscreen for headless environment
+        export QT_QPA_PLATFORM=offscreen
+        
         # Validate the plugin with clap-validator
         echo "Validating CLAP plugin with clap-validator..."
         clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
@@ -122,6 +131,12 @@ jobs:
         arch: ${{ runner.os == 'Windows' && 'win64_msvc2019_64' || runner.os == 'macOS' && 'clang_64' || 'gcc_64' }}
         cache: true
 
+    - name: Install additional Qt dependencies (Linux only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxcb-cursor0 libxcb-cursor-dev xvfb
+
     - name: Setup CLAP Tools (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -150,6 +165,9 @@ jobs:
     - name: Validate CLAP Plugin (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        # Set Qt platform to offscreen for headless environment
+        export QT_QPA_PLATFORM=offscreen
+        
         # Validate the plugin with clap-validator
         echo "Validating CLAP plugin with clap-validator..."
         clap-validator validate build/MyFirstClapPlugin.so || echo "Validation completed with warnings/errors"
