@@ -99,6 +99,7 @@ jobs:
         echo "Installing build tools and GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
+            librtmidi \
             libxrandr-dev \
             libx11-dev \
             libxcursor-dev \
