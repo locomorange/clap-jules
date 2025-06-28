@@ -54,8 +54,15 @@ elseif(EXISTS "${BRISK_DIR}/CMakeLists.txt")
 endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp plugin_gui.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link Brisk if enabled
+if (ENABLE_BRISK AND TARGET Brisk::Widgets)
+    target_link_libraries(my_clap_plugin PRIVATE Brisk::Widgets)
+    target_compile_definitions(my_clap_plugin PRIVATE ENABLE_BRISK)
+    message(STATUS "Linking Brisk library to plugin")
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")

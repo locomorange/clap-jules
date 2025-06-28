@@ -81,9 +81,26 @@ sudo apt-get install -y libuv1-dev libvulkan-dev libx11-dev libxrandr-dev libxin
 
 **Note**: Brisk integration is disabled by default due to complex dependency management requirements. Enable only when needed for UI development.
 
+## GUI Implementation
+
+The plugin includes CLAP GUI extension support with optional Brisk UI framework integration:
+
+### GUI Files
+- `plugin_gui.hpp/cpp`: CLAP GUI extension implementation
+- Supports both floating and embedded window modes
+- Conditional compilation with `ENABLE_BRISK` for UI framework integration
+
+### GUI Features
+- Native CLAP GUI extension (`CLAP_EXT_GUI`)
+- Brisk-based UI with buttons, sliders, and text widgets
+- Cross-platform window management
+- Automatic scaling and resizing support
+
 ## Development Notes
 
-- The plugin currently implements basic structure with placeholder audio processing
+- The plugin implements complete CLAP GUI extension interface
+- Brisk UI framework provides modern widget-based interface when enabled
+- GUI creation is conditional - falls back gracefully when Brisk is unavailable
 - GitHub Actions workflow includes automatic CLAP validation and artifact upload
 - Project supports cross-platform builds (Ubuntu, Windows, macOS)
 - CMake automatically locates CLAP SDK from submodules or environment variable `CLAP_PATH`
