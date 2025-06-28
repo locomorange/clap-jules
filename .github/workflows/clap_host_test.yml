@@ -103,6 +103,7 @@ jobs:
         echo "Installing build tools and GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
+            libxrandr-dev \
             libx11-dev \
             libxcursor-dev \
             libxrandr-dev \
