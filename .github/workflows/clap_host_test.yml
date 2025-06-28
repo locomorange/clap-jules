@@ -94,6 +94,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         # Update package database
+        sudo apt-get clean
         sudo apt-get update -y
 
         # Install only essential build tools and GUI dependencies
