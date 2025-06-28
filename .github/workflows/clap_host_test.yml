@@ -99,8 +99,6 @@ jobs:
         echo "Installing build tools and GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
-            librtaudio-dev \
-            librtmidi-dev \
             libxrandr-dev \
             libx11-dev \
             libxcursor-dev \
@@ -136,7 +134,7 @@ jobs:
         echo "=== Setting up vcpkg ==="
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
-        ./vcpkg/vcpkg install rtmidi
+        ./vcpkg/vcpkg install rtmidi rtaudio
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
 
     - name: Install Qt
