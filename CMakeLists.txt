@@ -51,7 +51,11 @@ set_target_properties(my_clap_plugin PROPERTIES AUTOMOC ON)
 target_link_libraries(my_clap_plugin PRIVATE clap Qt6::Widgets)
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
-  set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
+  set_target_properties(my_clap_plugin PROPERTIES 
+    PREFIX "" 
+    SUFFIX ".clap"
+    LINK_FLAGS "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/MyFirstClapPlugin.def"
+  )
 else()
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "") # Use default suffix (.so or .dylib)
 endif()

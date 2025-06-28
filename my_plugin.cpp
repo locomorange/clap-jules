@@ -4,6 +4,7 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 #include <clap/ext/gui.h>
+#include <clap/ext/audio-ports.h>
 #include <clap/plugin-features.h>
 
 // Include Qt headers at the top
@@ -31,16 +32,15 @@ static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, 
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
-    "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
-    "My Company",           // vendor
-    "https://example.com",  // url
-    "https://example.com/bugtracker", // manual_url
-    "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "com.yourcompany.qtclapdemo", // id - more unique
+    "Qt CLAP Demo Plugin", // name
+    "Your Company",         // vendor
+    "https://yourcompany.com",  // url
+    "https://yourcompany.com/manual", // manual_url
+    "https://yourcompany.com/support", // support_url
+    "1.0.0",                // version
+    "A CLAP audio plugin with Qt GUI demonstration.", // description
     plugin_features, // features
-    // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
 
 
@@ -97,45 +97,31 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
+    // Simple passthrough audio processing
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
 
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+        // Ensure we have valid buffers and matching channel counts
+        if (out_buf->data32 && in_buf->data32 && 
+            out_buf->channel_count >= 2 && in_buf->channel_count >= 2) {
+            
+            // Simple stereo passthrough
+            for (uint32_t i = 0; i < process->frames_count; ++i) {
+                out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
+                out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
+            }
+        } else {
+            // Clear output if no valid input
+            if (out_buf->data32 && out_buf->channel_count >= 2) {
+                for (uint32_t i = 0; i < process->frames_count; ++i) {
+                    out_buf->data32[0][i] = 0.0f; // Left channel
+                    out_buf->data32[1][i] = 0.0f; // Right channel
+                }
+            }
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 
@@ -346,12 +332,50 @@ static const clap_plugin_gui_t my_plugin_gui = {
     my_plugin_gui_hide,
 };
 
+// Audio Ports Extension Implementation
+static uint32_t my_plugin_audio_ports_count(const clap_plugin_t *plugin, bool is_input) {
+    // Return 1 input port and 1 output port
+    return 1;
+}
+
+static bool my_plugin_audio_ports_get(const clap_plugin_t *plugin, uint32_t index, bool is_input, clap_audio_port_info_t *info) {
+    if (index != 0) return false;
+    
+    if (is_input) {
+        info->id = 0;
+        strcpy(info->name, "Audio Input");
+        info->channel_count = 2;
+        info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+        info->port_type = CLAP_PORT_STEREO;
+        info->in_place_pair = 0; // Paired with output port 0
+    } else {
+        info->id = 0;
+        strcpy(info->name, "Audio Output");
+        info->channel_count = 2;
+        info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+        info->port_type = CLAP_PORT_STEREO;
+        info->in_place_pair = 0; // Paired with input port 0
+    }
+    
+    return true;
+}
+
+static const clap_plugin_audio_ports_t my_plugin_audio_ports = {
+    my_plugin_audio_ports_count,
+    my_plugin_audio_ports_get,
+};
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     printf("MyPlugin: Host requesting extension: %s\n", id);
     
     if (strcmp(id, CLAP_EXT_GUI) == 0) {
         printf("MyPlugin: Returning GUI extension\n");
         return &my_plugin_gui;
+    }
+    
+    if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) {
+        printf("MyPlugin: Returning Audio Ports extension\n");
+        return &my_plugin_audio_ports;
     }
     
     return NULL;
@@ -381,6 +405,8 @@ static const clap_plugin_descriptor_t *my_factory_get_plugin_descriptor(const st
 }
 
 static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_factory *factory, const clap_host_t *host, const char *plugin_id) {
+    printf("MyPlugin: create_plugin called with ID: %s (expected: %s)\n", plugin_id, my_plugin_descriptor.id);
+    
     if (strcmp(plugin_id, my_plugin_descriptor.id) != 0) {
         fprintf(stderr, "MyPlugin: Error - incorrect plugin ID requested: %s\n", plugin_id);
         return NULL;
@@ -421,7 +447,7 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
 
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.
-extern "C" CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
+CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
     // init: Called once when the library is loaded.
     [](const char *plugin_path) -> bool {
