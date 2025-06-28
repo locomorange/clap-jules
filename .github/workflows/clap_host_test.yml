@@ -99,6 +99,7 @@ jobs:
         echo "Installing build tools and GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
+            librtaudio-dev \
             libxrandr-dev \
             libx11-dev \
             libxcursor-dev \
@@ -145,8 +146,8 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         echo "Installing essential build tools on macOS..."
-        # Only install build tools, let clap-host handle audio dependencies
-        brew install pkg-config ninja cmake git curl
+        # Install build tools and audio dependencies
+        brew install pkg-config ninja cmake git curl rtmidi rtaudio
 
         # Install vcpkg for dependency management
         echo "=== Setting up vcpkg ==="
