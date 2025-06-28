@@ -779,12 +779,12 @@ jobs:
         retention-days: 30
         if-no-files-found: warn
   
-      - name: Upload CLAP Host Executable for Reuse (Linux/macOS)
-        if: runner.os != 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: clap-host-executable-${{ matrix.os }}-${{ github.sha }}
-          path: |
+    - name: Upload CLAP Host Executable for Reuse (Linux/macOS)
+      if: runner.os != 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: clap-host-executable-${{ matrix.os }}-${{ github.sha }}
+        path: |
           clap-host-repo/builds/vcpkg-build/clap-host
           clap-host-repo/builds/simple/clap-host
           clap-host-repo/builds/ninja-system/clap-host
