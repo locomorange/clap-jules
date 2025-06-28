@@ -195,7 +195,7 @@ jobs:
 
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
-
+        
         # Check available presets
         echo "Available CMake presets:"
         cmake --list-presets 2>/dev/null || echo "No presets available"
