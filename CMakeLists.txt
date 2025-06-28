@@ -1,4 +1,11 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
+
+# Include Brisk CMake modules before project directive
+set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+if (EXISTS "${BRISK_DIR}/cmake/brisk.cmake")
+    include(${BRISK_DIR}/cmake/brisk.cmake)
+endif()
+
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -39,9 +46,23 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add Brisk if available
+if (EXISTS "${BRISK_DIR}/CMakeLists.txt")
+    message(STATUS "Found Brisk, adding as subdirectory")
+    set(BRISK_TESTS OFF CACHE BOOL "Don't build Brisk tests")
+    set(BRISK_EXAMPLES OFF CACHE BOOL "Don't build Brisk examples")
+    add_subdirectory(${BRISK_DIR} brisk-bin)
+endif()
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link Brisk libraries if available
+if (TARGET Brisk::Widgets)
+    target_link_libraries(my_clap_plugin PRIVATE Brisk::Widgets Brisk::Executable)
+    brisk_setup_executable(my_clap_plugin)
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
