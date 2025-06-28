@@ -134,8 +134,11 @@ jobs:
         echo "=== Setting up vcpkg ==="
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
-        ./vcpkg/vcpkg install rtmidi rtaudio
+        echo "Installing RtMidi and RtAudio via vcpkg..."
+        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
+        export VCPKG_ROOT="$(pwd)/vcpkg"
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
     - name: Install Qt
       if: runner.os == 'Linux' || runner.os == 'macOS'
@@ -152,7 +155,11 @@ jobs:
         echo "=== Setting up vcpkg ==="
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
+        echo "Installing RtMidi and RtAudio via vcpkg..."
+        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
+        export VCPKG_ROOT="$(pwd)/vcpkg"
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
     - name: Setup CLAP Host Dependencies (Windows)
       if: runner.os == 'Windows'
@@ -202,6 +209,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
           -DVCPKG_TARGET_TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-linux' }} \
+          -DUsePkgConfig=OFF \
           2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-${{ runner.os }}.txt; then
           echo "vcpkg configuration successful"
           if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-${{ runner.os }}.txt; then
@@ -275,6 +283,7 @@ jobs:
            -DCMAKE_BUILD_TYPE=Release \
            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
            -DVCPKG_TARGET_TRIPLET=x64-windows \
+           -DUsePkgConfig=OFF \
            2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-windows.txt; then
           echo "vcpkg configuration successful"
           if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-windows.txt; then
