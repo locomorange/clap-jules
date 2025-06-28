@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -39,9 +39,38 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add Brisk library if available (optional, complex dependency management)
+option(ENABLE_BRISK "Enable Brisk library integration" OFF)
+set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+if (ENABLE_BRISK AND EXISTS "${BRISK_DIR}/CMakeLists.txt")
+    message(STATUS "Found Brisk library, adding as subdirectory")
+    # Configure Brisk options
+    set(BRISK_TESTS OFF CACHE BOOL "Don't build Brisk tests")
+    set(BRISK_EXAMPLES OFF CACHE BOOL "Don't build Brisk examples")
+    include(${BRISK_DIR}/cmake/brisk.cmake)
+    add_subdirectory(${BRISK_DIR} brisk-bin)
+elseif(EXISTS "${BRISK_DIR}/CMakeLists.txt")
+    message(STATUS "Brisk library found but disabled by default. Use -DENABLE_BRISK=ON to enable.")
+endif()
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp plugin_gui.cpp simple_gui.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link platform-specific GUI libraries
+if (UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+    target_link_libraries(my_clap_plugin PRIVATE ${X11_LIBRARIES})
+    target_include_directories(my_clap_plugin PRIVATE ${X11_INCLUDE_DIR})
+    message(STATUS "Linking X11 libraries: ${X11_LIBRARIES}")
+endif()
+
+# Link Brisk if enabled
+if (ENABLE_BRISK AND TARGET Brisk::Widgets)
+    target_link_libraries(my_clap_plugin PRIVATE Brisk::Widgets)
+    target_compile_definitions(my_clap_plugin PRIVATE ENABLE_BRISK)
+    message(STATUS "Linking Brisk library to plugin")
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -72,3 +101,28 @@ target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+
+# Add simple GUI test executable
+add_executable(test_gui test_gui.cpp simple_gui.cpp)
+if (UNIX AND NOT APPLE)
+    target_link_libraries(test_gui PRIVATE ${X11_LIBRARIES})
+    target_include_directories(test_gui PRIVATE ${X11_INCLUDE_DIR})
+endif()
+
+# Add CLAP GUI test executable
+add_executable(test_clap_gui test_clap_gui.cpp)
+if (WIN32)
+    # Windows doesn't need CMAKE_DL_LIBS
+    target_include_directories(test_clap_gui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include")
+else()
+    target_link_libraries(test_clap_gui PRIVATE ${CMAKE_DL_LIBS})
+    target_include_directories(test_clap_gui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include")
+endif()
+
+# Add Brisk test executable (optional)
+if (ENABLE_BRISK AND TARGET Brisk::Widgets)
+    add_executable(test_brisk test_brisk.cpp)
+    target_link_libraries(test_brisk PRIVATE Brisk::Widgets)
+    target_compile_definitions(test_brisk PRIVATE ENABLE_BRISK)
+    message(STATUS "Adding Brisk test executable")
+endif()

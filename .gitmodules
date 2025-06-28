@@ -7,3 +7,6 @@
 [submodule "libs/clap-helpers"]
 	path = libs/clap-helpers
 	url = https://github.com/free-audio/clap-helpers.git
+[submodule "libs/brisk"]
+	path = libs/brisk
+	url = https://github.com/dancazarin/brisk.git

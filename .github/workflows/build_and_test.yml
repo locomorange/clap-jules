@@ -29,9 +29,18 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Set up CMake
+      if: runner.os == 'Linux'
+      uses: jwlawson/actions-setup-cmake@v1
+      with:
+        cmake-version: '3.26.4'
+
+    - name: Install dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        sudo apt-get update
+        sudo apt-get install -y libuv1-dev libvulkan-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+        
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
         tar -xzf clap-validator.tar.gz
@@ -104,9 +113,18 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Set up CMake
+      if: runner.os == 'Linux'
+      uses: jwlawson/actions-setup-cmake@v1
+      with:
+        cmake-version: '3.26.4'
+
+    - name: Install dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        sudo apt-get update
+        sudo apt-get install -y libuv1-dev libvulkan-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+        
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
         tar -xzf clap-validator.tar.gz

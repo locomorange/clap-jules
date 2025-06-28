@@ -1,4 +1,5 @@
 #include "my_plugin.h"
+#include "plugin_gui.hpp"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -44,7 +45,12 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (self && self->gui) {
+        delete self->gui;
+        self->gui = nullptr;
+    }
+    // Free any other resources allocated in init
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -119,7 +125,14 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    
+    // Support GUI extension
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        printf("MyPlugin: Returning GUI extension\n");
+        return &clap_plugin_gui_impl;
+    }
+    
+    return NULL; // No other extensions supported
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -154,6 +167,14 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     my_plugin_t *self = (my_plugin_t *)calloc(1, sizeof(my_plugin_t));
     if (!self) {
         fprintf(stderr, "MyPlugin: Error - failed to allocate memory for plugin instance\n");
+        return NULL;
+    }
+
+    // Create GUI instance
+    self->gui = new PluginGUI();
+    if (!self->gui) {
+        fprintf(stderr, "MyPlugin: Error - failed to create GUI instance\n");
+        free(self);
         return NULL;
     }
 
