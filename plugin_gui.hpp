@@ -2,6 +2,9 @@
 
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+#include <memory>
+#include <string>
+#include "simple_gui.hpp"
 
 #ifdef ENABLE_BRISK
 #include <brisk/gui/GUIWindow.hpp>
@@ -14,10 +17,12 @@
 class PluginGUI {
 private:
 #ifdef ENABLE_BRISK
-    std::unique_ptr<Brisk::GUIWindow> m_window;
+    std::unique_ptr<Brisk::GUIWindow> m_brisk_window;
+#endif
+    std::unique_ptr<SimpleGUI> m_simple_gui;
+    bool m_use_brisk = false;
     bool m_is_floating = false;
     std::string m_api;
-#endif
     bool m_is_created = false;
     uint32_t m_width = 400;
     uint32_t m_height = 300;

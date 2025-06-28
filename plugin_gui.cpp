@@ -22,12 +22,12 @@ bool PluginGUI::is_api_supported(const char* api, bool is_floating) {
     printf("PluginGUI: is_api_supported called - api: %s, floating: %s\n", 
            api ? api : "null", is_floating ? "true" : "false");
     
-#ifdef ENABLE_BRISK
-    // Brisk supports native window creation
+    // Support floating windows with simple GUI
     if (is_floating) {
-        return true; // Brisk can create floating windows
+        return true;
     }
-    // For embedded windows, check specific platform APIs
+    
+    // Support embedded windows based on platform
     if (api) {
 #ifdef __linux__
         return strcmp(api, CLAP_WINDOW_API_X11) == 0;
@@ -37,20 +37,17 @@ bool PluginGUI::is_api_supported(const char* api, bool is_floating) {
         return strcmp(api, CLAP_WINDOW_API_COCOA) == 0;
 #endif
     }
-#endif
+    
     return false;
 }
 
 bool PluginGUI::get_preferred_api(const char** api, bool* is_floating) {
     printf("PluginGUI: get_preferred_api called\n");
     
-#ifdef ENABLE_BRISK
-    // Prefer floating windows for simplicity with Brisk
+    // Prefer floating windows for simplicity
     *is_floating = true;
     *api = nullptr; // No specific API needed for floating
     return true;
-#endif
-    return false;
 }
 
 bool PluginGUI::create(const char* api, bool is_floating) {
@@ -62,23 +59,34 @@ bool PluginGUI::create(const char* api, bool is_floating) {
         return false;
     }
 
-#ifdef ENABLE_BRISK
     m_is_floating = is_floating;
     m_api = api ? api : "";
-    
+
+#ifdef ENABLE_BRISK
+    // Try Brisk first
     try {
         create_brisk_gui();
+        m_use_brisk = true;
         m_is_created = true;
         printf("PluginGUI: Created successfully with Brisk\n");
         return true;
     } catch (const std::exception& e) {
-        printf("PluginGUI: Error creating Brisk GUI: %s\n", e.what());
-        return false;
+        printf("PluginGUI: Error creating Brisk GUI: %s, falling back to simple GUI\n", e.what());
     }
-#else
-    printf("PluginGUI: Brisk not enabled\n");
-    return false;
 #endif
+
+    // Fallback to simple GUI
+    printf("PluginGUI: Creating simple GUI\n");
+    m_simple_gui = std::make_unique<SimpleGUI>();
+    if (m_simple_gui->create()) {
+        m_use_brisk = false;
+        m_is_created = true;
+        printf("PluginGUI: Created successfully with simple GUI\n");
+        return true;
+    }
+    
+    printf("PluginGUI: Failed to create GUI\n");
+    return false;
 }
 
 void PluginGUI::destroy() {
@@ -89,11 +97,16 @@ void PluginGUI::destroy() {
     }
 
 #ifdef ENABLE_BRISK
-    if (m_window) {
-        m_window->close();
-        m_window.reset();
+    if (m_use_brisk && m_brisk_window) {
+        m_brisk_window->close();
+        m_brisk_window.reset();
     }
 #endif
+
+    if (!m_use_brisk && m_simple_gui) {
+        m_simple_gui->destroy();
+        m_simple_gui.reset();
+    }
     
     m_is_created = false;
     printf("PluginGUI: Destroyed\n");
@@ -107,6 +120,10 @@ bool PluginGUI::set_scale(double scale) {
 
 bool PluginGUI::get_size(uint32_t* width, uint32_t* height) {
     printf("PluginGUI: get_size called\n");
+    
+    if (!m_use_brisk && m_simple_gui) {
+        return m_simple_gui->get_size(width, height);
+    }
     
     if (width) *width = m_width;
     if (height) *height = m_height;
@@ -138,10 +155,14 @@ bool PluginGUI::set_size(uint32_t width, uint32_t height) {
     m_height = height;
     
 #ifdef ENABLE_BRISK
-    if (m_window && m_is_created) {
-        m_window->setSize(Size{static_cast<float>(width), static_cast<float>(height)});
+    if (m_use_brisk && m_brisk_window && m_is_created) {
+        m_brisk_window->setSize(Size{static_cast<float>(width), static_cast<float>(height)});
     }
 #endif
+
+    if (!m_use_brisk && m_simple_gui) {
+        return m_simple_gui->set_size(width, height);
+    }
     
     return true;
 }
@@ -162,10 +183,14 @@ void PluginGUI::suggest_title(const char* title) {
     printf("PluginGUI: suggest_title called - title: %s\n", title ? title : "null");
     
 #ifdef ENABLE_BRISK
-    if (m_window && title) {
-        m_window->setTitle(title);
+    if (m_use_brisk && m_brisk_window && title) {
+        m_brisk_window->setTitle(title);
     }
 #endif
+
+    if (!m_use_brisk && m_simple_gui && title) {
+        m_simple_gui->set_title(title);
+    }
 }
 
 bool PluginGUI::show() {
@@ -177,12 +202,18 @@ bool PluginGUI::show() {
     }
 
 #ifdef ENABLE_BRISK
-    if (m_window) {
-        m_window->show();
-        printf("PluginGUI: Window shown\n");
+    if (m_use_brisk && m_brisk_window) {
+        m_brisk_window->show();
+        printf("PluginGUI: Brisk window shown\n");
         return true;
     }
 #endif
+
+    if (!m_use_brisk && m_simple_gui) {
+        bool result = m_simple_gui->show();
+        printf("PluginGUI: Simple GUI window shown: %s\n", result ? "success" : "failed");
+        return result;
+    }
     
     return false;
 }
@@ -191,12 +222,18 @@ bool PluginGUI::hide() {
     printf("PluginGUI: hide called\n");
     
 #ifdef ENABLE_BRISK
-    if (m_window) {
-        m_window->hide();
-        printf("PluginGUI: Window hidden\n");
+    if (m_use_brisk && m_brisk_window) {
+        m_brisk_window->hide();
+        printf("PluginGUI: Brisk window hidden\n");
         return true;
     }
 #endif
+
+    if (!m_use_brisk && m_simple_gui) {
+        bool result = m_simple_gui->hide();
+        printf("PluginGUI: Simple GUI window hidden: %s\n", result ? "success" : "failed");
+        return result;
+    }
     
     return false;
 }
@@ -205,12 +242,20 @@ bool PluginGUI::hide() {
 void PluginGUI::create_brisk_gui() {
     printf("PluginGUI: Creating Brisk GUI\n");
     
+    // Initialize Brisk application if not already done
+    static bool brisk_initialized = false;
+    if (!brisk_initialized) {
+        // Initialize Brisk application
+        printf("PluginGUI: Initializing Brisk application\n");
+        brisk_initialized = true;
+    }
+    
     // Create a simple component with some widgets
     auto component = rcnew Component{
         flexColumn,
         {
             rcnew Text("CLAP Plugin with Brisk UI"),
-            rcnew Button("Test Button") | bindMethod(&PluginGUI::show, this),
+            rcnew Button("Test Button"),
             rcnew Slider(0.0f, 1.0f, 0.5f),
             rcnew Text("Volume Control"),
             rcnew CheckBox("Enable Effect"),
@@ -218,9 +263,9 @@ void PluginGUI::create_brisk_gui() {
     };
     
     // Create the GUI window
-    m_window = std::make_unique<GUIWindow>(component);
-    m_window->setTitle("My CLAP Plugin");
-    m_window->setSize(Size{static_cast<float>(m_width), static_cast<float>(m_height)});
+    m_brisk_window = std::make_unique<GUIWindow>(component);
+    m_brisk_window->setTitle("My CLAP Plugin");
+    m_brisk_window->setSize(Size{static_cast<float>(m_width), static_cast<float>(m_height)});
     
     printf("PluginGUI: Brisk GUI created\n");
 }
