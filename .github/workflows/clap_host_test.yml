@@ -23,6 +23,10 @@ jobs:
       with:
         submodules: 'recursive'
 
+    - name: Install Qt
+      if: runner.os == 'Linux' || runner.os == 'macOS'
+      uses: jurplel/install-qt-action@v4
+
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
