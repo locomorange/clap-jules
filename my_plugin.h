@@ -2,10 +2,15 @@
 
 #include <clap/clap.h>
 
+// Forward declarations for Qt GUI
+class PluginWidget;
+
 // Basic plugin structure
 typedef struct {
     clap_plugin_t plugin;
-    // Add any other plugin-specific data here
+    const clap_host_t *host;
+    PluginWidget *gui_widget;
+    bool gui_created;
 } my_plugin_t;
 
 // Plugin factory ID
