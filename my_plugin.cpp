@@ -1,7 +1,11 @@
 #include "my_plugin.h"
+#include "plugin_gui.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <QtWidgets/QApplication>
+#include <QtGui/QWindow>
+#include <clap/ext/gui.h>
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -36,15 +40,34 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize GUI state
+    self->gui_widget = nullptr;
+    self->gui_created = false;
+    
+    // Initialize Qt application if not already done
+    if (!QApplication::instance()) {
+        static int argc = 1;
+        static char *argv[] = {(char*)"my_clap_plugin", nullptr};
+        static QApplication app(argc, argv);
+    }
+    
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    // Clean up GUI
+    if (self->gui_widget) {
+        delete self->gui_widget;
+        self->gui_widget = nullptr;
+    }
+    
+    // Free any other resources allocated in init
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
@@ -115,11 +138,200 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     return CLAP_PROCESS_CONTINUE;
 }
 
+// GUI Extension Implementation
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    printf("MyPlugin: GUI is_api_supported called with api: %s, floating: %s\n", api, is_floating ? "true" : "false");
+    return strcmp(api, CLAP_WINDOW_API_WIN32) == 0 || 
+           strcmp(api, CLAP_WINDOW_API_COCOA) == 0 || 
+           strcmp(api, CLAP_WINDOW_API_X11) == 0 ||
+           strcmp(api, CLAP_WINDOW_API_WAYLAND) == 0;
+}
+
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    printf("MyPlugin: GUI get_preferred_api called\n");
+#ifdef _WIN32
+    *api = CLAP_WINDOW_API_WIN32;
+#elif defined(__APPLE__)
+    *api = CLAP_WINDOW_API_COCOA;
+#else
+    *api = CLAP_WINDOW_API_X11;
+#endif
+    *is_floating = false;
+    return true;
+}
+
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI create called with api: %s, floating: %s\n", api, is_floating ? "true" : "false");
+    
+    if (!self->gui_widget && !self->gui_created) {
+        self->gui_widget = new PluginWidget();
+        self->gui_widget->setHost(self->host);
+        self->gui_created = true;
+        printf("MyPlugin: GUI widget created successfully\n");
+        return true;
+    }
+    
+    return false;
+}
+
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI destroy called\n");
+    
+    if (self->gui_widget) {
+        delete self->gui_widget;
+        self->gui_widget = nullptr;
+        self->gui_created = false;
+        printf("MyPlugin: GUI widget destroyed\n");
+    }
+}
+
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    printf("MyPlugin: GUI set_scale called with scale: %f\n", scale);
+    return true;
+}
+
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI get_size called\n");
+    
+    if (self->gui_widget) {
+        *width = 300;
+        *height = 200;
+        return true;
+    }
+    
+    *width = 300;
+    *height = 200;
+    return true;
+}
+
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
+    printf("MyPlugin: GUI can_resize called\n");
+    return false;
+}
+
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    printf("MyPlugin: GUI get_resize_hints called\n");
+    return false;
+}
+
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    printf("MyPlugin: GUI adjust_size called\n");
+    *width = 300;
+    *height = 200;
+    return true;
+}
+
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    printf("MyPlugin: GUI set_size called with width: %u, height: %u\n", width, height);
+    return true;
+}
+
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI set_parent called\n");
+    
+    if (self->gui_widget && window) {
+        // Embed the Qt widget into the host window
+        WId parentWinId = 0;
+        
+#ifdef _WIN32
+        if (strcmp(window->api, CLAP_WINDOW_API_WIN32) == 0) {
+            parentWinId = (WId)window->win32;
+        }
+#elif defined(__APPLE__)
+        if (strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
+            parentWinId = (WId)window->cocoa;
+        }
+#else
+        if (strcmp(window->api, CLAP_WINDOW_API_X11) == 0) {
+            parentWinId = (WId)window->x11;
+        }
+#endif
+        
+        if (parentWinId) {
+            self->gui_widget->winId(); // Ensure native window is created
+            QWindow *parentWindow = QWindow::fromWinId(parentWinId);
+            if (parentWindow) {
+                QWidget *parentWidget = QWidget::createWindowContainer(parentWindow);
+                self->gui_widget->setParent(parentWidget);
+            }
+            self->gui_widget->show();
+            printf("MyPlugin: GUI widget parented and shown\n");
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    printf("MyPlugin: GUI set_transient called\n");
+    return false;
+}
+
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI suggest_title called with title: %s\n", title);
+    
+    if (self->gui_widget) {
+        self->gui_widget->setWindowTitle(QString::fromUtf8(title));
+    }
+}
+
+static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI show called\n");
+    
+    if (self->gui_widget) {
+        self->gui_widget->show();
+        return true;
+    }
+    
+    return false;
+}
+
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: GUI hide called\n");
+    
+    if (self->gui_widget) {
+        self->gui_widget->hide();
+        return true;
+    }
+    
+    return false;
+}
+
+static const clap_plugin_gui_t my_plugin_gui = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    my_plugin_gui_get_resize_hints,
+    my_plugin_gui_adjust_size,
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    my_plugin_gui_set_transient,
+    my_plugin_gui_suggest_title,
+    my_plugin_gui_show,
+    my_plugin_gui_hide,
+};
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        printf("MyPlugin: Returning GUI extension\n");
+        return &my_plugin_gui;
+    }
+    
+    return NULL;
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -157,6 +369,10 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
         return NULL;
     }
 
+    self->host = host;
+    self->gui_widget = nullptr;
+    self->gui_created = false;
+    
     self->plugin.desc = &my_plugin_descriptor;
     self->plugin.plugin_data = self; // Point to ourself for context
     self->plugin.init = my_plugin_init;

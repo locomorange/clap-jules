@@ -4,6 +4,9 @@ project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Find Qt6
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
 # If you want to use a custom location, you can set CLAP_PATH before running cmake.
@@ -40,8 +43,12 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
 endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
-target_link_libraries(my_clap_plugin PRIVATE clap)
+add_library(my_clap_plugin SHARED my_plugin.cpp plugin_gui.cpp)
+
+# Enable automatic MOC for Qt
+set_target_properties(my_clap_plugin PROPERTIES AUTOMOC ON)
+
+target_link_libraries(my_clap_plugin PRIVATE clap Qt6::Widgets)
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
