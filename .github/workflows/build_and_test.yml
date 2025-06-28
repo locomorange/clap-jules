@@ -29,9 +29,18 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Install dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        # Update CMake to latest version for Brisk support
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+        sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
+        sudo apt-get update
+        sudo apt-get install -y cmake
+        
+        # Install Brisk dependencies
+        sudo apt-get install -y libuv1-dev libvulkan-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+        
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
         tar -xzf clap-validator.tar.gz
@@ -104,9 +113,18 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup CLAP Tools (Ubuntu only)
+    - name: Install dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
+        # Update CMake to latest version for Brisk support
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+        sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
+        sudo apt-get update
+        sudo apt-get install -y cmake
+        
+        # Install Brisk dependencies
+        sudo apt-get install -y libuv1-dev libvulkan-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+        
         # Download and setup clap-validator
         wget -O clap-validator.tar.gz https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz
         tar -xzf clap-validator.tar.gz

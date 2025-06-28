@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -37,6 +37,20 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     set(CLAP_HELPERS_BUILD_TESTS OFF CACHE BOOL "Don't build clap-helpers tests")
     set(CLAP_HELPERS_NO_CLAP_IS_FATAL OFF CACHE BOOL "Don't make missing clap fatal for clap-helpers")
     add_subdirectory(libs/clap-helpers)
+endif()
+
+# Add Brisk library if available (optional, complex dependency management)
+option(ENABLE_BRISK "Enable Brisk library integration" OFF)
+set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+if (ENABLE_BRISK AND EXISTS "${BRISK_DIR}/CMakeLists.txt")
+    message(STATUS "Found Brisk library, adding as subdirectory")
+    # Configure Brisk options
+    set(BRISK_TESTS OFF CACHE BOOL "Don't build Brisk tests")
+    set(BRISK_EXAMPLES OFF CACHE BOOL "Don't build Brisk examples")
+    include(${BRISK_DIR}/cmake/brisk.cmake)
+    add_subdirectory(${BRISK_DIR} brisk-bin)
+elseif(EXISTS "${BRISK_DIR}/CMakeLists.txt")
+    message(STATUS "Brisk library found but disabled by default. Use -DENABLE_BRISK=ON to enable.")
 endif()
 
 # Add your plugin target here
