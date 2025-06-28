@@ -485,7 +485,19 @@ jobs:
 
         # Run clap-host with plugin and take screenshot
         echo "Running clap-host and taking screenshot..."
-        timeout 45s bash -c "
+        # Install coreutils for timeout command on macOS
+        if command -v brew >/dev/null 2>&1; then
+          brew install coreutils 2>/dev/null || echo "coreutils install failed, using alternative"
+        fi
+        
+        # Use gtimeout if available, otherwise use alternative timing method
+        if command -v gtimeout >/dev/null 2>&1; then
+          TIMEOUT_CMD="gtimeout 45s"
+        else
+          TIMEOUT_CMD="bash -c"
+        fi
+        
+        $TIMEOUT_CMD bash -c "
           echo 'Testing clap-host arguments support...'
           '$CLAP_HOST_EXEC' --help > ../screenshots/clap-host-help-macos.txt 2>&1 || echo 'Help command failed'
           
@@ -515,7 +527,19 @@ jobs:
           fi
           
           echo 'Taking screenshot...'
-          screencapture -x screenshots/clap-host-macos-screenshot.png
+          # Try multiple screenshot methods for macOS
+          if screencapture -x screenshots/clap-host-macos-screenshot.png 2>/dev/null; then
+            echo 'Screenshot captured with screencapture'
+          elif command -v screencapture >/dev/null 2>&1; then
+            screencapture screenshots/clap-host-macos-screenshot.png 2>/dev/null || echo 'Alternative screencapture failed'
+          else
+            echo 'No screenshot tool available'
+          fi
+          
+          # Add a manual timeout for non-gtimeout systems
+          if [ \"\$TIMEOUT_CMD\" = \"bash -c\" ]; then
+            sleep 5  # Additional time for screenshot
+          fi
           
           kill \$CLAP_PID 2>/dev/null || true
           echo 'Screenshot capture completed'
