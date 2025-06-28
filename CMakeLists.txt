@@ -7,6 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Find Qt6
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
+# Option to use static Qt linking on Windows
+if(WIN32)
+    option(USE_STATIC_QT "Use static Qt linking" OFF)
+    if(USE_STATIC_QT)
+        set_property(TARGET Qt6::Core PROPERTY INTERFACE_COMPILE_DEFINITIONS QT_STATICPLUGIN)
+    endif()
+endif()
+
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
 # If you want to use a custom location, you can set CLAP_PATH before running cmake.
@@ -49,6 +57,19 @@ add_library(my_clap_plugin SHARED my_plugin.cpp plugin_gui.cpp)
 set_target_properties(my_clap_plugin PROPERTIES AUTOMOC ON)
 
 target_link_libraries(my_clap_plugin PRIVATE clap Qt6::Widgets)
+
+# Windows-specific settings for better compatibility
+if(WIN32)
+    # Link with static runtime to avoid MSVC runtime dependencies
+    if(MSVC)
+        target_compile_options(my_clap_plugin PRIVATE "/MT$<$<CONFIG:Debug>:d>")
+    endif()
+    
+    # Add necessary Windows libraries
+    target_link_libraries(my_clap_plugin PRIVATE 
+        user32 shell32 ole32 advapi32 ws2_32
+    )
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES 
