@@ -1,13 +1,26 @@
 #include <iostream>
-#include <dlfcn.h>
 #include <clap/clap.h>
 #include <clap/ext/gui.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#define dlopen(name, flags) LoadLibraryA(name)
+#define dlsym(handle, name) GetProcAddress((HMODULE)handle, name)
+#define dlclose(handle) FreeLibrary((HMODULE)handle)
+#define dlerror() "Windows DLL error"
+#else
+#include <dlfcn.h>
+#endif
 
 int main() {
     std::cout << "Testing CLAP plugin GUI extension..." << std::endl;
     
     // Load the plugin library
+#ifdef _WIN32
+    void* lib = dlopen("./Release/MyFirstClapPlugin.clap", 0);
+#else
     void* lib = dlopen("./MyFirstClapPlugin.so", RTLD_LAZY);
+#endif
     if (!lib) {
         std::cerr << "Failed to load plugin: " << dlerror() << std::endl;
         return 1;

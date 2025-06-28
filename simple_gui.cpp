@@ -5,6 +5,8 @@
 #ifdef __linux__
 #include <unistd.h>
 #include <sys/select.h>
+#elif defined(_WIN32)
+#include <tchar.h>
 #endif
 
 SimpleGUI::SimpleGUI() {
@@ -70,6 +72,47 @@ bool SimpleGUI::create() {
     m_is_created = true;
     return true;
     
+#elif defined(_WIN32)
+    // Windows implementation
+    m_hinstance = GetModuleHandle(nullptr);
+    
+    // Register window class
+    static bool class_registered = false;
+    if (!class_registered) {
+        WNDCLASS wc = {};
+        wc.lpfnWndProc = DefWindowProc;
+        wc.hInstance = m_hinstance;
+        wc.lpszClassName = _T("ClapPluginGUI");
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        
+        if (!RegisterClass(&wc)) {
+            printf("SimpleGUI: Error - Failed to register window class\n");
+            return false;
+        }
+        class_registered = true;
+    }
+    
+    // Create window
+    m_hwnd = CreateWindow(
+        _T("ClapPluginGUI"),
+        _T("CLAP Plugin GUI"),
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        m_width, m_height,
+        nullptr, nullptr,
+        m_hinstance, nullptr
+    );
+    
+    if (!m_hwnd) {
+        printf("SimpleGUI: Error - Cannot create Windows window\n");
+        return false;
+    }
+    
+    printf("SimpleGUI: Windows window created successfully\n");
+    m_is_created = true;
+    return true;
+    
 #else
     printf("SimpleGUI: Platform not supported yet\n");
     return false;
@@ -97,6 +140,15 @@ void SimpleGUI::destroy() {
         XCloseDisplay(m_display);
         m_display = nullptr;
     }
+#elif defined(_WIN32)
+    if (m_is_visible) {
+        hide();
+    }
+    
+    if (m_hwnd) {
+        DestroyWindow(m_hwnd);
+        m_hwnd = nullptr;
+    }
 #endif
     
     m_is_created = false;
@@ -121,6 +173,13 @@ bool SimpleGUI::show() {
     
     printf("SimpleGUI: Window shown\n");
     return true;
+#elif defined(_WIN32)
+    ShowWindow(m_hwnd, SW_SHOW);
+    UpdateWindow(m_hwnd);
+    m_is_visible = true;
+    
+    printf("SimpleGUI: Windows window shown\n");
+    return true;
 #else
     return false;
 #endif
@@ -133,6 +192,12 @@ bool SimpleGUI::hide() {
     if (m_window && m_is_visible) {
         XUnmapWindow(m_display, m_window);
         XFlush(m_display);
+        m_is_visible = false;
+    }
+    return true;
+#elif defined(_WIN32)
+    if (m_hwnd && m_is_visible) {
+        ShowWindow(m_hwnd, SW_HIDE);
         m_is_visible = false;
     }
     return true;

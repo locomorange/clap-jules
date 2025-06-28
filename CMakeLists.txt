@@ -109,10 +109,12 @@ if (UNIX AND NOT APPLE)
     target_include_directories(test_gui PRIVATE ${X11_INCLUDE_DIR})
 endif()
 
-# Add CLAP GUI test executable
-add_executable(test_clap_gui test_clap_gui.cpp)
-target_link_libraries(test_clap_gui PRIVATE ${CMAKE_DL_LIBS})
-target_include_directories(test_clap_gui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include")
+# Add CLAP GUI test executable (disabled on Windows due to complexity)
+if (NOT WIN32)
+    add_executable(test_clap_gui test_clap_gui.cpp)
+    target_link_libraries(test_clap_gui PRIVATE ${CMAKE_DL_LIBS})
+    target_include_directories(test_clap_gui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include")
+endif()
 
 # Add Brisk test executable (optional)
 if (ENABLE_BRISK AND TARGET Brisk::Widgets)
