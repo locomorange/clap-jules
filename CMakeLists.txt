@@ -4,6 +4,23 @@ project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Find Qt (try Qt6 first, then Qt5)
+find_package(Qt6 COMPONENTS Core Gui Widgets QUIET)
+if (NOT Qt6_FOUND)
+  find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+  set(QT_VERSION 5)
+  message(STATUS "Found Qt5 version ${Qt5_VERSION}")
+  message(STATUS "Qt5Core_INCLUDE_DIRS: ${Qt5Core_INCLUDE_DIRS}")
+  message(STATUS "Qt5Gui_INCLUDE_DIRS: ${Qt5Gui_INCLUDE_DIRS}")
+  message(STATUS "Qt5Widgets_INCLUDE_DIRS: ${Qt5Widgets_INCLUDE_DIRS}")
+else()
+  set(QT_VERSION 6)
+  message(STATUS "Found Qt6 version ${Qt6_VERSION}")
+  message(STATUS "Qt6Core_INCLUDE_DIRS: ${Qt6Core_INCLUDE_DIRS}")
+  message(STATUS "Qt6Gui_INCLUDE_DIRS: ${Qt6Gui_INCLUDE_DIRS}")
+  message(STATUS "Qt6Widgets_INCLUDE_DIRS: ${Qt6Widgets_INCLUDE_DIRS}")
+endif()
+
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
 # If you want to use a custom location, you can set CLAP_PATH before running cmake.
@@ -115,6 +132,18 @@ endif()
 
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
+
+# Link Qt
+if(QT_VERSION EQUAL 5)
+  target_link_libraries(my_clap_plugin PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets)
+  target_include_directories(my_clap_plugin PRIVATE ${Qt5Core_INCLUDE_DIRS} ${Qt5Gui_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS})
+  add_definitions(-DQT_VERSION=5)
+elseif(QT_VERSION EQUAL 6)
+  target_link_libraries(my_clap_plugin PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+  target_include_directories(my_clap_plugin PRIVATE ${Qt6Core_INCLUDE_DIRS} ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS})
+  add_definitions(-DQT_VERSION=6)
+endif()
+
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
 # Link GLFW and OpenGL if available

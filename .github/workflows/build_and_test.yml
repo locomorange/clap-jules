@@ -29,6 +29,9 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+
     - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
@@ -156,6 +159,9 @@ jobs:
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
 
     - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
