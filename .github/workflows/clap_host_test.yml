@@ -373,7 +373,12 @@ jobs:
         export DISPLAY=:99
         Xvfb :99 -screen 0 1024x768x24 &
         XVFB_PID=$!
-        sleep 5
+        sleep 5 # Give Xvfb time to start
+
+        echo "=== Checking Xvfb and GLX info ==="
+        xdpyinfo -display :99 || echo "xdpyinfo failed"
+        glxinfo -display :99 -B || echo "glxinfo failed, trying with -display :99.0" && glxinfo -display :99.0 -B || echo "glxinfo failed on :99.0 too"
+        echo "==================================="
 
         # Test clap-host help first
         echo "=== Testing clap-host help ==="
@@ -381,6 +386,8 @@ jobs:
 
         # Run clap-host with plugin and take screenshot after a delay
         echo "=== Running clap-host with plugin ==="
+        export LIBGL_ALWAYS_SOFTWARE=1
+        echo "LIBGL_ALWAYS_SOFTWARE set to $LIBGL_ALWAYS_SOFTWARE"
         timeout 45s bash -c "
           echo 'Testing clap-host arguments support...'
           '$CLAP_HOST_EXEC' --help > ../screenshots/clap-host-help-linux.txt 2>&1 || echo 'Help command failed'
