@@ -99,9 +99,6 @@ jobs:
         echo "Installing build tools and GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
-            libasound2-dev \
-            libjack-jackd2-dev \
-            libpulse-dev \
             libxrandr-dev \
             libx11-dev \
             libxcursor-dev \
@@ -133,25 +130,15 @@ jobs:
           fi
         done
 
-        # Build RtMidi and RtAudio from source for newer versions
-        echo "=== Building RtMidi from source ==="
-        git clone https://github.com/thestk/rtmidi.git rtmidi-src
-        cd rtmidi-src
-        cmake . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
-        sudo cmake --build build --target install
-        cd ..
-        
-        echo "=== Building RtAudio from source ==="
-        git clone https://github.com/thestk/rtaudio.git rtaudio-src
-        cd rtaudio-src
-        cmake . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
-        sudo cmake --build build --target install
-        cd ..
-        
-        # Update pkg-config paths
-        sudo ldconfig
-        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
-        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        # Install vcpkg for dependency management
+        echo "=== Setting up vcpkg ==="
+        git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        ./vcpkg/bootstrap-vcpkg.sh
+        echo "Installing RtMidi and RtAudio via vcpkg..."
+        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
+        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
+        export VCPKG_ROOT="$(pwd)/vcpkg"
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
     - name: Install Qt
       if: runner.os == 'Linux' || runner.os == 'macOS'
@@ -164,24 +151,15 @@ jobs:
         # Install build tools and audio dependencies
         brew install pkg-config ninja cmake git curl rtmidi rtaudio
 
-        # Build RtMidi and RtAudio from source for newer versions
-        echo "=== Building RtMidi from source ==="
-        git clone https://github.com/thestk/rtmidi.git rtmidi-src
-        cd rtmidi-src
-        cmake . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
-        sudo cmake --build build --target install
-        cd ..
-        
-        echo "=== Building RtAudio from source ==="
-        git clone https://github.com/thestk/rtaudio.git rtaudio-src
-        cd rtaudio-src
-        cmake . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
-        sudo cmake --build build --target install
-        cd ..
-        
-        # Update pkg-config paths
-        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
-        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        # Install vcpkg for dependency management
+        echo "=== Setting up vcpkg ==="
+        git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        ./vcpkg/bootstrap-vcpkg.sh
+        echo "Installing RtMidi and RtAudio via vcpkg..."
+        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
+        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
+        export VCPKG_ROOT="$(pwd)/vcpkg"
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
     - name: Setup CLAP Host Dependencies (Windows)
       if: runner.os == 'Windows'
@@ -242,7 +220,7 @@ jobs:
 
         # Fallback to preset if vcpkg manual build failed
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "vcpkg manual build failed, trying ninja-system preset (uses system packages)"
+          echo "vcpkg manual build failed, trying ninja-system preset"
           if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
             echo "ninja-system preset configuration successful"
             if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-${{ runner.os }}.txt; then
