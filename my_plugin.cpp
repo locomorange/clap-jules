@@ -3,6 +3,98 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
+#ifdef __cplusplus
+#ifdef BRISK_ENABLED
+#include <brisk/gui/GuiWindow.hpp>
+#include <brisk/widgets/Widgets.hpp>
+#include <brisk/gui/GuiApplication.hpp>
+#include <memory>
+
+using namespace Brisk;
+#endif
+
+#ifdef BRISK_ENABLED
+// C++ wrapper for Brisk GUI
+class BriskGUI {
+public:
+    static BriskGUI* instance;
+    std::shared_ptr<GUIWindow> window;
+    
+    BriskGUI() = default;
+    
+    bool create(clap_hwnd_t parent) {
+        try {
+            // Create a simple Brisk window
+            window = std::make_shared<GUIWindow>();
+            window->size = {400, 300};
+            window->title = "CLAP Plugin GUI";
+            
+            // Create a simple UI
+            auto widget = rcnew<Widget>();
+            widget->apply(Layout::Flex{.direction = LayoutDirection::Column, .mainAxisAlignment = MainAxisAlignment::Center});
+            
+            auto label = rcnew<Text>("Hello from Brisk!");
+            label->apply(TextStyle{.fontSize = 24, .color = 0x333333_rgb});
+            
+            auto button = rcnew<Button>("Click me!");
+            button->onClick = []() {
+                printf("Brisk button clicked!\n");
+            };
+            
+            widget->append(label);
+            widget->append(button);
+            
+            window->assign(widget);
+            return true;
+        } catch (const std::exception& e) {
+            printf("Failed to create Brisk GUI: %s\n", e.what());
+            return false;
+        }
+    }
+    
+    void show() {
+        if (window) {
+            window->visible = true;
+        }
+    }
+    
+    void hide() {
+        if (window) {
+            window->visible = false;
+        }
+    }
+    
+    void destroy() {
+        window.reset();
+    }
+    
+    void setParent(clap_hwnd_t parent) {
+        // Platform-specific parent window handling would go here
+    }
+    
+    void getSize(uint32_t* width, uint32_t* height) {
+        if (window) {
+            *width = static_cast<uint32_t>(window->size.x);
+            *height = static_cast<uint32_t>(window->size.y);
+        } else {
+            *width = 400;
+            *height = 300;
+        }
+    }
+    
+    void setSize(uint32_t width, uint32_t height) {
+        if (window) {
+            window->size = {static_cast<float>(width), static_cast<float>(height)};
+        }
+    }
+};
+
+BriskGUI* BriskGUI::instance = nullptr;
+#endif // BRISK_ENABLED
+
+extern "C" {
+#endif
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -14,6 +106,23 @@ static void my_plugin_reset(const struct clap_plugin *plugin);
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+
+// GUI extension functions
+static bool my_plugin_gui_is_api_supported(const struct clap_plugin *plugin, const char *api, bool is_floating);
+static bool my_plugin_gui_get_preferred_api(const struct clap_plugin *plugin, const char **api, bool *is_floating);
+static bool my_plugin_gui_create(const struct clap_plugin *plugin, const char *api, bool is_floating);
+static void my_plugin_gui_destroy(const struct clap_plugin *plugin);
+static bool my_plugin_gui_set_scale(const struct clap_plugin *plugin, double scale);
+static bool my_plugin_gui_get_size(const struct clap_plugin *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_can_resize(const struct clap_plugin *plugin);
+static bool my_plugin_gui_get_resize_hints(const struct clap_plugin *plugin, clap_gui_resize_hints_t *hints);
+static bool my_plugin_gui_adjust_size(const struct clap_plugin *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_set_size(const struct clap_plugin *plugin, uint32_t width, uint32_t height);
+static bool my_plugin_gui_set_parent(const struct clap_plugin *plugin, const clap_window_t *window);
+static bool my_plugin_gui_set_transient(const struct clap_plugin *plugin, const clap_window_t *window);
+static void my_plugin_gui_suggest_title(const struct clap_plugin *plugin, const char *title);
+static bool my_plugin_gui_show(const struct clap_plugin *plugin);
+static bool my_plugin_gui_hide(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -36,9 +145,21 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize GUI state
+    self->gui_window = nullptr;
+    self->gui_visible = false;
+    self->parent_window = nullptr;
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    // Initialize Brisk GUI
+    if (!BriskGUI::instance) {
+        BriskGUI::instance = new BriskGUI();
+    }
+#endif
+    
     return true;
 }
 
@@ -115,16 +236,211 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
     return CLAP_PROCESS_CONTINUE;
 }
 
+// GUI extension structure
+static const clap_plugin_gui_t my_gui_extension = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    my_plugin_gui_get_resize_hints,
+    my_plugin_gui_adjust_size,
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    my_plugin_gui_set_transient,
+    my_plugin_gui_suggest_title,
+    my_plugin_gui_show,
+    my_plugin_gui_hide,
+};
+
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &my_gui_extension;
+    }
+    return NULL;
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
     // printf("MyPlugin: on_main_thread called\n");
+}
+
+// --- GUI Extension Implementation ---
+
+static bool my_plugin_gui_is_api_supported(const struct clap_plugin *plugin, const char *api, bool is_floating) {
+    printf("MyPlugin GUI: Checking API support for %s (floating: %s)\n", api, is_floating ? "true" : "false");
+    
+    // Support native window embedding and floating windows
+    if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0) return true;
+    if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) return true;
+    if (strcmp(api, CLAP_WINDOW_API_X11) == 0) return true;
+    if (strcmp(api, CLAP_WINDOW_API_WAYLAND) == 0) return true;
+    
+    return false;
+}
+
+static bool my_plugin_gui_get_preferred_api(const struct clap_plugin *plugin, const char **api, bool *is_floating) {
+    printf("MyPlugin GUI: Getting preferred API\n");
+    
+#ifdef _WIN32
+    *api = CLAP_WINDOW_API_WIN32;
+#elif defined(__APPLE__)
+    *api = CLAP_WINDOW_API_COCOA;
+#else
+    *api = CLAP_WINDOW_API_X11;
+#endif
+    
+    *is_floating = false; // Prefer embedded
+    return true;
+}
+
+static bool my_plugin_gui_create(const struct clap_plugin *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Creating GUI with API %s (floating: %s)\n", api, is_floating ? "true" : "false");
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    if (BriskGUI::instance && !self->gui_window) {
+        if (BriskGUI::instance->create(self->parent_window)) {
+            self->gui_window = BriskGUI::instance;
+            return true;
+        }
+    }
+#endif
+    
+    return false;
+}
+
+static void my_plugin_gui_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Destroying GUI\n");
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    if (self->gui_window && BriskGUI::instance) {
+        BriskGUI::instance->destroy();
+        self->gui_window = nullptr;
+        self->gui_visible = false;
+    }
+#endif
+}
+
+static bool my_plugin_gui_set_scale(const struct clap_plugin *plugin, double scale) {
+    printf("MyPlugin GUI: Setting scale to %f\n", scale);
+    // Brisk should handle DPI scaling automatically
+    return true;
+}
+
+static bool my_plugin_gui_get_size(const struct clap_plugin *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    if (self->gui_window && BriskGUI::instance) {
+        BriskGUI::instance->getSize(width, height);
+        printf("MyPlugin GUI: Reporting size %dx%d\n", *width, *height);
+        return true;
+    }
+#endif
+    
+    // Default size
+    *width = 400;
+    *height = 300;
+    printf("MyPlugin GUI: Reporting default size %dx%d\n", *width, *height);
+    return true;
+}
+
+static bool my_plugin_gui_can_resize(const struct clap_plugin *plugin) {
+    return true; // Allow resizing
+}
+
+static bool my_plugin_gui_get_resize_hints(const struct clap_plugin *plugin, clap_gui_resize_hints_t *hints) {
+    hints->can_resize_horizontally = true;
+    hints->can_resize_vertically = true;
+    hints->preserve_aspect_ratio = false;
+    hints->aspect_ratio_width = 4;
+    hints->aspect_ratio_height = 3;
+    return true;
+}
+
+static bool my_plugin_gui_adjust_size(const struct clap_plugin *plugin, uint32_t *width, uint32_t *height) {
+    // Constrain to reasonable bounds
+    if (*width < 200) *width = 200;
+    if (*height < 150) *height = 150;
+    if (*width > 1920) *width = 1920;
+    if (*height > 1080) *height = 1080;
+    
+    printf("MyPlugin GUI: Adjusted size to %dx%d\n", *width, *height);
+    return true;
+}
+
+static bool my_plugin_gui_set_size(const struct clap_plugin *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Setting size to %dx%d\n", width, height);
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    if (self->gui_window && BriskGUI::instance) {
+        BriskGUI::instance->setSize(width, height);
+        return true;
+    }
+#endif
+    
+    return false;
+}
+
+static bool my_plugin_gui_set_parent(const struct clap_plugin *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Setting parent window\n");
+    
+    self->parent_window = window->ptr;
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    if (self->gui_window && BriskGUI::instance) {
+        BriskGUI::instance->setParent(window->ptr);
+    }
+#endif
+    
+    return true;
+}
+
+static bool my_plugin_gui_set_transient(const struct clap_plugin *plugin, const clap_window_t *window) {
+    printf("MyPlugin GUI: Setting transient window\n");
+    // For floating windows
+    return true;
+}
+
+static void my_plugin_gui_suggest_title(const struct clap_plugin *plugin, const char *title) {
+    printf("MyPlugin GUI: Suggested title: %s\n", title);
+}
+
+static bool my_plugin_gui_show(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Showing GUI\n");
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    if (self->gui_window && BriskGUI::instance) {
+        BriskGUI::instance->show();
+        self->gui_visible = true;
+        return true;
+    }
+#endif
+    
+    return false;
+}
+
+static bool my_plugin_gui_hide(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Hiding GUI\n");
+    
+#if defined(__cplusplus) && defined(BRISK_ENABLED)
+    if (self->gui_window && BriskGUI::instance) {
+        BriskGUI::instance->hide();
+        self->gui_visible = false;
+        return true;
+    }
+#endif
+    
+    return false;
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -208,3 +524,7 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         return NULL;
     }
 };
+
+#ifdef __cplusplus
+}
+#endif

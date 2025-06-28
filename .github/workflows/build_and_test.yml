@@ -45,8 +45,32 @@ jobs:
         # Add current directory to PATH for tool access
         echo "$PWD" >> $GITHUB_PATH
 
+    - name: Install vcpkg (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
+        /tmp/vcpkg/bootstrap-vcpkg.sh
+        echo "VCPKG_ROOT=/tmp/vcpkg" >> $GITHUB_ENV
+        echo "/tmp/vcpkg" >> $GITHUB_PATH
+
+    - name: Install vcpkg (Windows only)
+      if: runner.os == 'Windows'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+        C:\vcpkg\bootstrap-vcpkg.bat
+        echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
+        echo "C:\vcpkg" >> $env:GITHUB_PATH
+
+    - name: Install vcpkg (macOS only)
+      if: runner.os == 'macOS'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
+        /tmp/vcpkg/bootstrap-vcpkg.sh
+        echo "VCPKG_ROOT=/tmp/vcpkg" >> $GITHUB_ENV
+        echo "/tmp/vcpkg" >> $GITHUB_PATH
+
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
 
     - name: Build project
       run: cmake --build build --config Release
@@ -120,8 +144,32 @@ jobs:
         # Add current directory to PATH for tool access
         echo "$PWD" >> $GITHUB_PATH
 
+    - name: Install vcpkg (Ubuntu only)
+      if: runner.os == 'Linux'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
+        /tmp/vcpkg/bootstrap-vcpkg.sh
+        echo "VCPKG_ROOT=/tmp/vcpkg" >> $GITHUB_ENV
+        echo "/tmp/vcpkg" >> $GITHUB_PATH
+
+    - name: Install vcpkg (Windows only)
+      if: runner.os == 'Windows'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+        C:\vcpkg\bootstrap-vcpkg.bat
+        echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
+        echo "C:\vcpkg" >> $env:GITHUB_PATH
+
+    - name: Install vcpkg (macOS only)
+      if: runner.os == 'macOS'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
+        /tmp/vcpkg/bootstrap-vcpkg.sh
+        echo "VCPKG_ROOT=/tmp/vcpkg" >> $GITHUB_ENV
+        echo "/tmp/vcpkg" >> $GITHUB_PATH
+
     - name: Configure CMake
-      run: cmake . -B build
+      run: cmake . -B build -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
 
     - name: Build project (including tests)
       run: cmake --build build --config Release
