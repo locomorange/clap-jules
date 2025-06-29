@@ -889,13 +889,21 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
                 SEL addSubviewMethod = sel_registerName("addSubview:");
                 ((void(*)(id, SEL, id))objc_msgSend)(parentView, addSubviewMethod, contentView);
                 
+                // Hide the original NSWindow since we've moved its content view
+                SEL setAlphaValueMethod = sel_registerName("setAlphaValue:");
+                ((void(*)(id, SEL, double))objc_msgSend)(nsWindow, setAlphaValueMethod, 0.0);
+                
+                // Also try to hide it completely
+                SEL orderOutMethod = sel_registerName("orderOut:");
+                ((void(*)(id, SEL, id))objc_msgSend)(nsWindow, orderOutMethod, nil);
+                
                 // Make sure the OpenGL context is current
                 glfwMakeContextCurrent(self->window);
                 
                 // Force a render
                 my_plugin_gui_render(plugin);
                 
-                printf("MyPlugin: NSView embedded successfully into parent view\n");
+                printf("MyPlugin: NSView embedded successfully into parent view, original window hidden\n");
                 return true;
             } else {
                 printf("MyPlugin: Failed to get content view from NSWindow\n");
