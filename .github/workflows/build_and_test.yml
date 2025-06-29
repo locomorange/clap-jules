@@ -319,6 +319,22 @@ jobs:
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
         
+        echo "=== Checking RtMidi installation ==="
+        find vcpkg/installed/x64-linux -name "*rtmidi*" -o -name "*RtMidi*" | head -10 || echo "No RtMidi files found"
+        ls -la vcpkg/installed/x64-linux/include/ | grep -i rt || echo "No RT headers found"
+        
+        echo "=== Creating symlinks for header compatibility ==="
+        if [ -f "vcpkg/installed/x64-linux/include/RtMidi.h" ]; then
+          mkdir -p vcpkg/installed/x64-linux/include/rtmidi
+          ln -sf ../RtMidi.h vcpkg/installed/x64-linux/include/rtmidi/RtMidi.h
+          echo "Created symlink for RtMidi.h"
+        fi
+        if [ -f "vcpkg/installed/x64-linux/include/RtAudio.h" ]; then
+          mkdir -p vcpkg/installed/x64-linux/include/rtaudio
+          ln -sf ../RtAudio.h vcpkg/installed/x64-linux/include/rtaudio/RtAudio.h
+          echo "Created symlink for RtAudio.h"
+        fi
+        
         echo "=== Qt6 already installed via install-qt-action ==="
         echo "Skipping Qt6 vcpkg installation - using system Qt6"
 
@@ -336,6 +352,23 @@ jobs:
         echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
+        
+        echo "=== Checking RtMidi installation ==="
+        TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
+        find vcpkg/installed/$TRIPLET -name "*rtmidi*" -o -name "*RtMidi*" | head -10 || echo "No RtMidi files found"
+        ls -la vcpkg/installed/$TRIPLET/include/ | grep -i rt || echo "No RT headers found"
+        
+        echo "=== Creating symlinks for header compatibility ==="
+        if [ -f "vcpkg/installed/$TRIPLET/include/RtMidi.h" ]; then
+          mkdir -p vcpkg/installed/$TRIPLET/include/rtmidi
+          ln -sf ../RtMidi.h vcpkg/installed/$TRIPLET/include/rtmidi/RtMidi.h
+          echo "Created symlink for RtMidi.h"
+        fi
+        if [ -f "vcpkg/installed/$TRIPLET/include/RtAudio.h" ]; then
+          mkdir -p vcpkg/installed/$TRIPLET/include/rtaudio
+          ln -sf ../RtAudio.h vcpkg/installed/$TRIPLET/include/rtaudio/RtAudio.h
+          echo "Created symlink for RtAudio.h"
+        fi
         
         echo "=== Qt6 already installed via install-qt-action ==="
         echo "Skipping Qt6 vcpkg installation - using system Qt6"
