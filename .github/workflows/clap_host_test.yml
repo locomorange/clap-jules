@@ -563,15 +563,15 @@ jobs:
         
         # Look for the executable in expected build locations
         $buildPaths = @(
-          "clap-host-repo/builds/vs-vcpkg/host/Release/clap-host.exe",
-          "clap-host-repo/builds/vcpkg-build/host/Release/clap-host.exe", 
-          "clap-host-repo/builds/windows/host/Release/clap-host.exe",
-          "clap-host-repo/builds/windows/Release/clap-host.exe"
+          "clap-host-repo\builds\vs-vcpkg\host\Release\clap-host.exe",
+          "clap-host-repo\builds\vcpkg-build\host\Release\clap-host.exe", 
+          "clap-host-repo\builds\windows\host\Release\clap-host.exe",
+          "clap-host-repo\builds\windows\Release\clap-host.exe"
         )
         
         foreach ($path in $buildPaths) {
           if (Test-Path $path) {
-            $clapHostFullPath = $path
+            $clapHostFullPath = (Resolve-Path $path).Path
             Write-Host "Found clap-host executable at: $clapHostFullPath"
             break
           }
@@ -582,7 +582,8 @@ jobs:
           Write-Host "Searching for clap-host.exe recursively..."
           $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host.exe" -File -Recurse -ErrorAction SilentlyContinue
           if ($clapHostFiles) {
-            $clapHostFullPath = Join-Path "clap-host-repo" ($clapHostFiles | Select-Object -First 1)
+            $relativePath = Join-Path "clap-host-repo" ($clapHostFiles | Select-Object -First 1)
+            $clapHostFullPath = (Resolve-Path $relativePath).Path
             Write-Host "Found clap-host executable at: $clapHostFullPath"
           }
         }
@@ -606,8 +607,8 @@ jobs:
           Write-Host "Warning: Could not get file info: $_"
         }
         
-        # Plugin path
-        $pluginFile = Join-Path (Get-Location) "build/Release/MyFirstClapPlugin.clap"
+        # Plugin path - use full absolute path
+        $pluginFile = (Resolve-Path "build\Release\MyFirstClapPlugin.clap").Path
         
         # Create screenshot directory
         New-Item -ItemType Directory -Force -Path "screenshots"
@@ -644,9 +645,16 @@ jobs:
           $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
           $processStartInfo.FileName = $clapHostFullPath
           $processStartInfo.Arguments = $arguments -join ' '
-          $processStartInfo.UseShellExecute = $true
+          $processStartInfo.UseShellExecute = $false
           $processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
           $processStartInfo.CreateNoWindow = $false
+          $processStartInfo.RedirectStandardOutput = $false
+          $processStartInfo.RedirectStandardError = $false
+          
+          Write-Host "Attempting to start process:"
+          Write-Host "  FileName: $($processStartInfo.FileName)"
+          Write-Host "  Arguments: $($processStartInfo.Arguments)"
+          Write-Host "  Working Directory: $(Get-Location)"
           
           $process = [System.Diagnostics.Process]::Start($processStartInfo)
           Write-Host "Started clap-host process with PID: $($process.Id)"
