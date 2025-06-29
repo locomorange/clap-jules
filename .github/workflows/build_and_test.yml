@@ -354,6 +354,7 @@ jobs:
 
     - name: Checkout CLAP Host
       if: steps.clap-host-cache.outputs.cache-hit != 'true'
+      shell: bash
       run: |
         echo "Cloning clap-host repository..."
         if [ ! -d "clap-host-repo" ]; then
