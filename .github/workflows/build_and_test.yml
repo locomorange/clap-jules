@@ -314,8 +314,9 @@ jobs:
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
-        
-        echo "=== Installing RtMidi and RtAudio via vcpkg ==="
+        export VCPKG_ROOT="$(pwd)/vcpkg"
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+        echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
         
         echo "=== Qt6 already installed via install-qt-action ==="
@@ -331,8 +332,9 @@ jobs:
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
-        
-        echo "=== Installing RtMidi and RtAudio via vcpkg ==="
+        export VCPKG_ROOT="$(pwd)/vcpkg"
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+        echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
         
         echo "=== Qt6 already installed via install-qt-action ==="
