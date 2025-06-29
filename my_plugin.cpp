@@ -859,7 +859,8 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         if (glfwNSWindow && parentNSView) {
             printf("MyPlugin: Cocoa window embedding - glfwWindow=%p, parentView=%p\n", glfwNSWindow, parentNSView);
             
-            // Use Objective-C runtime to properly embed NSView
+            // Use Objective-C runtime to properly embed NSView into parent
+            // This implementation mirrors X11's XReparentWindow functionality for macOS
             // Get the content view from the GLFW NSWindow
             id nsWindow = (id)glfwNSWindow;
             id parentView = (id)parentNSView;
