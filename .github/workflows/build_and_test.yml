@@ -315,7 +315,11 @@ jobs:
         done
 
         echo "=== Setting up vcpkg ==="
-        git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        if [ ! -d "vcpkg" ]; then
+          git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        else
+          echo "vcpkg directory already exists, skipping clone"
+        fi
         ./vcpkg/bootstrap-vcpkg.sh
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
@@ -333,7 +337,11 @@ jobs:
         brew install pkg-config ninja cmake git curl
 
         echo "=== Setting up vcpkg ==="
-        git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        if [ ! -d "vcpkg" ]; then
+          git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        else
+          echo "vcpkg directory already exists, skipping clone"
+        fi
         ./vcpkg/bootstrap-vcpkg.sh
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
@@ -359,14 +367,17 @@ jobs:
       uses: jurplel/install-qt-action@v4
 
     - name: Checkout CLAP Host
-      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        echo "Cloning clap-host repository..."
+        echo "Setting up clap-host repository..."
         if [ ! -d "clap-host-repo" ]; then
+          echo "Cloning clap-host repository..."
           git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
         else
-          echo "clap-host-repo already exists"
+          echo "clap-host-repo already exists, updating..."
+          cd clap-host-repo
+          git pull --recurse-submodules || echo "Git pull failed, continuing with existing version"
+          cd ..
         fi
 
     - name: Build CLAP Host (Linux/macOS)
@@ -470,7 +481,7 @@ jobs:
         # Fallback to simple cmake build
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "Trying simple cmake build"
-          if cmake . -B builds/simple -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-windows.txt; then
+          if cmake -B builds/simple -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-windows.txt; then
             echo "Simple configuration successful"
             if cmake --build builds/simple --config Release 2>&1 | tee ../screenshots/cmake-simple-build-log-windows.txt; then
               echo "Simple build successful"
