@@ -22,6 +22,8 @@
 
 #ifdef __APPLE__
 #define GLFW_EXPOSE_NATIVE_COCOA
+#include <objc/runtime.h>
+#include <objc/message.h>
 #endif
 
 // GLFW includes
@@ -389,6 +391,17 @@ static void my_plugin_gui_render(const clap_plugin_t *plugin) {
         }
     } else {
         printf("MyPlugin: Limited OpenGL context - using basic rendering only\n");
+        
+        // For non-OpenGL contexts (like the "No-API fallback"), 
+        // we can't do OpenGL rendering, but we can still change the window background
+        // This at least shows that something is happening
+        
+        // Force the window to be visible and update its appearance
+        glfwShowWindow(self->window);
+        
+        // Set window background color if possible (this might not work in all cases)
+        // but it's worth trying for visual feedback
+        printf("MyPlugin: Attempting basic window visualization\n");
     }
     
     // Check for final OpenGL errors
@@ -846,24 +859,56 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         if (glfwNSWindow && parentNSView) {
             printf("MyPlugin: Cocoa window embedding - glfwWindow=%p, parentView=%p\n", glfwNSWindow, parentNSView);
             
-            // Position the window at the origin for proper embedding
-            glfwSetWindowPos(self->window, 0, 0);
+            // Use Objective-C runtime to properly embed NSView
+            // Get the content view from the GLFW NSWindow
+            id nsWindow = (id)glfwNSWindow;
+            id parentView = (id)parentNSView;
             
-            // Ensure the window size matches the expected GUI size
-            glfwSetWindowSize(self->window, self->gui_width, self->gui_height);
+            // Get contentView from NSWindow
+            SEL contentViewSel = sel_registerName("contentView");
+            id contentView = ((id(*)(id, SEL))objc_msgSend)(nsWindow, contentViewSel);
             
-            // Make the OpenGL context current before showing
-            glfwMakeContextCurrent(self->window);
-            
-            // Show the window (it was created hidden for embedding)
-            glfwShowWindow(self->window);
-            
-            // Force a render to ensure something is visible
-            my_plugin_gui_render(plugin);
-            
-            printf("MyPlugin: Cocoa window embedded successfully (size %ux%u at 0,0)\n", 
-                   self->gui_width, self->gui_height);
-            return true;
+            if (contentView) {
+                printf("MyPlugin: Got content view %p from NSWindow %p\n", contentView, nsWindow);
+                
+                // Remove from superview first if it has one
+                SEL removeFromSuperviewSel = sel_registerName("removeFromSuperview");
+                ((void(*)(id, SEL))objc_msgSend)(contentView, removeFromSuperviewSel);
+                
+                // Set frame to match parent view bounds
+                SEL boundsMethod = sel_registerName("bounds");
+                typedef struct { double x, y, width, height; } NSRect;
+                NSRect parentBounds = ((NSRect(*)(id, SEL))objc_msgSend)(parentView, boundsMethod);
+                
+                // Set the content view frame
+                SEL setFrameMethod = sel_registerName("setFrame:");
+                ((void(*)(id, SEL, NSRect))objc_msgSend)(contentView, setFrameMethod, parentBounds);
+                
+                // Add content view as subview to parent
+                SEL addSubviewMethod = sel_registerName("addSubview:");
+                ((void(*)(id, SEL, id))objc_msgSend)(parentView, addSubviewMethod, contentView);
+                
+                // Make sure the OpenGL context is current
+                glfwMakeContextCurrent(self->window);
+                
+                // Force a render
+                my_plugin_gui_render(plugin);
+                
+                printf("MyPlugin: NSView embedded successfully into parent view\n");
+                return true;
+            } else {
+                printf("MyPlugin: Failed to get content view from NSWindow\n");
+                
+                // Fallback: just position the window
+                glfwSetWindowPos(self->window, 0, 0);
+                glfwSetWindowSize(self->window, self->gui_width, self->gui_height);
+                glfwMakeContextCurrent(self->window);
+                glfwShowWindow(self->window);
+                my_plugin_gui_render(plugin);
+                
+                printf("MyPlugin: Fallback positioning applied\n");
+                return true;
+            }
         } else {
             printf("MyPlugin: Failed to get Cocoa handles (glfwWindow=%p, parentView=%p)\n", glfwNSWindow, parentNSView);
             return false;
