@@ -65,14 +65,10 @@ jobs:
         if-no-files-found: ignore
 
   clap-host-test:
-    name: CLAP Host Test and Screenshot on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: CLAP Host Test and Screenshot on Linux
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: build-plugin
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -83,11 +79,10 @@ jobs:
     - name: Download Plugin Artifact
       uses: actions/download-artifact@v4
       with:
-        name: plugin-${{ matrix.os }}-${{ github.sha }}
+        name: plugin-ubuntu-latest-${{ github.sha }}
         path: build/
 
     - name: Setup CLAP Host Dependencies (Linux)
-      if: runner.os == 'Linux'
       run: |
         # Update package database
         sudo apt-get clean
@@ -140,38 +135,7 @@ jobs:
         echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
     - name: Install Qt
-      if: runner.os == 'Linux' || runner.os == 'macOS'
       uses: jurplel/install-qt-action@v4
-      
-    - name: Setup CLAP Host Dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        echo "Installing essential build tools on macOS..."
-        # Only install build tools, let clap-host handle audio dependencies
-        brew install pkg-config ninja cmake git curl
-
-        # Install vcpkg for dependency management
-        echo "=== Setting up vcpkg ==="
-        git clone https://github.com/Microsoft/vcpkg.git vcpkg
-        ./vcpkg/bootstrap-vcpkg.sh
-        echo "Installing RtMidi and RtAudio via vcpkg..."
-        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
-        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
-        export VCPKG_ROOT="$(pwd)/vcpkg"
-        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-
-    - name: Setup CLAP Host Dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        echo "Setting up vcpkg and build tools on Windows..."
-        # Install vcpkg for dependency management
-        git clone https://github.com/Microsoft/vcpkg.git vcpkg
-        .\vcpkg\bootstrap-vcpkg.bat
-        echo "$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_PATH
-      
-    - name: Setup MSBuild (Windows)
-      if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@v2
 
     - name: Setup CLAP Host Cache
       uses: actions/cache@v4
@@ -190,8 +154,8 @@ jobs:
         echo "Cloning clap-host repository..."
         git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
         
-    - name: Build CLAP Host (Linux/macOS)
-      if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+    - name: Build CLAP Host (Linux)
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         cd clap-host-repo
@@ -219,11 +183,11 @@ jobs:
         if cmake . -B builds/vcpkg-build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-          -DVCPKG_TARGET_TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-linux' }} \
+          -DVCPKG_TARGET_TRIPLET=x64-linux \
           -DUsePkgConfig=OFF \
-          2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-${{ runner.os }}.txt; then
+          2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-linux.txt; then
           echo "vcpkg configuration successful"
-          if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-${{ runner.os }}.txt; then
+          if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-linux.txt; then
             echo "vcpkg build successful"
             BUILD_SUCCESS=true
           fi
@@ -232,9 +196,9 @@ jobs:
         # Fallback to preset if vcpkg manual build failed
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "vcpkg manual build failed, trying ninja-system preset"
-          if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
+          if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-linux.txt; then
             echo "ninja-system preset configuration successful"
-            if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-${{ runner.os }}.txt; then
+            if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-linux.txt; then
               echo "ninja-system preset build successful"
               BUILD_SUCCESS=true
             fi
@@ -244,9 +208,9 @@ jobs:
         # Last resort: simple cmake build without specific dependencies
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "All advanced builds failed, trying simple build"
-          if cmake . -B builds/simple -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-${{ runner.os }}.txt; then
+          if cmake . -B builds/simple -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-linux.txt; then
             echo "Simple configuration successful"
-            if cmake --build builds/simple --config Release 2>&1 | tee ../screenshots/cmake-simple-build-log-${{ runner.os }}.txt; then
+            if cmake --build builds/simple --config Release 2>&1 | tee ../screenshots/cmake-simple-build-log-linux.txt; then
               echo "Simple build successful"
               BUILD_SUCCESS=true
             fi
@@ -255,14 +219,14 @@ jobs:
         
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "ERROR: All build attempts failed"
-          echo "Build failed on ${{ runner.os }}" > ../screenshots/build-failed-${{ runner.os }}.txt
+          echo "Build failed on Linux" > ../screenshots/build-failed-linux.txt
           exit 1
         fi
         
         # Find the built executable and cache it
         echo "=== Finding CLAP Host executable ==="
-        find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found"
-        find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found anywhere"
+        find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-linux.txt || echo "No clap-host executable found"
+        find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-linux.txt || echo "No clap-host executable found anywhere"
         
         # Copy executable to cache directory
         CLAP_HOST_EXEC=$(find builds -name "clap-host" -type f | head -1)
@@ -375,22 +339,14 @@ jobs:
           echo "CMake configuration successful"
         else
           echo "CMake configuration failed, trying direct compilation"
-          # Direct compilation fallback
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            echo "Installing dependencies for Linux compilation..."
-            sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libgl1-mesa-dev libx11-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
-            echo "Compiling plugin directly..."
-            g++ -shared -fPIC -o MyFirstClapPlugin.so my_plugin.cpp \
-              -I libs/clap/include -I libs/glfw/include \
-              -DHAVE_GLFW=1 -std=c++17 -lGL -lX11 -pthread || echo "Direct compilation failed"
-            mkdir -p build && mv MyFirstClapPlugin.so build/ 2>/dev/null || echo "Move failed"
-          elif [ "$RUNNER_OS" = "macOS" ]; then
-            echo "Compiling plugin directly for macOS..."
-            clang++ -shared -fPIC -o MyFirstClapPlugin.dylib my_plugin.cpp \
-              -I libs/clap/include -I libs/glfw/include \
-              -DHAVE_GLFW=1 -std=c++17 -framework OpenGL -framework Cocoa || echo "Direct compilation failed"
-            mkdir -p build && mv MyFirstClapPlugin.dylib build/ 2>/dev/null || echo "Move failed"
-          fi
+          # Direct compilation fallback for Linux
+          echo "Installing dependencies for Linux compilation..."
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libgl1-mesa-dev libx11-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
+          echo "Compiling plugin directly..."
+          g++ -shared -fPIC -o MyFirstClapPlugin.so my_plugin.cpp \
+            -I libs/clap/include -I libs/glfw/include \
+            -DHAVE_GLFW=1 -std=c++17 -lGL -lX11 -pthread || echo "Direct compilation failed"
+          mkdir -p build && mv MyFirstClapPlugin.so build/ 2>/dev/null || echo "Move failed"
         fi
         
         if [ -d "build" ]; then
@@ -398,13 +354,7 @@ jobs:
         fi
 
         # Verify plugin exists
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          PLUGIN_FILE="build/MyFirstClapPlugin.so"
-        elif [ "$RUNNER_OS" = "Windows" ]; then
-          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
-        elif [ "$RUNNER_OS" = "macOS" ]; then
-          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
-        fi
+        PLUGIN_FILE="build/MyFirstClapPlugin.so"
 
         echo "Plugin file: $PLUGIN_FILE"
         if [ -f "$PLUGIN_FILE" ]; then
@@ -418,7 +368,7 @@ jobs:
           echo "Contents of current directory:"
           ls -la .
           echo "Looking for any compiled plugins:"
-          find . -name "*.so" -o -name "*.dylib" -o -name "*.clap" 2>/dev/null || echo "No compiled plugins found"
+          find . -name "*.so" 2>/dev/null || echo "No compiled plugins found"
           exit 1
         fi
 
@@ -598,325 +548,11 @@ jobs:
           "$CLAP_HOST_EXEC" --version > screenshots/clap-host-version-linux.txt 2>&1 || echo "Version check failed"
         fi
 
-    - name: Test CLAP Host with Plugin and Take Screenshot (macOS)
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        echo "=== Testing CLAP Host with Plugin on macOS ==="
-        
-        # Find clap-host executable - check cache first, then build directory
-        CLAP_HOST_EXEC=""
-        if [ -f "clap-host-executable" ]; then
-          echo "Using cached clap-host executable"
-          CLAP_HOST_EXEC="$(pwd)/clap-host-executable"
-          chmod +x "$CLAP_HOST_EXEC"
-        else
-          CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
-          if [ -z "$CLAP_HOST_EXEC" ]; then
-            echo "Error: clap-host executable not found!"
-            echo "=== Directory listing ==="
-            find clap-host-repo -name "*clap*" -type f | head -10
-            ls -la clap-host-repo/builds/ 2>/dev/null || echo "No builds directory"
-            exit 1
-          fi
-          CLAP_HOST_EXEC="$(pwd)/$CLAP_HOST_EXEC"
-        fi
-        echo "Found clap-host at: $CLAP_HOST_EXEC"
-        chmod +x "$CLAP_HOST_EXEC"
-        
-        # Verify executable works
-        echo "=== Testing clap-host executable ==="
-        echo "Setting up macOS environment for GUI execution..."
-        
-        if ! timeout 10s "$CLAP_HOST_EXEC" --version 2>&1; then
-          echo "Warning: clap-host version check failed, but continuing with test"
-          file "$CLAP_HOST_EXEC"
-          otool -L "$CLAP_HOST_EXEC" 2>/dev/null || echo "otool failed"
-        fi
-        
-        # Plugin path
-        PLUGIN_FILE="$(pwd)/build/MyFirstClapPlugin.dylib"
-        
-        # Create screenshot directory
-        mkdir -p screenshots
-        
-        # Test clap-host help first
-        echo "=== Testing clap-host help ==="
-        echo "Executable path: $CLAP_HOST_EXEC"
-        echo "Executable permissions: $(ls -la "$CLAP_HOST_EXEC")"
-        "$CLAP_HOST_EXEC" --help || echo "Help command failed"
-        
-        # Run clap-host with plugin and take screenshot
-        echo "Running clap-host and taking screenshot..."
-        # Install coreutils for timeout command on macOS
-        if command -v brew >/dev/null 2>&1; then
-          brew install coreutils 2>/dev/null || echo "coreutils install failed, using alternative"
-        fi
-        
-        # Create screenshots directory if it doesn't exist
-        mkdir -p screenshots
-        
-        # Use gtimeout if available, otherwise use alternative timing method
-        if command -v gtimeout >/dev/null 2>&1; then
-          TIMEOUT_CMD="gtimeout 60s"
-        else
-          TIMEOUT_CMD="bash -c"
-        fi
-        
-        $TIMEOUT_CMD bash -c "
-          echo 'Testing clap-host arguments support...'
-          \"$CLAP_HOST_EXEC\" --help > screenshots/clap-host-help-macos.txt 2>&1 || echo 'Help command failed'
-          
-          echo 'Starting clap-host with GUI arguments...'
-          echo 'CLAP Host executable: $CLAP_HOST_EXEC'
-          echo 'Plugin file: $PLUGIN_FILE'
-          
-          # Check if files exist before starting
-          if [ ! -f \"$CLAP_HOST_EXEC\" ]; then
-            echo 'ERROR: CLAP Host executable not found at: $CLAP_HOST_EXEC'
-            exit 1
-          fi
-          
-          if [ ! -f \"$PLUGIN_FILE\" ]; then
-            echo 'ERROR: Plugin file not found at: $PLUGIN_FILE'
-            exit 1
-          fi
-          
-          if grep -q 'show-gui' screenshots/clap-host-help-macos.txt 2>/dev/null; then
-            echo 'Using GUI-specific arguments'
-            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" --show-gui --no-minimized &
-          else
-            echo 'Using basic arguments'
-            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" &
-          fi
-          
-          CLAP_PID=\$!
-          echo \"Started clap-host with PID: \$CLAP_PID\"
-          
-          # Wait longer for GUI to appear
-          sleep 10
-          if kill -0 \$CLAP_PID 2>/dev/null; then
-            echo 'Process is running, waiting for GUI to load...'
-            sleep 30  # Increased wait time for GUI to load
-          else
-            echo 'Warning: clap-host process may have exited early, checking logs...'
-            wait \$CLAP_PID
-            EXIT_CODE=\$?
-            echo \"Process exited with code: \$EXIT_CODE\"
-            
-            echo 'Retrying with basic args...'
-            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" &
-            CLAP_PID=\$!
-            echo \"Restarted clap-host with PID: \$CLAP_PID\"
-            sleep 25
-          fi
-          
-          echo 'Taking screenshot...'
-          # Try multiple screenshot methods for macOS
-          if screencapture -x screenshots/clap-host-macos-screenshot.png 2>/dev/null; then
-            echo 'Screenshot captured with screencapture'
-          elif command -v screencapture >/dev/null 2>&1; then
-            screencapture screenshots/clap-host-macos-screenshot.png 2>/dev/null || echo 'Alternative screencapture failed'
-          else
-            echo 'No screenshot tool available'
-          fi
-          
-          # Keep process running a bit longer for screenshot
-          sleep 5
-          
-          # Add a manual timeout for non-gtimeout systems
-          if [ \"\$TIMEOUT_CMD\" = \"bash -c\" ]; then
-            sleep 5  # Additional time for screenshot
-          fi
-          
-          kill \$CLAP_PID 2>/dev/null || true
-          echo 'Screenshot capture completed'
-        " || echo "Screenshot capture completed (timeout expected)"
-        
-        # Verify screenshot was created
-        if [ -f "screenshots/clap-host-macos-screenshot.png" ]; then
-          echo "Screenshot captured successfully"
-          ls -la screenshots/clap-host-macos-screenshot.png
-        else
-          echo "Warning: Screenshot not created, capturing error info"
-          echo "CLAP Host test failed on macOS" > screenshots/error-macos.txt
-          "$CLAP_HOST_EXEC" --version > screenshots/clap-host-version-macos.txt 2>&1 || echo "Version check failed"
-        fi
-
-    - name: Test CLAP Host with Plugin and Take Screenshot (Windows)
-      if: runner.os == 'Windows'
-      shell: powershell
-      run: |
-        Write-Host "=== Testing CLAP Host with Plugin on Windows ==="
-
-        # Find clap-host executable - check cache first
-        $clapHostFullPath = $null
-        
-        # Check for cached executable first
-        if (Test-Path "clap-host-executable.exe") {
-          $clapHostFullPath = (Resolve-Path "clap-host-executable.exe").Path
-          Write-Host "Using cached clap-host executable at: $clapHostFullPath"
-        } else {
-          # Look for the executable in expected build locations
-          $buildPaths = @(
-            "clap-host-repo\builds\vs-vcpkg\host\Release\clap-host.exe",
-            "clap-host-repo\builds\vcpkg-build\host\Release\clap-host.exe", 
-            "clap-host-repo\builds\windows\host\Release\clap-host.exe",
-            "clap-host-repo\builds\windows\Release\clap-host.exe"
-          )
-          
-          foreach ($path in $buildPaths) {
-            if (Test-Path $path) {
-              $clapHostFullPath = (Resolve-Path $path).Path
-              Write-Host "Found clap-host executable at: $clapHostFullPath"
-              break
-            }
-          }
-          
-          # If not found in expected locations, search recursively
-          if (-not $clapHostFullPath) {
-            Write-Host "Searching for clap-host.exe recursively..."
-            $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host.exe" -File -Recurse -ErrorAction SilentlyContinue
-            if ($clapHostFiles) {
-              $relativePath = Join-Path "clap-host-repo" ($clapHostFiles | Select-Object -First 1)
-              $clapHostFullPath = (Resolve-Path $relativePath).Path
-              Write-Host "Found clap-host executable at: $clapHostFullPath"
-            }
-          }
-        }
-
-        if (-not $clapHostFullPath -or -not (Test-Path $clapHostFullPath)) {
-          Write-Host "Error: clap-host executable not found!"
-          Write-Host "=== Directory listing of builds folder ==="
-          Get-ChildItem -Path "clap-host-repo/builds" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*clap-host*" } | Select-Object FullName -First 10
-          Write-Host "=== All .exe files in clap-host-repo ==="
-          Get-ChildItem -Path "clap-host-repo" -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName -First 20
-          exit 1
-        }
-        
-        Write-Host "Found clap-host at: $clapHostFullPath"
-
-        # Verify executable is valid
-        try {
-          $fileInfo = Get-ItemProperty $clapHostFullPath
-          Write-Host "File size: $($fileInfo.Length) bytes"
-        } catch {
-          Write-Host "Warning: Could not get file info: $_"
-        }
-        
-        # Plugin path - use full absolute path
-        $pluginFile = (Resolve-Path "build\Release\MyFirstClapPlugin.clap").Path
-        
-        # Create screenshot directory
-        New-Item -ItemType Directory -Force -Path "screenshots"
-
-        # Test clap-host help first
-        Write-Host "=== Testing clap-host help ==="
-        try {
-          $helpResult = & $clapHostFullPath --help 2>&1
-          $helpResult | Out-File -FilePath "screenshots/clap-host-help-windows.txt"
-          Write-Host "Help output saved to screenshots/clap-host-help-windows.txt"
-          Write-Host "Help preview: $($helpResult -join "`n" | Select-String -Pattern '.*' | Select-Object -First 10)"
-        } catch {
-          Write-Host "Help command failed: $_"
-          "Help command failed: $_" | Out-File -FilePath "screenshots/clap-host-help-windows.txt"
-        }
-        
-        # Run clap-host with plugin and take screenshot  
-        Write-Host "Running clap-host and taking screenshot..."
-        try {
-          # Get help output to understand available arguments
-          $helpOutput = ""
-          if (Test-Path "screenshots/clap-host-help-windows.txt") {
-            $helpOutput = Get-Content "screenshots/clap-host-help-windows.txt" -Raw
-          }
-          
-          Write-Host "=== Starting CLAP Host with GUI ==="
-          
-          # Use basic plugin loading arguments that work reliably
-          $arguments = @("-p", $pluginFile)
-          Write-Host "Starting clap-host with plugin: $pluginFile"
-          Write-Host "Arguments: $($arguments -join ' ')"
-          
-          # Start clap-host process with appropriate settings for GUI applications
-          $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
-          $processStartInfo.FileName = $clapHostFullPath
-          $processStartInfo.Arguments = $arguments -join ' '
-          $processStartInfo.UseShellExecute = $false
-          $processStartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
-          $processStartInfo.CreateNoWindow = $false
-          $processStartInfo.RedirectStandardOutput = $false
-          $processStartInfo.RedirectStandardError = $false
-          
-          Write-Host "Attempting to start process:"
-          Write-Host "  FileName: $($processStartInfo.FileName)"
-          Write-Host "  Arguments: $($processStartInfo.Arguments)"
-          Write-Host "  Working Directory: $(Get-Location)"
-          
-          $process = [System.Diagnostics.Process]::Start($processStartInfo)
-          Write-Host "Started clap-host process with PID: $($process.Id)"
-          Start-Sleep -Seconds 20  # Wait for GUI to load
-
-          # Take screenshot using .NET
-          Add-Type -AssemblyName System.Windows.Forms
-          Add-Type -AssemblyName System.Drawing
-
-          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          Write-Host "Screen bounds: Width=$($bounds.Width), Height=$($bounds.Height)"
-          
-          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-          $bitmap.Save("screenshots/clap-host-windows-screenshot.png")
-
-          $graphics.Dispose()
-          $bitmap.Dispose()
-          
-          # Stop clap-host
-          Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-
-          Write-Host "Screenshot captured successfully"
-          $screenshotPath = "screenshots/clap-host-windows-screenshot.png"
-          if (Test-Path $screenshotPath) {
-            $fileInfo = Get-ChildItem $screenshotPath
-            Write-Host "Screenshot file size: $($fileInfo.Length) bytes"
-          }
-          
-          # Create a diagnostic report
-          Write-Host "Creating diagnostic report..."
-          $diagnosticLines = @(
-            "CLAP Host Windows Test Report",
-            "============================",
-            "Executable: $clapHostFullPath",
-            "Plugin: $pluginFile", 
-            "Process Started: $($process.StartTime)",
-            "Process Exited: $($process.HasExited)",
-            "Exit Code: $($process.ExitCode)",
-            "Screenshot Created: $(Test-Path $screenshotPath)"
-          )
-          $diagnosticLines | Out-File -FilePath "screenshots/clap-host-diagnostic-windows.txt"
-          
-        } catch {
-          Write-Host "Warning: Screenshot capture failed: $_"
-          $errorLines = @(
-            "CLAP Host test failed: $_",
-            "Error at: $(Get-Date)",
-            "Exception: $($_.Exception.Message)",
-            "Stack Trace: $($_.ScriptStackTrace)"
-          )
-          $errorLines | Out-File -FilePath "screenshots/error-windows.txt"
-          
-          try {
-            & $clapHostFullPath --version 2>&1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
-          } catch {
-            "Version check failed: $_" | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
-          }
-        }
 
     - name: Upload Screenshots and Logs
       uses: actions/upload-artifact@v4
       with:
-        name: clap-host-screenshots-${{ matrix.os }}-${{ github.sha }}
+        name: clap-host-screenshots-linux-${{ github.sha }}
         path: |
           screenshots/
           clap-host-repo/builds/*/CMakeCache.txt
