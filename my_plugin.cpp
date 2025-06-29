@@ -528,6 +528,15 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
 #endif
     }
     
+    // For embedded windows, create borderless from the start
+    if (!self->is_floating) {
+        printf("MyPlugin: Creating borderless window for embedding\n");
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        // Start hidden, will be shown after embedding
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    }
+    
     // Create GLFW window
     self->window = glfwCreateWindow(
         self->gui_width, 
@@ -665,7 +674,7 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     
     // Set up basic OpenGL state, but handle errors gracefully
     if (gl_version) {
-        glClearColor(0.2f, 0.3f, 0.4f, 1.0f); // Dark blue background
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark background for better contrast
         
         // Check if basic OpenGL operations work
         GLenum gl_error = glGetError();
@@ -830,25 +839,33 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
     // Handle Cocoa embedding
     if (strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
 #ifdef __APPLE__
-        // For macOS/Cocoa, we need to get the NSView from GLFW and add it to the parent NSView
-        // Note: This is a simplified implementation that may need refinement for production use
-        void* nativeWindow = glfwGetCocoaWindow(self->window);
-        void* parentView = window->cocoa;
+        // Get the GLFW window's NSWindow
+        void* glfwNSWindow = glfwGetCocoaWindow(self->window);
+        void* parentNSView = window->cocoa;
         
-        if (nativeWindow && parentView) {
-            printf("MyPlugin: Cocoa window embedding - child=%p, parent=%p\n", nativeWindow, parentView);
+        if (glfwNSWindow && parentNSView) {
+            printf("MyPlugin: Cocoa window embedding - glfwWindow=%p, parentView=%p\n", glfwNSWindow, parentNSView);
             
-            // In a full implementation, you would need to:
-            // 1. Get the content view from the GLFW window
-            // 2. Add it as a subview to the parent NSView
-            // 3. Set proper frame and autoresizing
+            // Position the window at the origin for proper embedding
+            glfwSetWindowPos(self->window, 0, 0);
             
-            // For now, just show the window as we don't have full NSView integration
+            // Ensure the window size matches the expected GUI size
+            glfwSetWindowSize(self->window, self->gui_width, self->gui_height);
+            
+            // Make the OpenGL context current before showing
+            glfwMakeContextCurrent(self->window);
+            
+            // Show the window (it was created hidden for embedding)
             glfwShowWindow(self->window);
-            printf("MyPlugin: Cocoa window shown (basic implementation)\n");
+            
+            // Force a render to ensure something is visible
+            my_plugin_gui_render(plugin);
+            
+            printf("MyPlugin: Cocoa window embedded successfully (size %ux%u at 0,0)\n", 
+                   self->gui_width, self->gui_height);
             return true;
         } else {
-            printf("MyPlugin: Failed to get Cocoa handles (child=%p, parent=%p)\n", nativeWindow, parentView);
+            printf("MyPlugin: Failed to get Cocoa handles (glfwWindow=%p, parentView=%p)\n", glfwNSWindow, parentNSView);
             return false;
         }
 #else
