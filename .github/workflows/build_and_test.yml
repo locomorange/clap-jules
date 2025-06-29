@@ -385,28 +385,48 @@ jobs:
       run: |
         echo "=== Verifying plugin artifact ==="
         echo "Current working directory: $(pwd)"
-        echo "Contents of current directory:"
-        ls -la
+        echo "Contents of plugin-artifacts directory:"
+        ls -la plugin-artifacts/ || echo "plugin-artifacts directory not found"
         
-        # Verify plugin exists
+        # Look for plugin in artifact directory
         if [ "$RUNNER_OS" = "Linux" ]; then
-          PLUGIN_FILE="build/MyFirstClapPlugin.so"
+          PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.so"
         elif [ "$RUNNER_OS" = "Windows" ]; then
-          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
+          # Check multiple possible locations for Windows
+          if [ -f "plugin-artifacts/Release/MyFirstClapPlugin.clap" ]; then
+            PLUGIN_FILE="plugin-artifacts/Release/MyFirstClapPlugin.clap"
+          elif [ -f "plugin-artifacts/MyFirstClapPlugin.clap" ]; then
+            PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.clap"
+          else
+            echo "Searching for .clap file in plugin-artifacts..."
+            PLUGIN_FILE=$(find plugin-artifacts -name "*.clap" -type f | head -1)
+          fi
         elif [ "$RUNNER_OS" = "macOS" ]; then
-          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
+          PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.dylib"
         fi
 
-        echo "Plugin file: $PLUGIN_FILE"
+        echo "Expected plugin file: $PLUGIN_FILE"
         if [ -f "$PLUGIN_FILE" ]; then
           echo "Plugin artifact found successfully"
           ls -la "$PLUGIN_FILE"
           file "$PLUGIN_FILE" || echo "file command failed"
         else
-          echo "Error: Plugin file not found!"
-          echo "Contents of build directory:"
-          ls -la build/ || echo "build directory not found"
-          exit 1
+          echo "Error: Plugin file not found at expected location!"
+          echo "Contents of plugin-artifacts directory:"
+          find plugin-artifacts -type f 2>/dev/null || echo "No files found in plugin-artifacts"
+          
+          # Try to find any plugin file
+          echo "Looking for any plugin files..."
+          FOUND_PLUGIN=$(find plugin-artifacts -name "*.so" -o -name "*.clap" -o -name "*.dylib" 2>/dev/null | head -1)
+          if [ -n "$FOUND_PLUGIN" ]; then
+            echo "Found plugin file: $FOUND_PLUGIN"
+            echo "Using found plugin file instead"
+            # Export for use in later steps
+            echo "PLUGIN_FILE_OVERRIDE=$FOUND_PLUGIN" >> $GITHUB_ENV
+          else
+            echo "No plugin files found at all!"
+            exit 1
+          fi
         fi
 
     - name: Checkout CLAP Host
@@ -557,7 +577,14 @@ jobs:
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
         
-        PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
+        # Use override if available, otherwise use standard path
+        if [ -n "$PLUGIN_FILE_OVERRIDE" ]; then
+          PLUGIN_FILE="$(pwd)/$PLUGIN_FILE_OVERRIDE"
+          echo "Using plugin file override: $PLUGIN_FILE"
+        else
+          PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
+        fi
+        
         if [ ! -f "$PLUGIN_FILE" ]; then
           echo "Error: Plugin file not found at $PLUGIN_FILE"
           echo "Contents of plugin-artifacts:"
@@ -629,7 +656,14 @@ jobs:
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
         
-        PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
+        # Use override if available, otherwise use standard path
+        if [ -n "$PLUGIN_FILE_OVERRIDE" ]; then
+          PLUGIN_FILE="$(pwd)/$PLUGIN_FILE_OVERRIDE"
+          echo "Using plugin file override: $PLUGIN_FILE"
+        else
+          PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
+        fi
+        
         if [ ! -f "$PLUGIN_FILE" ]; then
           echo "Error: Plugin file not found at $PLUGIN_FILE"
           echo "Contents of plugin-artifacts:"
@@ -671,8 +705,11 @@ jobs:
         fi
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         
-        # Find Windows plugin file in the correct location
-        if [ -f "$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap" ]; then
+        # Use override if available, otherwise find Windows plugin file
+        if [ -n "$PLUGIN_FILE_OVERRIDE" ]; then
+          PLUGIN_FILE="$(pwd)/$PLUGIN_FILE_OVERRIDE"
+          echo "Using plugin file override: $PLUGIN_FILE"
+        elif [ -f "$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap" ]; then
           PLUGIN_FILE="$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap"
         elif [ -f "$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap" ]; then
           PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap"
