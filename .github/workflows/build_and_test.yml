@@ -7,6 +7,10 @@ on:
     # branches: [ main, master ]
   workflow_dispatch:  # Allows manual trigger for testing
 
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
   CLAP_VALIDATOR_VERSION: '0.3.2'
   CLAP_INFO_VERSION: 'v1.2.2'
@@ -685,66 +689,30 @@ jobs:
             }
           }
           
-          // Only upload if hash is different
+          // Only comment if hash is different
           if (hash === previousHash) {
-            console.log('Screenshot hash matches previous version, skipping upload');
+            console.log('Screenshot hash matches previous version, skipping comment');
             return;
           }
           
-          // Create release for screenshot storage if it doesn't exist
-          try {
-            await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: 'screenshots',
-              name: 'Screenshots',
-              body: 'Storage for PR screenshots',
-              draft: false,
-              prerelease: true,
-            });
-            console.log('Created screenshots release');
-          } catch (error) {
-            if (error.status !== 422) { // 422 means release already exists
-              throw error;
-            }
-            console.log('Screenshots release already exists');
-          }
+          // Comment on PR referencing the artifact
+          const commentBody = `## CLAP Host Screenshot (Linux)
           
-          // Upload screenshot to release
-          const uploadUrl = `https://uploads.github.com/repos/${context.repo.owner}/${context.repo.repo}/releases/screenshots/assets`;
-          const fileName = `clap-host-linux-${context.sha}-${Date.now()}.png`;
+          スクリーンショットが更新されました。
           
-          try {
-            const uploadResponse = await github.rest.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: 'screenshots',
-              name: fileName,
-              data: screenshotBuffer,
-            });
-            
-            const assetUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/screenshots/${fileName}`;
-            
-            // Comment on PR with screenshot
-            const commentBody = `## CLAP Host Screenshot (Linux)
-          
-          スクリーンショットを更新しました:
-          
-          ![CLAP Host Screenshot](${assetUrl})
+          📸 新しいスクリーンショットは Actions の Artifacts からダウンロードできます:
+          - Artifact name: \`clap-host-screenshots-Linux-${context.sha}\`
           
           <!--screenshot-hash:${hash}-->`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: commentBody,
-            });
-            
-            console.log('Screenshot uploaded and commented on PR');
-          } catch (error) {
-            console.error('Failed to upload screenshot:', error);
-          }
+          
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+            body: commentBody,
+          });
+          
+          console.log('Screenshot comment posted on PR');
 
     - name: Upload Screenshots and Logs
       uses: actions/upload-artifact@v4
