@@ -366,8 +366,29 @@ jobs:
       shell: bash
       run: |
         echo "=== Building plugin for testing ==="
-        cmake . -B build
-        cmake --build build --config Release
+        echo "Current working directory: $(pwd)"
+        echo "Contents of current directory:"
+        ls -la
+        
+        # Try to build the plugin
+        if cmake . -B build; then
+          echo "CMake configuration successful"
+        else
+          echo "CMake configuration failed, trying direct compilation"
+          # Direct compilation fallback
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev
+            g++ -shared -fPIC -o MyFirstClapPlugin.so my_plugin.cpp -I libs/clap/include -I libs/glfw/include -DHAVE_GLFW=1 -std=c++17 -lGL || echo "Direct compilation failed"
+            mkdir -p build && mv MyFirstClapPlugin.so build/ 2>/dev/null || echo "Move failed"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            clang++ -shared -fPIC -o MyFirstClapPlugin.dylib my_plugin.cpp -I libs/clap/include -I libs/glfw/include -DHAVE_GLFW=1 -std=c++17 -framework OpenGL || echo "Direct compilation failed"
+            mkdir -p build && mv MyFirstClapPlugin.dylib build/ 2>/dev/null || echo "Move failed"
+          fi
+        fi
+        
+        if [ -d "build" ]; then
+          cmake --build build --config Release || echo "Build step failed"
+        fi
 
         # Verify plugin exists
         if [ "$RUNNER_OS" = "Linux" ]; then
@@ -382,10 +403,15 @@ jobs:
         if [ -f "$PLUGIN_FILE" ]; then
           echo "Plugin artifact found successfully"
           ls -la "$PLUGIN_FILE"
+          file "$PLUGIN_FILE" || echo "file command failed"
         else
           echo "Error: Plugin file not found!"
           echo "Contents of build directory:"
           ls -la build/ || echo "build directory not found"
+          echo "Contents of current directory:"
+          ls -la .
+          echo "Looking for any compiled plugins:"
+          find . -name "*.so" -o -name "*.dylib" -o -name "*.clap" 2>/dev/null || echo "No compiled plugins found"
           exit 1
         fi
 
@@ -395,22 +421,34 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on Linux ==="
         
-        # Find clap-host executable - check cache first
+        # Find clap-host executable - check cache first, then build directory
         CLAP_HOST_EXEC=""
         if [ -f "clap-host-executable" ]; then
           echo "Using cached clap-host executable"
-          CLAP_HOST_EXEC="clap-host-executable"
+          CLAP_HOST_EXEC="$(pwd)/clap-host-executable"
+          chmod +x "$CLAP_HOST_EXEC"
         else
           CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
           if [ -z "$CLAP_HOST_EXEC" ]; then
             echo "Error: clap-host executable not found!"
             echo "=== Directory listing ==="
             find clap-host-repo -name "*clap*" -type f | head -10
+            ls -la clap-host-repo/builds/ 2>/dev/null || echo "No builds directory"
             exit 1
           fi
+          CLAP_HOST_EXEC="$(pwd)/$CLAP_HOST_EXEC"
         fi
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
+        
+        # Verify executable works
+        echo "=== Testing clap-host executable ==="
+        if ! "$CLAP_HOST_EXEC" --version 2>&1; then
+          echo "Error: clap-host executable is not working"
+          file "$CLAP_HOST_EXEC"
+          ldd "$CLAP_HOST_EXEC" 2>/dev/null || echo "ldd failed"
+          exit 1
+        fi
         
         # Plugin path
         PLUGIN_FILE="$(pwd)/build/MyFirstClapPlugin.so"
@@ -427,46 +465,74 @@ jobs:
 
         # Test clap-host help first
         echo "=== Testing clap-host help ==="
+        echo "Executable path: $CLAP_HOST_EXEC"
+        echo "Executable permissions: $(ls -la "$CLAP_HOST_EXEC")"
         "$CLAP_HOST_EXEC" --help || echo "Help command failed"
         
         # Run clap-host with plugin and take screenshot after a delay
         echo "=== Running clap-host with plugin ==="
         export LIBGL_ALWAYS_SOFTWARE=1
         echo "LIBGL_ALWAYS_SOFTWARE set to $LIBGL_ALWAYS_SOFTWARE"
-        timeout 45s bash -c "
+        
+        # Create screenshots directory if it doesn't exist
+        mkdir -p screenshots
+        
+        timeout 60s bash -c "
           echo 'Testing clap-host arguments support...'
-          '$CLAP_HOST_EXEC' --help > ../screenshots/clap-host-help-linux.txt 2>&1 || echo 'Help command failed'
+          \"$CLAP_HOST_EXEC\" --help > screenshots/clap-host-help-linux.txt 2>&1 || echo 'Help command failed'
           
           echo 'Starting clap-host with GUI arguments...'
-          if grep -q 'show-gui' ../screenshots/clap-host-help-linux.txt 2>/dev/null; then
+          echo 'CLAP Host executable: $CLAP_HOST_EXEC'
+          echo 'Plugin file: $PLUGIN_FILE'
+          
+          # Check if files exist before starting
+          if [ ! -f \"$CLAP_HOST_EXEC\" ]; then
+            echo 'ERROR: CLAP Host executable not found at: $CLAP_HOST_EXEC'
+            exit 1
+          fi
+          
+          if [ ! -f \"$PLUGIN_FILE\" ]; then
+            echo 'ERROR: Plugin file not found at: $PLUGIN_FILE'
+            exit 1
+          fi
+          
+          if grep -q 'show-gui' screenshots/clap-host-help-linux.txt 2>/dev/null; then
             echo 'Using GUI-specific arguments'
-            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' --show-gui --no-minimized &
+            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" --show-gui --no-minimized &
           else
             echo 'Using basic arguments'
-            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" &
           fi
           
           CLAP_PID=\$!
           echo \"Started clap-host with PID: \$CLAP_PID\"
           
-          # Wait and check if process is still running
-          sleep 5
+          # Wait longer for GUI to appear
+          sleep 10
           if kill -0 \$CLAP_PID 2>/dev/null; then
             echo 'Process is running, waiting for GUI to load...'
-            sleep 20  # Wait for GUI to load
+            sleep 30  # Increased wait time for GUI to load
           else
-            echo 'Warning: clap-host process may have exited early, retrying with basic args...'
-            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+            echo 'Warning: clap-host process may have exited early, checking logs...'
+            wait \$CLAP_PID
+            EXIT_CODE=\$?
+            echo \"Process exited with code: \$EXIT_CODE\"
+            
+            echo 'Retrying with basic args...'
+            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" &
             CLAP_PID=\$!
             echo \"Restarted clap-host with PID: \$CLAP_PID\"
-            sleep 15
+            sleep 25
           fi
           
           echo 'Checking for GUI windows...'
-          xwininfo -root -tree | grep -i clap > ../screenshots/clap-windows-linux.txt 2>&1 || echo 'No CLAP windows found'
+          xwininfo -root -tree | grep -i clap > screenshots/clap-windows-linux.txt 2>&1 || echo 'No CLAP windows found'
           
           echo 'Taking screenshot...'
           import -window root screenshots/clap-host-linux-screenshot.png 2>/dev/null || echo 'Screenshot failed'
+          
+          # Keep process running a bit longer for screenshot
+          sleep 5
           
           kill \$CLAP_PID 2>/dev/null || true
           echo 'Screenshot capture completed'
@@ -491,22 +557,34 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on macOS ==="
         
-        # Find clap-host executable - check cache first
+        # Find clap-host executable - check cache first, then build directory
         CLAP_HOST_EXEC=""
         if [ -f "clap-host-executable" ]; then
           echo "Using cached clap-host executable"
-          CLAP_HOST_EXEC="clap-host-executable"
+          CLAP_HOST_EXEC="$(pwd)/clap-host-executable"
+          chmod +x "$CLAP_HOST_EXEC"
         else
           CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
           if [ -z "$CLAP_HOST_EXEC" ]; then
             echo "Error: clap-host executable not found!"
             echo "=== Directory listing ==="
             find clap-host-repo -name "*clap*" -type f | head -10
+            ls -la clap-host-repo/builds/ 2>/dev/null || echo "No builds directory"
             exit 1
           fi
+          CLAP_HOST_EXEC="$(pwd)/$CLAP_HOST_EXEC"
         fi
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
+        
+        # Verify executable works
+        echo "=== Testing clap-host executable ==="
+        if ! "$CLAP_HOST_EXEC" --version 2>&1; then
+          echo "Error: clap-host executable is not working"
+          file "$CLAP_HOST_EXEC"
+          otool -L "$CLAP_HOST_EXEC" 2>/dev/null || echo "otool failed"
+          exit 1
+        fi
         
         # Plugin path
         PLUGIN_FILE="$(pwd)/build/MyFirstClapPlugin.dylib"
@@ -516,6 +594,8 @@ jobs:
         
         # Test clap-host help first
         echo "=== Testing clap-host help ==="
+        echo "Executable path: $CLAP_HOST_EXEC"
+        echo "Executable permissions: $(ls -la "$CLAP_HOST_EXEC")"
         "$CLAP_HOST_EXEC" --help || echo "Help command failed"
         
         # Run clap-host with plugin and take screenshot
@@ -525,40 +605,62 @@ jobs:
           brew install coreutils 2>/dev/null || echo "coreutils install failed, using alternative"
         fi
         
+        # Create screenshots directory if it doesn't exist
+        mkdir -p screenshots
+        
         # Use gtimeout if available, otherwise use alternative timing method
         if command -v gtimeout >/dev/null 2>&1; then
-          TIMEOUT_CMD="gtimeout 45s"
+          TIMEOUT_CMD="gtimeout 60s"
         else
           TIMEOUT_CMD="bash -c"
         fi
         
         $TIMEOUT_CMD bash -c "
           echo 'Testing clap-host arguments support...'
-          '$CLAP_HOST_EXEC' --help > screenshots/clap-host-help-macos.txt 2>&1 || echo 'Help command failed'
+          \"$CLAP_HOST_EXEC\" --help > screenshots/clap-host-help-macos.txt 2>&1 || echo 'Help command failed'
           
           echo 'Starting clap-host with GUI arguments...'
+          echo 'CLAP Host executable: $CLAP_HOST_EXEC'
+          echo 'Plugin file: $PLUGIN_FILE'
+          
+          # Check if files exist before starting
+          if [ ! -f \"$CLAP_HOST_EXEC\" ]; then
+            echo 'ERROR: CLAP Host executable not found at: $CLAP_HOST_EXEC'
+            exit 1
+          fi
+          
+          if [ ! -f \"$PLUGIN_FILE\" ]; then
+            echo 'ERROR: Plugin file not found at: $PLUGIN_FILE'
+            exit 1
+          fi
+          
           if grep -q 'show-gui' screenshots/clap-host-help-macos.txt 2>/dev/null; then
             echo 'Using GUI-specific arguments'
-            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' --show-gui --no-minimized &
+            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" --show-gui --no-minimized &
           else
             echo 'Using basic arguments'
-            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" &
           fi
           
           CLAP_PID=\$!
           echo \"Started clap-host with PID: \$CLAP_PID\"
           
-          # Wait and check if process is still running
-          sleep 5
+          # Wait longer for GUI to appear
+          sleep 10
           if kill -0 \$CLAP_PID 2>/dev/null; then
             echo 'Process is running, waiting for GUI to load...'
-            sleep 20  # Wait for GUI to load
+            sleep 30  # Increased wait time for GUI to load
           else
-            echo 'Warning: clap-host process may have exited early, retrying with basic args...'
-            '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+            echo 'Warning: clap-host process may have exited early, checking logs...'
+            wait \$CLAP_PID
+            EXIT_CODE=\$?
+            echo \"Process exited with code: \$EXIT_CODE\"
+            
+            echo 'Retrying with basic args...'
+            \"$CLAP_HOST_EXEC\" -p \"$PLUGIN_FILE\" &
             CLAP_PID=\$!
             echo \"Restarted clap-host with PID: \$CLAP_PID\"
-            sleep 15
+            sleep 25
           fi
           
           echo 'Taking screenshot...'
@@ -570,6 +672,9 @@ jobs:
           else
             echo 'No screenshot tool available'
           fi
+          
+          # Keep process running a bit longer for screenshot
+          sleep 5
           
           # Add a manual timeout for non-gtimeout systems
           if [ \"\$TIMEOUT_CMD\" = \"bash -c\" ]; then
