@@ -462,24 +462,40 @@ jobs:
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
         echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
 
-        # Try different build approaches
+        # Try different build approaches, prioritizing static build script
         BUILD_SUCCESS=false
 
-        # Try external vcpkg build first 
-        echo "Trying external vcpkg build with Qt6"
-        if cmake . -B builds/external-vcpkg \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-          -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-          2>&1 | tee ../screenshots/cmake-external-vcpkg-configure-log-windows.txt; then
-          echo "External vcpkg configuration successful"
-          if cmake --build builds/external-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-external-vcpkg-build-log-windows.txt; then
-            echo "External vcpkg build successful"
+        # Try build script first for static build
+        if [ -f "scripts/build.sh" ]; then
+          echo "Trying static build script (scripts/build.sh)"
+          chmod +x scripts/build.sh
+          if ./scripts/build.sh 2>&1 | tee ../screenshots/build-script-log-windows.txt; then
+            echo "Build script successful (static build)"
             BUILD_SUCCESS=true
+          else
+            echo "Build script failed, trying other methods"
+          fi
+        else
+          echo "scripts/build.sh not found, trying other build methods"
+        fi
+
+        # Fallback to external vcpkg build
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+          echo "Trying external vcpkg build with Qt6"
+          if cmake . -B builds/external-vcpkg \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+            2>&1 | tee ../screenshots/cmake-external-vcpkg-configure-log-windows.txt; then
+            echo "External vcpkg configuration successful"
+            if cmake --build builds/external-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-external-vcpkg-build-log-windows.txt; then
+              echo "External vcpkg build successful"
+              BUILD_SUCCESS=true
+            fi
           fi
         fi
 
-        # Fallback builds
+        # Fallback to ninja-vcpkg preset
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "External vcpkg build failed, trying ninja-vcpkg preset"
           
@@ -497,6 +513,7 @@ jobs:
           fi
         fi
 
+        # Final fallback to vs-vcpkg preset
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "ninja-vcpkg failed, trying vs-vcpkg preset"
           if cmake --preset vs-vcpkg 2>&1 | tee ../screenshots/cmake-vs-configure-log-windows.txt; then
