@@ -173,13 +173,25 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Setup CLAP Host Cache
+      uses: actions/cache@v4
+      id: clap-host-cache
+      with:
+        path: |
+          clap-host-repo
+          clap-host-executable*
+        key: clap-host-${{ runner.os }}-${{ hashFiles('clap-host-repo/CMakeLists.txt', 'clap-host-repo/host/CMakeLists.txt') }}-v1
+        restore-keys: |
+          clap-host-${{ runner.os }}-
+
     - name: Checkout CLAP Host
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       run: |
         echo "Cloning clap-host repository..."
         git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
         
     - name: Build CLAP Host (Linux/macOS)
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         cd clap-host-repo
@@ -247,13 +259,20 @@ jobs:
           exit 1
         fi
         
-        # Find the built executable
+        # Find the built executable and cache it
         echo "=== Finding CLAP Host executable ==="
         find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found"
         find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found anywhere"
         
+        # Copy executable to cache directory
+        CLAP_HOST_EXEC=$(find builds -name "clap-host" -type f | head -1)
+        if [ -n "$CLAP_HOST_EXEC" ]; then
+          cp "$CLAP_HOST_EXEC" ../clap-host-executable || echo "Failed to cache executable"
+          echo "Cached clap-host executable for future builds"
+        fi
+        
     - name: Build CLAP Host (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         cd clap-host-repo
@@ -331,10 +350,17 @@ jobs:
           exit 1
         fi
         
-        # Find the built executable
+        # Find the built executable and cache it
         echo "=== Finding CLAP Host executable ==="
         find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-windows.txt || echo "No clap-host executable found"
         find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-windows.txt || echo "No clap-host executable found anywhere"
+        
+        # Copy executable to cache directory
+        CLAP_HOST_EXEC=$(find builds -name "clap-host.exe" -type f | head -1)
+        if [ -n "$CLAP_HOST_EXEC" ]; then
+          cp "$CLAP_HOST_EXEC" ../clap-host-executable.exe || echo "Failed to cache executable"
+          echo "Cached clap-host executable for future builds"
+        fi
 
     - name: Verify Plugin Artifact
       shell: bash
@@ -369,13 +395,19 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on Linux ==="
         
-        # Find clap-host executable
-        CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
-        if [ -z "$CLAP_HOST_EXEC" ]; then
-          echo "Error: clap-host executable not found!"
-          echo "=== Directory listing ==="
-          find clap-host-repo -name "*clap*" -type f | head -10
-          exit 1
+        # Find clap-host executable - check cache first
+        CLAP_HOST_EXEC=""
+        if [ -f "clap-host-executable" ]; then
+          echo "Using cached clap-host executable"
+          CLAP_HOST_EXEC="clap-host-executable"
+        else
+          CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
+          if [ -z "$CLAP_HOST_EXEC" ]; then
+            echo "Error: clap-host executable not found!"
+            echo "=== Directory listing ==="
+            find clap-host-repo -name "*clap*" -type f | head -10
+            exit 1
+          fi
         fi
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
@@ -459,13 +491,19 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on macOS ==="
         
-        # Find clap-host executable  
-        CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
-        if [ -z "$CLAP_HOST_EXEC" ]; then
-          echo "Error: clap-host executable not found!"
-          echo "=== Directory listing ==="
-          find clap-host-repo -name "*clap*" -type f | head -10
-          exit 1
+        # Find clap-host executable - check cache first
+        CLAP_HOST_EXEC=""
+        if [ -f "clap-host-executable" ]; then
+          echo "Using cached clap-host executable"
+          CLAP_HOST_EXEC="clap-host-executable"
+        else
+          CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
+          if [ -z "$CLAP_HOST_EXEC" ]; then
+            echo "Error: clap-host executable not found!"
+            echo "=== Directory listing ==="
+            find clap-host-repo -name "*clap*" -type f | head -10
+            exit 1
+          fi
         fi
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
@@ -558,33 +596,39 @@ jobs:
       run: |
         Write-Host "=== Testing CLAP Host with Plugin on Windows ==="
 
-        # Find clap-host executable - search in build directories first
+        # Find clap-host executable - check cache first
         $clapHostFullPath = $null
         
-        # Look for the executable in expected build locations
-        $buildPaths = @(
-          "clap-host-repo\builds\vs-vcpkg\host\Release\clap-host.exe",
-          "clap-host-repo\builds\vcpkg-build\host\Release\clap-host.exe", 
-          "clap-host-repo\builds\windows\host\Release\clap-host.exe",
-          "clap-host-repo\builds\windows\Release\clap-host.exe"
-        )
-        
-        foreach ($path in $buildPaths) {
-          if (Test-Path $path) {
-            $clapHostFullPath = (Resolve-Path $path).Path
-            Write-Host "Found clap-host executable at: $clapHostFullPath"
-            break
+        # Check for cached executable first
+        if (Test-Path "clap-host-executable.exe") {
+          $clapHostFullPath = (Resolve-Path "clap-host-executable.exe").Path
+          Write-Host "Using cached clap-host executable at: $clapHostFullPath"
+        } else {
+          # Look for the executable in expected build locations
+          $buildPaths = @(
+            "clap-host-repo\builds\vs-vcpkg\host\Release\clap-host.exe",
+            "clap-host-repo\builds\vcpkg-build\host\Release\clap-host.exe", 
+            "clap-host-repo\builds\windows\host\Release\clap-host.exe",
+            "clap-host-repo\builds\windows\Release\clap-host.exe"
+          )
+          
+          foreach ($path in $buildPaths) {
+            if (Test-Path $path) {
+              $clapHostFullPath = (Resolve-Path $path).Path
+              Write-Host "Found clap-host executable at: $clapHostFullPath"
+              break
+            }
           }
-        }
-        
-        # If not found in expected locations, search recursively
-        if (-not $clapHostFullPath) {
-          Write-Host "Searching for clap-host.exe recursively..."
-          $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host.exe" -File -Recurse -ErrorAction SilentlyContinue
-          if ($clapHostFiles) {
-            $relativePath = Join-Path "clap-host-repo" ($clapHostFiles | Select-Object -First 1)
-            $clapHostFullPath = (Resolve-Path $relativePath).Path
-            Write-Host "Found clap-host executable at: $clapHostFullPath"
+          
+          # If not found in expected locations, search recursively
+          if (-not $clapHostFullPath) {
+            Write-Host "Searching for clap-host.exe recursively..."
+            $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host.exe" -File -Recurse -ErrorAction SilentlyContinue
+            if ($clapHostFiles) {
+              $relativePath = Join-Path "clap-host-repo" ($clapHostFiles | Select-Object -First 1)
+              $clapHostFullPath = (Resolve-Path $relativePath).Path
+              Write-Host "Found clap-host executable at: $clapHostFullPath"
+            }
           }
         }
 
