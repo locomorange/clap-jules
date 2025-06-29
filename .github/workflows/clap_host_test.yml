@@ -456,11 +456,14 @@ jobs:
         export QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins
         export QT_LOGGING_RULES="*.debug=false"
         export QT_XCB_GL_INTEGRATION=none
+        export QT_X11_NO_MITSHM=1
+        export QT_QUICK_BACKEND=software
         
         # Install Qt dependencies first
         sudo apt-get update -qq
         sudo apt-get install -y --no-install-recommends \
           libxcb-cursor0 \
+          libxcb-cursor-dev \
           libxcb-xinerama0 \
           libxcb-randr0 \
           libxcb-xtest0 \
@@ -473,12 +476,17 @@ jobs:
           libxcb-sync1 \
           libxcb-xfixes0 \
           libxkbcommon-x11-0 \
+          qt6-base-dev \
+          qt6-base-private-dev \
           2>/dev/null || echo "Some Qt packages may not be available"
         
-        # Start virtual display for testing
+        # Kill any existing display and start fresh virtual display
+        pkill -f "Xvfb :99" 2>/dev/null || true
+        rm -f /tmp/.X99-lock 2>/dev/null || true
+        sleep 2
         Xvfb :99 -screen 0 1024x768x24 &
         XVFB_TEST_PID=$!
-        sleep 3
+        sleep 5
         
         if ! timeout 10s "$CLAP_HOST_EXEC" --version 2>&1; then
           echo "Warning: clap-host version check failed, but continuing with test"

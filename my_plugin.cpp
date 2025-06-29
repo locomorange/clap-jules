@@ -335,8 +335,15 @@ static void my_plugin_gui_render(const clap_plugin_t *plugin) {
     // Only do advanced rendering if basic operations work
     const char* gl_version = (const char*)glGetString(GL_VERSION);
     if (gl_version && strlen(gl_version) > 0) {
-        // Enable smooth shading for proper color interpolation (like Linux CI)
+        // Enable smooth shading for proper color interpolation
         glShadeModel(GL_SMOOTH);
+        
+        // Disable depth testing for 2D rendering
+        glDisable(GL_DEPTH_TEST);
+        
+        // Enable alpha blending for proper color mixing
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
         // Basic OpenGL rendering - draw a simple gradient background
         glBegin(GL_TRIANGLES);
@@ -512,11 +519,10 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
         glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_NATIVE_CONTEXT_API);
         
-        // Request OpenGL 2.1 for better color support (same as macOS CI)
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        // Use minimal OpenGL for maximum compatibility in CI
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);
         
         // Disable depth/stencil buffers to reduce requirements
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
