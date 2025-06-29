@@ -741,69 +741,54 @@ jobs:
         echo "CLAP Host test completed on Windows (no screenshot)" > screenshots/clap-host-test-windows.txt
         echo "SCREENSHOT_CHANGED=false" >> $GITHUB_ENV
 
-    - name: Comment on PR with Screenshot (Linux only)
+    - name: Upload Screenshot to Release and Comment on PR (Linux only)
       if: runner.os == 'Linux' && env.SCREENSHOT_CHANGED == 'true' && github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          const crypto = require('crypto');
-          
-          // Get PR number
-          const prNumber = context.issue.number;
-          
-          // Read screenshot and calculate hash
-          const screenshotPath = 'screenshots/clap-host-linux-screenshot.png';
-          if (!fs.existsSync(screenshotPath)) {
-            console.log('Screenshot file not found, skipping comment');
-            return;
-          }
-          
-          const screenshotBuffer = fs.readFileSync(screenshotPath);
-          const hash = crypto.createHash('sha256').update(screenshotBuffer).digest('hex');
-          
-          // Get existing comments to check for previous hash
-          const comments = await github.rest.issues.listComments({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: prNumber,
-          });
-          
-          // Look for previous screenshot hash
-          const previousHashPattern = /<!--screenshot-hash:([a-f0-9]{64})-->/;
-          let previousHash = null;
-          
-          for (const comment of comments.data) {
-            const match = comment.body.match(previousHashPattern);
-            if (match) {
-              previousHash = match[1];
-            }
-          }
-          
-          // Only comment if hash is different
-          if (hash === previousHash) {
-            console.log('Screenshot hash matches previous version, skipping comment');
-            return;
-          }
-          
-          // Comment on PR referencing the artifact
-          const commentBody = `## CLAP Host Screenshot (Linux)
-          
-          スクリーンショットが更新されました。
-          
-          📸 新しいスクリーンショットは Actions の Artifacts からダウンロードできます:
-          - Artifact name: \`clap-host-screenshots-Linux-${context.sha}\`
-          
-          <!--screenshot-hash:${hash}-->`;
-          
-          await github.rest.issues.createComment({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: prNumber,
-            body: commentBody,
-          });
-          
-          console.log('Screenshot comment posted on PR');
+      shell: bash
+      run: |
+        echo "=== Uploading screenshot to release ==="
+        
+        # Check if screenshot exists
+        if [ ! -f "screenshots/clap-host-linux-screenshot.png" ]; then
+          echo "Screenshot file not found, skipping upload"
+          exit 0
+        fi
+        
+        # Create unique filename with run ID to avoid conflicts
+        SCREENSHOT_FILENAME="clap-host-linux-${{ github.run_id }}.png"
+        cp screenshots/clap-host-linux-screenshot.png "$SCREENSHOT_FILENAME"
+        
+        # Ensure shared screenshots release exists
+        echo "Checking for screenshots release..."
+        if ! gh release view screenshots >/dev/null 2>&1; then
+          echo "Creating screenshots release..."
+          gh release create screenshots --title "CLAP Host Screenshots" --notes "Shared screenshots from CLAP host integration tests"
+        fi
+        
+        # Upload screenshot to release
+        echo "Uploading screenshot to release..."
+        gh release upload screenshots "$SCREENSHOT_FILENAME" --clobber
+        
+        # Get the asset URL
+        ASSET_URL="https://github.com/${{ github.repository }}/releases/download/screenshots/$SCREENSHOT_FILENAME"
+        
+        # Comment on PR with screenshot
+        echo "Commenting on PR with screenshot..."
+        COMMENT="## CLAP Host Screenshot (Linux)
+
+スクリーンショットが更新されました。
+
+📸 新しいスクリーンショット: [![screenshot]($ASSET_URL)]($ASSET_URL)
+
+- 🔗 [全てのスクリーンショットを見る](https://github.com/${{ github.repository }}/releases/tag/screenshots)
+- 📁 ファイル名: \`$SCREENSHOT_FILENAME\`
+
+<!--screenshot-hash:${{ env.NEW_SCREENSHOT_HASH }}-->"
+
+        gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+        
+        echo "Screenshot upload and comment completed"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Screenshots and Logs
       uses: actions/upload-artifact@v4
