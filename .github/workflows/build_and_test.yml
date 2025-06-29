@@ -773,18 +773,19 @@ jobs:
         
         # Comment on PR with screenshot
         echo "Commenting on PR with screenshot..."
-        COMMENT="## CLAP Host Screenshot (Linux)
+        gh pr comment ${{ github.event.pull_request.number }} --body "$(cat <<'EOF'
+        ## CLAP Host Screenshot (Linux)
 
-スクリーンショットが更新されました。
+        スクリーンショットが更新されました。
 
-📸 新しいスクリーンショット: [![screenshot]($ASSET_URL)]($ASSET_URL)
+        📸 新しいスクリーンショット: [![screenshot]($ASSET_URL)]($ASSET_URL)
 
-- 🔗 [全てのスクリーンショットを見る](https://github.com/${{ github.repository }}/releases/tag/screenshots)
-- 📁 ファイル名: \`$SCREENSHOT_FILENAME\`
+        - 🔗 [全てのスクリーンショットを見る](https://github.com/${{ github.repository }}/releases/tag/screenshots)
+        - 📁 ファイル名: `$SCREENSHOT_FILENAME`
 
-<!--screenshot-hash:${{ env.NEW_SCREENSHOT_HASH }}-->"
-
-        gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+        <!--screenshot-hash:${{ env.NEW_SCREENSHOT_HASH }}-->
+        EOF
+        )"
         
         echo "Screenshot upload and comment completed"
       env:
