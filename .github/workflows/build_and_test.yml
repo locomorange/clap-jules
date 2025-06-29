@@ -1,19 +1,22 @@
-name: Build and Test Plugin
+name: CLAP Plugin Build and Test Pipeline
 
 on:
-  # push:
-    # branches: [ main, master ] # Also common to include master
   pull_request:
     # branches: [ main, master ]
+  # push:
+    # branches: [ main, master ]
+  workflow_dispatch:  # Allows manual trigger for testing
 
 env:
   CLAP_VALIDATOR_VERSION: '0.3.2'
   CLAP_INFO_VERSION: 'v1.2.2'
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
+  # Step 1: Build plugin (foundation for all other jobs)
+  build-plugin:
+    name: Build Plugin on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -32,10 +35,7 @@ jobs:
     - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Update package database
         sudo apt-get update -y
-        
-        # Install GUI dependencies for GLFW and OpenGL with retry mechanism
         echo "Installing GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
@@ -58,90 +58,54 @@ jobs:
             sleep 2
           fi
         done
-        
-        # Verify critical packages are installed and show detailed info
-        echo "=== Verifying GUI dependencies ==="
-        MISSING_PACKAGES=""
-        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev mesa-utils; do
-          if ! dpkg -l | grep -q "$pkg"; then
-            MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
-          else
-            echo "✓ $pkg is installed"
-          fi
-        done
-        
-        if [ -n "$MISSING_PACKAGES" ]; then
-          echo "Error: Missing packages:$MISSING_PACKAGES"
-          echo "Attempting alternative installation..."
-          # Try installing individual packages
-          for pkg in $MISSING_PACKAGES; do
-            sudo apt-get install -y --no-install-recommends "$pkg" || echo "Warning: Could not install $pkg"
-          done
-        else
-          echo "All critical GUI packages are installed"
-        fi
-        
-        # Additional OpenGL diagnostics
-        echo "=== OpenGL Diagnostics ==="
-        dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
-        glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
-        
 
     - name: Configure CMake
       shell: bash
-      run: |
-        echo "=== Build Environment Debug Info ==="
-        echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
-        echo "Operating System: $(uname -a)"
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          echo "=== Checking installed packages ==="
-          dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
-          echo "=== Checking X11 availability ==="
-          find /usr -name "X11" -type d 2>/dev/null | head -5 || echo "X11 not found"
-          echo "=== Checking OpenGL availability ==="
-          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5 || echo "OpenGL libraries not found"
-        elif [ "$RUNNER_OS" = "Windows" ]; then
-          echo "=== Windows Build Environment ==="
-          echo "MSVC setup:"
-          where cl.exe || echo "cl.exe not found"
-          echo "OpenGL32 availability:"
-          where opengl32.dll || echo "opengl32.dll not found in PATH"
-        fi
-        echo "=== CMake Configuration ==="
-        cmake . -B build
+      run: cmake . -B build
 
     - name: Build project
       run: cmake --build build --config Release
 
+    - name: Verify Plugin Build
+      id: verify
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.so"
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
+        fi
+        
+        if [ -f "$PLUGIN_FILE" ]; then
+          echo "Plugin built successfully: $PLUGIN_FILE"
+          ls -la "$PLUGIN_FILE"
+          echo "success=true" >> $GITHUB_OUTPUT
+        else
+          echo "Error: Plugin file not found!"
+          ls -la build/ || echo "build directory not found"
+          echo "success=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
 
-    - name: Upload Artifact (Windows)
-      if: runner.os == 'Windows'
+    - name: Upload Plugin Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: MyFirstClapPlugin-windows-${{ github.sha }}
-        path: build/Release/MyFirstClapPlugin.clap
+        name: MyFirstClapPlugin-${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}-${{ github.sha }}
+        path: |
+          build/MyFirstClapPlugin.so
+          build/Release/MyFirstClapPlugin.clap
+          build/MyFirstClapPlugin.dylib
         retention-days: 10
+        if-no-files-found: ignore
 
-    - name: Upload Artifact (Linux)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      with:
-        name: MyFirstClapPlugin-linux-${{ github.sha }}
-        path: build/MyFirstClapPlugin.so
-        retention-days: 10
-
-    - name: Upload Artifact (macOS)
-      if: runner.os == 'macOS'
-      uses: actions/upload-artifact@v4
-      with:
-        name: MyFirstClapPlugin-macos-${{ github.sha }}
-        path: build/MyFirstClapPlugin.dylib
-        retention-days: 10
-
-  test:
-    name: Test on ${{ matrix.os }}
+  # Step 2: Parallel testing jobs (depend on plugin build)
+  unit-tests:
+    name: Unit Tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    needs: build # Ensures build job completes before test job starts
+    needs: build-plugin
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -160,60 +124,42 @@ jobs:
     - name: Setup GUI Dependencies (Ubuntu only)
       if: runner.os == 'Linux'
       run: |
-        # Update package database
         sudo apt-get update -y
-        
-        # Install GUI dependencies for GLFW and OpenGL with retry mechanism
-        echo "Installing GUI dependencies..."
-        for attempt in 1 2 3; do
-          if sudo apt-get install -y --no-install-recommends \
-            libx11-dev \
-            libxcursor-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxi-dev \
-            libgl1-mesa-dev \
-            libglu1-mesa-dev \
-            libxxf86vm-dev \
-            libxfixes-dev \
-            pkg-config \
-            build-essential \
-            mesa-utils; then
-            echo "GUI dependencies installed successfully"
-            break
-          else
-            echo "Attempt $attempt failed, retrying..."
-            sleep 2
-          fi
-        done
-        
-        # Verify critical packages are installed and show detailed info
-        echo "=== Verifying GUI dependencies ==="
-        MISSING_PACKAGES=""
-        for pkg in libx11-dev libgl1-mesa-dev libxxf86vm-dev libxfixes-dev mesa-utils; do
-          if ! dpkg -l | grep -q "$pkg"; then
-            MISSING_PACKAGES="${MISSING_PACKAGES} $pkg"
-          else
-            echo "✓ $pkg is installed"
-          fi
-        done
-        
-        if [ -n "$MISSING_PACKAGES" ]; then
-          echo "Error: Missing packages:$MISSING_PACKAGES"
-          echo "Attempting alternative installation..."
-          # Try installing individual packages
-          for pkg in $MISSING_PACKAGES; do
-            sudo apt-get install -y --no-install-recommends "$pkg" || echo "Warning: Could not install $pkg"
-          done
-        else
-          echo "All critical GUI packages are installed"
-        fi
-        
-        # Additional OpenGL diagnostics
-        echo "=== OpenGL Diagnostics ==="
-        dpkg -l | grep -E "libgl1-mesa-dev|libglu1-mesa-dev" || echo "OpenGL development libs not found!"
-        glxinfo | grep "OpenGL" || echo "OpenGL not available (glxinfo failed)"
-        
+        sudo apt-get install -y --no-install-recommends \
+          libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
+          libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
+          pkg-config build-essential mesa-utils
+
+    - name: Configure and Build
+      shell: bash
+      run: |
+        cmake . -B build
+        cmake --build build --config Release
+
+    - name: Run Unit Tests
+      run: ctest --test-dir build -C Release --output-on-failure
+
+  clap-validation:
+    name: CLAP Validation on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: build-plugin
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Download Plugin Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: MyFirstClapPlugin-${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}-${{ github.sha }}
+        path: plugin-artifacts/
 
     - name: Setup CLAP Tools
       shell: bash
@@ -221,103 +167,38 @@ jobs:
         echo "=== Setting up CLAP tools for ${{ runner.os }} ==="
         
         if [ "$RUNNER_OS" = "Linux" ]; then
-          # Download clap-validator for Linux
           wget -O clap-validator.tar.gz "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz" || echo "clap-validator download failed"
           if [ -f clap-validator.tar.gz ]; then
             tar -xzf clap-validator.tar.gz && chmod +x clap-validator || echo "clap-validator extraction failed"
           fi
           
-          # Download clap-info for Linux
           wget -O clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip" || echo "clap-info download failed"
           if [ -f clap-info.zip ]; then
             unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
           fi
           
         elif [ "$RUNNER_OS" = "Windows" ]; then
-          # Download clap-validator for Windows
           curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip" || echo "clap-validator download failed"
           if [ -f clap-validator.zip ]; then
             unzip -q clap-validator.zip || echo "clap-validator extraction failed"
           fi
           
-          # Download clap-info for Windows
           curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-win-x64.zip" || echo "clap-info download failed"
           if [ -f clap-info.zip ]; then
             unzip -q clap-info.zip || echo "clap-info extraction failed"
           fi
           
         elif [ "$RUNNER_OS" = "macOS" ]; then
-          echo "=== Setting up CLAP tools for macOS ==="
-          
-          # Download clap-validator for macOS
           curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-macos.zip" || echo "clap-validator download failed"
           if [ -f clap-validator.zip ]; then
             unzip -q clap-validator.zip && chmod +x clap-validator || echo "clap-validator extraction failed"
           fi
           
-          # Download clap-info for macOS
           curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/v1.2.2/clap-info-mac-universal.zip" || echo "clap-info download failed"
           if [ -f clap-info.zip ]; then
             unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
           fi
         fi
-        
-        # Add current directory to PATH for tool access
-        echo "$PWD" >> $GITHUB_PATH
-        
-        # Verify tools are available
-        echo "=== Verifying CLAP tools ==="
-        if [ "$RUNNER_OS" = "Windows" ]; then
-          if [ -f "./clap-validator.exe" ]; then
-            ./clap-validator.exe --version || echo "clap-validator available but version check failed"
-          else
-            echo "clap-validator.exe not available"
-          fi
-          if [ -f "./clap-info.exe" ]; then
-            ./clap-info.exe --version || echo "clap-info available but version check failed"
-          else
-            echo "clap-info.exe not available"
-          fi
-        else
-          if [ -f "./clap-validator" ]; then
-            ./clap-validator --version || echo "clap-validator available but version check failed"
-          else
-            echo "clap-validator not available"
-          fi
-          if [ -f "./clap-info" ]; then
-            ./clap-info --version || echo "clap-info available but version check failed"
-          else
-            echo "clap-info not available"
-          fi
-        fi
-    - name: Configure CMake
-      shell: bash
-      run: |
-        echo "=== Test Environment Debug Info ==="
-        echo "CMAKE_SYSTEM_NAME: $(cmake --version | head -1)"
-        echo "Operating System: $(uname -a)"
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          echo "=== Checking installed packages ==="
-          dpkg -l | grep -E "libx11-dev|libgl1-mesa-dev|libxxf86vm-dev|libxfixes-dev" || echo "No GUI packages found"
-          echo "=== Checking X11 availability ==="
-          find /usr -name "X11" -type d 2>/dev/null | head -5 || echo "X11 not found"
-          echo "=== Checking OpenGL availability ==="
-          find /usr -name "*gl*" -type f | grep -E "(libGL|libOpenGL)" | head -5 || echo "OpenGL libraries not found"
-        elif [ "$RUNNER_OS" = "Windows" ]; then
-          echo "=== Windows Test Environment ==="
-          echo "MSVC setup:"
-          where cl.exe || echo "cl.exe not found"
-          echo "OpenGL32 availability:"
-          where opengl32.dll || echo "opengl32.dll not found in PATH"
-        fi
-        echo "=== CMake Configuration ==="
-        cmake . -B build
-
-    - name: Build project (including tests)
-      run: cmake --build build --config Release
-
-    - name: Run tests
-      run: ctest --test-dir build -C Release --output-on-failure
 
     - name: Validate CLAP Plugin
       shell: bash
@@ -325,15 +206,15 @@ jobs:
         echo "=== Validating CLAP plugin on ${{ runner.os }} ==="
         
         if [ "$RUNNER_OS" = "Linux" ]; then
-          PLUGIN_FILE="build/MyFirstClapPlugin.so"
+          PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.so"
           VALIDATOR_CMD="./clap-validator"
           INFO_CMD="./clap-info"
         elif [ "$RUNNER_OS" = "Windows" ]; then
-          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
+          PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.clap"
           VALIDATOR_CMD="./clap-validator.exe"
           INFO_CMD="./clap-info.exe"
         elif [ "$RUNNER_OS" = "macOS" ]; then
-          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
+          PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.dylib"
           VALIDATOR_CMD="./clap-validator"
           INFO_CMD="./clap-info"
         fi
@@ -358,13 +239,14 @@ jobs:
           fi
         else
           echo "Error: Plugin file $PLUGIN_FILE not found!"
+          ls -la plugin-artifacts/
           exit 1
         fi
 
   clap-host-test:
     name: CLAP Host Integration Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    needs: build # Runs after plugin build completes
+    needs: build-plugin
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -399,37 +281,14 @@ jobs:
     - name: Setup CLAP Host Dependencies (Linux)
       if: runner.os == 'Linux'
       run: |
-        # Update package database
         sudo apt-get update -y
-
-        # Install only essential build tools and GUI dependencies
-        # Let clap-host handle rtaudio/rtmidi via vcpkg to avoid version conflicts
         echo "Installing build tools and GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
-            libx11-dev \
-            libxcursor-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxi-dev \
-            libgl1-mesa-dev \
-            libglu1-mesa-dev \
-            libxxf86vm-dev \
-            libxfixes-dev \
-            pkg-config \
-            build-essential \
-            mesa-utils \
-            ninja-build \
-            cmake \
-            git \
-            curl \
-            zip \
-            unzip \
-            tar \
-            xvfb \
-            x11-utils \
-            imagemagick \
-            scrot; then
+            libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
+            pkg-config build-essential mesa-utils ninja-build cmake git curl \
+            zip unzip tar xvfb x11-utils imagemagick scrot; then
             echo "Dependencies installed successfully"
             break
           else
@@ -438,13 +297,11 @@ jobs:
           fi
         done
 
-        # Install vcpkg for dependency management
         echo "=== Setting up vcpkg ==="
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
         
-        # Install Qt6 via vcpkg for clap-host
         echo "=== Installing Qt6 via vcpkg ==="
         if [ ! -d "vcpkg/installed/x64-linux/include/QtCore" ]; then
           ./vcpkg/vcpkg install qt6-base[core,widgets] --triplet=x64-linux
@@ -456,16 +313,13 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         echo "Installing essential build tools on macOS..."
-        # Only install build tools, let clap-host handle audio dependencies
         brew install pkg-config ninja cmake git curl
 
-        # Install vcpkg for dependency management
         echo "=== Setting up vcpkg ==="
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
         
-        # Install Qt6 via vcpkg for clap-host
         echo "=== Installing Qt6 via vcpkg ==="
         if [ ! -d "vcpkg/installed/arm64-osx/include/QtCore" ]; then
           ./vcpkg/vcpkg install qt6-base[core,widgets] --triplet=arm64-osx
@@ -477,12 +331,10 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         echo "Setting up vcpkg and build tools on Windows..."
-        # Install vcpkg for dependency management
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         .\vcpkg\bootstrap-vcpkg.bat
         echo "$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_PATH
         
-        # Install Qt6 via vcpkg for clap-host
         echo "=== Installing Qt6 via vcpkg ==="  
         if (!(Test-Path "vcpkg\installed\x64-windows\include\QtCore")) {
           .\vcpkg\vcpkg install qt6-base[core,widgets] --triplet=x64-windows
@@ -511,7 +363,6 @@ jobs:
         cd clap-host-repo
         echo "=== Building CLAP Host on ${{ runner.os }} ==="
 
-        # Create screenshots directory for potential error logs
         mkdir -p ../screenshots
 
         # Set vcpkg toolchain to our external vcpkg with Qt6
@@ -527,11 +378,7 @@ jobs:
         echo "=== Verifying Qt6 in vcpkg ==="
         ls -la "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET/include/" | grep -i qt || echo "Qt6 not found in vcpkg"
 
-        # Check available presets
-        echo "Available CMake presets:"
-        cmake --list-presets 2>/dev/null || echo "No presets available"
-
-        # Try external vcpkg build first (most likely to work with our Qt6)
+        # Try external vcpkg build first
         BUILD_SUCCESS=false
 
         echo "Trying external vcpkg build with Qt6"
@@ -547,7 +394,7 @@ jobs:
           fi
         fi
 
-        # Fallback to preset if external vcpkg build failed
+        # Fallback builds
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "External vcpkg build failed, trying ninja-system preset"
           if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
@@ -559,7 +406,6 @@ jobs:
           fi
         fi
 
-        # Last resort: simple cmake build without specific dependencies
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "All advanced builds failed, trying simple build"
           if cmake . -B builds/simple -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-${{ runner.os }}.txt; then
@@ -580,7 +426,6 @@ jobs:
         # Find the built executable
         echo "=== Finding CLAP Host executable ==="
         find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found"
-        find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found anywhere"
 
     - name: Build CLAP Host (Windows)
       if: runner.os == 'Windows'
@@ -589,7 +434,6 @@ jobs:
         cd clap-host-repo
         echo "=== Building CLAP Host on Windows ==="
 
-        # Create screenshots directory for potential error logs
         mkdir -p ../screenshots
 
         # Set vcpkg toolchain to our external vcpkg with Qt6
@@ -600,14 +444,6 @@ jobs:
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
         echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
-
-        # Verify Qt6 is available in vcpkg
-        echo "=== Verifying Qt6 in vcpkg ==="
-        ls -la "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET/include/" | grep -i qt || echo "Qt6 not found in vcpkg"
-
-        # Check available presets
-        echo "Available CMake presets:"
-        cmake --list-presets 2>/dev/null || echo "No presets available"
 
         # Try different build approaches
         BUILD_SUCCESS=false
@@ -626,11 +462,10 @@ jobs:
           fi
         fi
 
-        # Fallback to ninja-vcpkg preset if external vcpkg failed
+        # Fallback builds
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "External vcpkg build failed, trying ninja-vcpkg preset"
           
-          # Initialize built-in vcpkg if it doesn't exist and external failed
           if [ ! -d "vcpkg" ]; then
             git clone https://github.com/Microsoft/vcpkg.git vcpkg
             cd vcpkg && ./bootstrap-vcpkg.bat && cd ..
@@ -645,7 +480,6 @@ jobs:
           fi
         fi
 
-        # Final fallback: vs-vcpkg preset
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "ninja-vcpkg failed, trying vs-vcpkg preset"
           if cmake --preset vs-vcpkg 2>&1 | tee ../screenshots/cmake-vs-configure-log-windows.txt; then
@@ -666,7 +500,6 @@ jobs:
         # Find the built executable
         echo "=== Finding CLAP Host executable ==="
         find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-windows.txt || echo "No clap-host executable found"
-        find . -name "clap-host*" -type f 2>/dev/null | tee -a ../screenshots/found-executables-windows.txt || echo "No clap-host executable found anywhere"
 
     - name: Test CLAP Host with Plugin and Take Screenshot (Linux)
       if: runner.os == 'Linux'
@@ -674,7 +507,6 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on Linux ==="
         
-        # Find clap-host executable
         CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
         if [ -z "$CLAP_HOST_EXEC" ]; then
           echo "Error: clap-host executable not found!"
@@ -684,7 +516,6 @@ jobs:
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
         
-        # Plugin path from downloaded artifacts
         PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
         if [ ! -f "$PLUGIN_FILE" ]; then
           echo "Error: Plugin file not found at $PLUGIN_FILE"
@@ -700,34 +531,52 @@ jobs:
         XVFB_PID=$!
         sleep 5
         
+        # Calculate screenshot hash before running
+        PREV_HASH=""
+        if [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
+          PREV_HASH=$(sha256sum screenshots/clap-host-linux-screenshot.png | awk '{print $1}')
+        fi
+        
         # Test clap-host and take screenshot
         timeout 30s bash -c "
           '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
           CLAP_PID=\$!
           sleep 15
-          import -window root screenshots/clap-host-linux-screenshot.png 2>/dev/null || scrot screenshots/clap-host-linux-screenshot.png 2>/dev/null || echo 'Screenshot failed'
+          import -window root screenshots/clap-host-linux-screenshot-new.png 2>/dev/null || scrot screenshots/clap-host-linux-screenshot-new.png 2>/dev/null || echo 'Screenshot failed'
           kill \$CLAP_PID 2>/dev/null || true
         " || echo "Screenshot capture completed"
         
         kill $XVFB_PID 2>/dev/null || true
         
-        # Verify screenshot
-        if [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
-          echo "Screenshot captured successfully"
-          ls -la screenshots/clap-host-linux-screenshot.png
+        # Calculate new screenshot hash and compare
+        if [ -f "screenshots/clap-host-linux-screenshot-new.png" ]; then
+          NEW_HASH=$(sha256sum screenshots/clap-host-linux-screenshot-new.png | awk '{print $1}')
+          echo "Previous hash: $PREV_HASH"
+          echo "New hash: $NEW_HASH"
+          
+          if [ "$NEW_HASH" != "$PREV_HASH" ]; then
+            echo "Screenshot differs from previous version"
+            mv screenshots/clap-host-linux-screenshot-new.png screenshots/clap-host-linux-screenshot.png
+            echo "NEW_SCREENSHOT_HASH=$NEW_HASH" >> $GITHUB_ENV
+            echo "SCREENSHOT_CHANGED=true" >> $GITHUB_ENV
+          else
+            echo "Screenshot is identical to previous version - no upload needed"
+            rm -f screenshots/clap-host-linux-screenshot-new.png
+            echo "SCREENSHOT_CHANGED=false" >> $GITHUB_ENV
+          fi
         else
           echo "Screenshot failed, capturing diagnostic info"
           echo "Screenshot failed on Linux" > screenshots/error-linux.txt
           "$CLAP_HOST_EXEC" --version > screenshots/clap-host-version-linux.txt 2>&1 || echo "Version check failed"
+          echo "SCREENSHOT_CHANGED=false" >> $GITHUB_ENV
         fi
 
     - name: Test CLAP Host with Plugin and Take Screenshot (macOS)
       if: runner.os == 'macOS'
       shell: bash
       run: |
-        echo "=== Testing CLAP Host with Plugin on macOS ==="
+        echo "=== Testing CLAP Host with Plugin on macOS (screenshot disabled) ==="
         
-        # Find clap-host executable
         CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
         if [ -z "$CLAP_HOST_EXEC" ]; then
           echo "Error: clap-host executable not found!"
@@ -737,7 +586,6 @@ jobs:
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         chmod +x "$CLAP_HOST_EXEC"
         
-        # Plugin path from downloaded artifacts
         PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
         if [ ! -f "$PLUGIN_FILE" ]; then
           echo "Error: Plugin file not found at $PLUGIN_FILE"
@@ -747,92 +595,159 @@ jobs:
         
         mkdir -p screenshots
         
-        # Test clap-host and take screenshot
-        timeout 30s bash -c "
+        # Test clap-host (no screenshot on macOS as requested)
+        echo "Testing clap-host functionality without screenshot..."
+        timeout 15s bash -c "
           '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
           CLAP_PID=\$!
-          sleep 15
-          screencapture -x screenshots/clap-host-macos-screenshot.png
+          sleep 10
           kill \$CLAP_PID 2>/dev/null || true
-        " || echo "Screenshot capture completed"
+        " || echo "CLAP Host test completed"
         
-        # Verify screenshot
-        if [ -f "screenshots/clap-host-macos-screenshot.png" ]; then
-          echo "Screenshot captured successfully"
-          ls -la screenshots/clap-host-macos-screenshot.png
-        else
-          echo "Screenshot failed, capturing diagnostic info"
-          echo "Screenshot failed on macOS" > screenshots/error-macos.txt
-          "$CLAP_HOST_EXEC" --version > screenshots/clap-host-version-macos.txt 2>&1 || echo "Version check failed"
-        fi
+        echo "CLAP Host test completed on macOS (no screenshot)" > screenshots/clap-host-test-macos.txt
+        echo "SCREENSHOT_CHANGED=false" >> $GITHUB_ENV
 
     - name: Test CLAP Host with Plugin and Take Screenshot (Windows)
       if: runner.os == 'Windows'
-      shell: powershell
+      shell: bash
       run: |
-        Write-Host "=== Testing CLAP Host with Plugin on Windows ==="
+        echo "=== Testing CLAP Host with Plugin on Windows (screenshot disabled) ==="
         
         # Find clap-host executable
-        $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host*.exe" -File -Recurse -ErrorAction SilentlyContinue
-        if (-not $clapHostFiles) {
-          $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host" -File -Recurse -ErrorAction SilentlyContinue
-        }
+        CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host*.exe" -type f | head -1)
+        if [ -z "$CLAP_HOST_EXEC" ]; then
+          CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
+        fi
         
-        if (-not $clapHostFiles) {
-          Write-Host "Error: clap-host executable not found!"
-          Get-ChildItem -Path "clap-host-repo/builds" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20
+        if [ -z "$CLAP_HOST_EXEC" ]; then
+          echo "Error: clap-host executable not found!"
+          find clap-host-repo -name "*clap*" -type f | head -10
           exit 1
-        }
+        fi
+        echo "Found clap-host at: $CLAP_HOST_EXEC"
         
-        $clapHostExe = $clapHostFiles | Select-Object -First 1
-        $clapHostPath = Get-ChildItem -Path "clap-host-repo" -Name $clapHostExe -File -Recurse | Select-Object -First 1
-        $clapHostFullPath = Join-Path "clap-host-repo" $clapHostPath
-        Write-Host "Found clap-host at: $clapHostFullPath"
-        
-        # Plugin path from downloaded artifacts
-        $pluginFile = Join-Path (Get-Location) "plugin-artifacts/MyFirstClapPlugin.clap"
-        if (-not (Test-Path $pluginFile)) {
-          Write-Host "Error: Plugin file not found at $pluginFile"
-          Get-ChildItem "plugin-artifacts/"
+        PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap"
+        if [ ! -f "$PLUGIN_FILE" ]; then
+          echo "Error: Plugin file not found at $PLUGIN_FILE"
+          ls -la plugin-artifacts/
           exit 1
-        }
+        fi
         
-        New-Item -ItemType Directory -Force -Path "screenshots"
+        mkdir -p screenshots
         
-        # Test clap-host and take screenshot
-        try {
-          $process = Start-Process -FilePath $clapHostFullPath -ArgumentList "-p", $pluginFile -PassThru -WindowStyle Normal -ErrorAction Stop
-          Write-Host "Started clap-host process with PID: $($process.Id)"
-          Start-Sleep -Seconds 20
-          
-          # Take screenshot using .NET
-          Add-Type -AssemblyName System.Windows.Forms
-          Add-Type -AssemblyName System.Drawing
-          
-          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-          $bitmap.Save("screenshots/clap-host-windows-screenshot.png")
-          
-          $graphics.Dispose()
-          $bitmap.Dispose()
-          
-          Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-          
-          Write-Host "Screenshot captured successfully"
-          Get-ChildItem "screenshots/clap-host-windows-screenshot.png"
-        } catch {
-          Write-Host "Screenshot capture failed: $_"
-          "Screenshot failed: $_" | Out-File -FilePath "screenshots/error-windows.txt"
-          try {
-            & $clapHostFullPath --version 2>1 | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
-          } catch {
-            "Version check failed: $_" | Out-File -FilePath "screenshots/clap-host-version-windows.txt"
-          }
-        }
+        # Test clap-host (no screenshot on Windows as requested)
+        echo "Testing clap-host functionality without screenshot..."
+        timeout 15s bash -c "
+          '$CLAP_HOST_EXEC' -p '$PLUGIN_FILE' &
+          CLAP_PID=\$!
+          sleep 10  
+          kill \$CLAP_PID 2>/dev/null || true
+        " || echo "CLAP Host test completed"
+        
+        echo "CLAP Host test completed on Windows (no screenshot)" > screenshots/clap-host-test-windows.txt
+        echo "SCREENSHOT_CHANGED=false" >> $GITHUB_ENV
 
-    - name: Upload CLAP Host Screenshots and Logs
+    - name: Comment on PR with Screenshot (Linux only)
+      if: runner.os == 'Linux' && env.SCREENSHOT_CHANGED == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const crypto = require('crypto');
+          
+          // Get PR number
+          const prNumber = context.issue.number;
+          
+          // Read screenshot and calculate hash
+          const screenshotPath = 'screenshots/clap-host-linux-screenshot.png';
+          if (!fs.existsSync(screenshotPath)) {
+            console.log('Screenshot file not found, skipping comment');
+            return;
+          }
+          
+          const screenshotBuffer = fs.readFileSync(screenshotPath);
+          const hash = crypto.createHash('sha256').update(screenshotBuffer).digest('hex');
+          
+          // Get existing comments to check for previous hash
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+          
+          // Look for previous screenshot hash
+          const previousHashPattern = /<!--screenshot-hash:([a-f0-9]{64})-->/;
+          let previousHash = null;
+          
+          for (const comment of comments.data) {
+            const match = comment.body.match(previousHashPattern);
+            if (match) {
+              previousHash = match[1];
+            }
+          }
+          
+          // Only upload if hash is different
+          if (hash === previousHash) {
+            console.log('Screenshot hash matches previous version, skipping upload');
+            return;
+          }
+          
+          // Create release for screenshot storage if it doesn't exist
+          try {
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: 'screenshots',
+              name: 'Screenshots',
+              body: 'Storage for PR screenshots',
+              draft: false,
+              prerelease: true,
+            });
+            console.log('Created screenshots release');
+          } catch (error) {
+            if (error.status !== 422) { // 422 means release already exists
+              throw error;
+            }
+            console.log('Screenshots release already exists');
+          }
+          
+          // Upload screenshot to release
+          const uploadUrl = `https://uploads.github.com/repos/${context.repo.owner}/${context.repo.repo}/releases/screenshots/assets`;
+          const fileName = `clap-host-linux-${context.sha}-${Date.now()}.png`;
+          
+          try {
+            const uploadResponse = await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: 'screenshots',
+              name: fileName,
+              data: screenshotBuffer,
+            });
+            
+            const assetUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/screenshots/${fileName}`;
+            
+            // Comment on PR with screenshot
+            const commentBody = `## CLAP Host Screenshot (Linux)
+          
+          スクリーンショットを更新しました:
+          
+          ![CLAP Host Screenshot](${assetUrl})
+          
+          <!--screenshot-hash:${hash}-->`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody,
+            });
+            
+            console.log('Screenshot uploaded and commented on PR');
+          } catch (error) {
+            console.error('Failed to upload screenshot:', error);
+          }
+
+    - name: Upload Screenshots and Logs
       uses: actions/upload-artifact@v4
       with:
         name: clap-host-screenshots-${{ matrix.os }}-${{ github.sha }}
