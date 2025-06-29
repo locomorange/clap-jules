@@ -430,6 +430,7 @@ jobs:
         fi
 
     - name: Checkout CLAP Host
+      shell: bash
       run: |
         echo "Cloning clap-host repository..."
         if [ ! -d "clap-host-repo" ] || [ ! -f "clap-host-repo/.git/config" ]; then
