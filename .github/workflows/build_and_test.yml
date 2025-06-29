@@ -335,23 +335,8 @@ jobs:
     - name: Setup CLAP Host Dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
-        echo "Setting up vcpkg and build tools on Windows..."
-        git clone https://github.com/Microsoft/vcpkg.git vcpkg
-        .\vcpkg\bootstrap-vcpkg.bat
-        echo "$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_PATH
-        
-        echo "=== Installing Qt6 via vcpkg ==="  
-        if (!(Test-Path "vcpkg\installed\x64-windows\include\QtCore")) {
-          try {
-            .\vcpkg\vcpkg install qt6-base[core,widgets] --triplet=x64-windows
-            echo "Qt6 installed successfully via vcpkg"
-          } catch {
-            echo "Warning: Qt6 vcpkg installation failed: $_"
-            echo "CLAP host will attempt to build without Qt6 or use alternative methods"
-          }
-        } else {
-          echo "Qt6 already installed via vcpkg"
-        }
+        echo "Windows CLAP host will use scripts/build.sh for static build"
+        echo "Dependencies will be handled automatically by the build script"
 
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows'
@@ -451,19 +436,10 @@ jobs:
 
         mkdir -p ../screenshots
 
-        # Set vcpkg toolchain to our external vcpkg with Qt6
-        export VCPKG_ROOT="$(pwd)/../vcpkg"
-        export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-        export VCPKG_TARGET_TRIPLET="x64-windows"
-
-        echo "Using vcpkg at: $VCPKG_ROOT"
-        echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
-        echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
-
         # Try different build approaches, prioritizing static build script
         BUILD_SUCCESS=false
 
-        # Try build script first for static build
+        # Try build script first for static build (primary method)
         if [ -f "scripts/build.sh" ]; then
           echo "Trying static build script (scripts/build.sh)"
           chmod +x scripts/build.sh
@@ -477,47 +453,13 @@ jobs:
           echo "scripts/build.sh not found, trying other build methods"
         fi
 
-        # Fallback to external vcpkg build
+        # Fallback to simple cmake build
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "Trying external vcpkg build with Qt6"
-          if cmake . -B builds/external-vcpkg \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-            2>&1 | tee ../screenshots/cmake-external-vcpkg-configure-log-windows.txt; then
-            echo "External vcpkg configuration successful"
-            if cmake --build builds/external-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-external-vcpkg-build-log-windows.txt; then
-              echo "External vcpkg build successful"
-              BUILD_SUCCESS=true
-            fi
-          fi
-        fi
-
-        # Fallback to ninja-vcpkg preset
-        if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "External vcpkg build failed, trying ninja-vcpkg preset"
-          
-          if [ ! -d "vcpkg" ]; then
-            git clone https://github.com/Microsoft/vcpkg.git vcpkg
-            cd vcpkg && ./bootstrap-vcpkg.bat && cd ..
-          fi
-          
-          if cmake --preset ninja-vcpkg 2>&1 | tee ../screenshots/cmake-preset-configure-log-windows.txt; then
-            echo "ninja-vcpkg preset configuration successful"
-            if cmake --build --preset ninja-vcpkg 2>&1 | tee ../screenshots/cmake-preset-build-log-windows.txt; then
-              echo "ninja-vcpkg preset build successful"
-              BUILD_SUCCESS=true
-            fi
-          fi
-        fi
-
-        # Final fallback to vs-vcpkg preset
-        if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "ninja-vcpkg failed, trying vs-vcpkg preset"
-          if cmake --preset vs-vcpkg 2>&1 | tee ../screenshots/cmake-vs-configure-log-windows.txt; then
-            echo "vs-vcpkg preset configuration successful"
-            if cmake --build --preset vs-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-vs-build-log-windows.txt; then
-              echo "vs-vcpkg preset build successful"
+          echo "Trying simple cmake build"
+          if cmake . -B builds/simple -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-windows.txt; then
+            echo "Simple configuration successful"
+            if cmake --build builds/simple --config Release 2>&1 | tee ../screenshots/cmake-simple-build-log-windows.txt; then
+              echo "Simple build successful"
               BUILD_SUCCESS=true
             fi
           fi
