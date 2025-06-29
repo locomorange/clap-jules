@@ -410,6 +410,11 @@ static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const ch
         return true;
     }
     
+    // Support Cocoa for macOS (embedded and floating)
+    if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) {
+        return true;
+    }
+    
     return false;
 }
 
@@ -419,13 +424,15 @@ static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const c
     // Prefer embedded windows
     *is_floating = false;
     
-    // Prefer X11 on Linux, Win32 on Windows
+    // Prefer platform-specific APIs
 #ifdef __linux__
     *api = CLAP_WINDOW_API_X11;
 #elif defined(_WIN32)
     *api = CLAP_WINDOW_API_WIN32;
+#elif defined(__APPLE__)
+    *api = CLAP_WINDOW_API_COCOA;
 #else
-    *api = CLAP_WINDOW_API_X11; // Default to X11
+    *api = CLAP_WINDOW_API_X11; // Default to X11 for unknown platforms
 #endif
     
     return true;
@@ -476,9 +483,9 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
     }
     
-    // Enhanced configuration for CI environments and Windows
-#ifdef _WIN32
+    // Enhanced configuration for CI environments
     if (is_ci_environment) {
+#ifdef _WIN32
         printf("MyPlugin: Configuring for CI environment on Windows\n");
         
         // Try to use software rendering to avoid OpenGL driver issues
@@ -497,9 +504,25 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         // Try to avoid double buffering issues
         glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
         
-        printf("MyPlugin: Applied CI-specific GLFW configuration\n");
-    }
+        printf("MyPlugin: Applied CI-specific GLFW configuration for Windows\n");
+#elif defined(__APPLE__)
+        printf("MyPlugin: Configuring for CI environment on macOS\n");
+        
+        // Configure for macOS CI which may not have full OpenGL support
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);
+        
+        // Disable unnecessary features for CI
+        glfwWindowHint(GLFW_DEPTH_BITS, 0);
+        glfwWindowHint(GLFW_STENCIL_BITS, 0);
+        glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+        
+        printf("MyPlugin: Applied CI-specific GLFW configuration for macOS\n");
 #endif
+    }
     
     // Create GLFW window
     self->window = glfwCreateWindow(
@@ -796,6 +819,36 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
         }
 #else
         printf("MyPlugin: Win32 not supported on this platform\n");
+        return false;
+#endif
+    }
+    
+    // Handle Cocoa embedding
+    if (strcmp(window->api, CLAP_WINDOW_API_COCOA) == 0) {
+#ifdef __APPLE__
+        // For macOS/Cocoa, we need to get the NSView from GLFW and add it to the parent NSView
+        // Note: This is a simplified implementation that may need refinement for production use
+        void* nativeWindow = glfwGetCocoaWindow(self->window);
+        void* parentView = window->cocoa;
+        
+        if (nativeWindow && parentView) {
+            printf("MyPlugin: Cocoa window embedding - child=%p, parent=%p\n", nativeWindow, parentView);
+            
+            // In a full implementation, you would need to:
+            // 1. Get the content view from the GLFW window
+            // 2. Add it as a subview to the parent NSView
+            // 3. Set proper frame and autoresizing
+            
+            // For now, just show the window as we don't have full NSView integration
+            glfwShowWindow(self->window);
+            printf("MyPlugin: Cocoa window shown (basic implementation)\n");
+            return true;
+        } else {
+            printf("MyPlugin: Failed to get Cocoa handles (child=%p, parent=%p)\n", nativeWindow, parentView);
+            return false;
+        }
+#else
+        printf("MyPlugin: Cocoa not supported on this platform\n");
         return false;
 #endif
     }
