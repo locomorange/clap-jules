@@ -315,19 +315,19 @@ jobs:
         done
 
         echo "=== Setting up vcpkg ==="
-        if [ ! -d "vcpkg" ]; then
+        if [ ! -d "vcpkg" ] || [ ! -f "vcpkg/.git/config" ]; then
+          echo "Cloning fresh vcpkg repository..."
+          rm -rf vcpkg 2>/dev/null || true
           git clone https://github.com/Microsoft/vcpkg.git vcpkg
         else
-          echo "vcpkg directory already exists, skipping clone"
+          echo "vcpkg directory exists, updating..."
+          cd vcpkg && git pull && cd ..
         fi
         
-        # Ensure vcpkg is properly bootstrapped
-        if [ ! -f "./vcpkg/vcpkg" ] && [ ! -f "./vcpkg/vcpkg.exe" ]; then
-          echo "vcpkg not bootstrapped, running bootstrap..."
-          ./vcpkg/bootstrap-vcpkg.sh
-        else
-          echo "vcpkg already bootstrapped"
-        fi
+        # Always bootstrap to ensure it's working
+        echo "Bootstrapping vcpkg..."
+        ./vcpkg/bootstrap-vcpkg.sh
+        
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
@@ -344,19 +344,19 @@ jobs:
         brew install pkg-config ninja cmake git curl
 
         echo "=== Setting up vcpkg ==="
-        if [ ! -d "vcpkg" ]; then
+        if [ ! -d "vcpkg" ] || [ ! -f "vcpkg/.git/config" ]; then
+          echo "Cloning fresh vcpkg repository..."
+          rm -rf vcpkg 2>/dev/null || true
           git clone https://github.com/Microsoft/vcpkg.git vcpkg
         else
-          echo "vcpkg directory already exists, skipping clone"
+          echo "vcpkg directory exists, updating..."
+          cd vcpkg && git pull && cd ..
         fi
         
-        # Ensure vcpkg is properly bootstrapped
-        if [ ! -f "./vcpkg/vcpkg" ] && [ ! -f "./vcpkg/vcpkg.exe" ]; then
-          echo "vcpkg not bootstrapped, running bootstrap..."
-          ./vcpkg/bootstrap-vcpkg.sh
-        else
-          echo "vcpkg already bootstrapped"
-        fi
+        # Always bootstrap to ensure it's working
+        echo "Bootstrapping vcpkg..."
+        ./vcpkg/bootstrap-vcpkg.sh
+        
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
@@ -380,12 +380,40 @@ jobs:
       if: runner.os == 'Linux' || runner.os == 'macOS'
       uses: jurplel/install-qt-action@v4
 
-    - name: Checkout CLAP Host
+    - name: Verify Plugin Artifact
       shell: bash
       run: |
-        echo "Setting up clap-host repository..."
-        if [ ! -d "clap-host-repo" ]; then
-          echo "Cloning clap-host repository..."
+        echo "=== Verifying plugin artifact ==="
+        echo "Current working directory: $(pwd)"
+        echo "Contents of current directory:"
+        ls -la
+        
+        # Verify plugin exists
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.so"
+        elif [ "$RUNNER_OS" = "Windows" ]; then
+          PLUGIN_FILE="build/Release/MyFirstClapPlugin.clap"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          PLUGIN_FILE="build/MyFirstClapPlugin.dylib"
+        fi
+
+        echo "Plugin file: $PLUGIN_FILE"
+        if [ -f "$PLUGIN_FILE" ]; then
+          echo "Plugin artifact found successfully"
+          ls -la "$PLUGIN_FILE"
+          file "$PLUGIN_FILE" || echo "file command failed"
+        else
+          echo "Error: Plugin file not found!"
+          echo "Contents of build directory:"
+          ls -la build/ || echo "build directory not found"
+          exit 1
+        fi
+
+    - name: Checkout CLAP Host
+      run: |
+        echo "Cloning clap-host repository..."
+        if [ ! -d "clap-host-repo" ] || [ ! -f "clap-host-repo/.git/config" ]; then
+          rm -rf clap-host-repo 2>/dev/null || true
           git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
         else
           echo "clap-host-repo already exists, updating..."
