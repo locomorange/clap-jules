@@ -558,33 +558,42 @@ jobs:
       run: |
         Write-Host "=== Testing CLAP Host with Plugin on Windows ==="
 
-        # Find clap-host executable with better pattern matching
-        $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host*.exe" -File -Recurse -ErrorAction SilentlyContinue
-        if (-not $clapHostFiles) {
-          # Try without .exe extension
-          $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host" -File -Recurse -ErrorAction SilentlyContinue
+        # Find clap-host executable - search in build directories first
+        $clapHostFullPath = $null
+        
+        # Look for the executable in expected build locations
+        $buildPaths = @(
+          "clap-host-repo/builds/vs-vcpkg/host/Release/clap-host.exe",
+          "clap-host-repo/builds/vcpkg-build/host/Release/clap-host.exe", 
+          "clap-host-repo/builds/windows/host/Release/clap-host.exe",
+          "clap-host-repo/builds/windows/Release/clap-host.exe"
+        )
+        
+        foreach ($path in $buildPaths) {
+          if (Test-Path $path) {
+            $clapHostFullPath = $path
+            Write-Host "Found clap-host executable at: $clapHostFullPath"
+            break
+          }
+        }
+        
+        # If not found in expected locations, search recursively
+        if (-not $clapHostFullPath) {
+          Write-Host "Searching for clap-host.exe recursively..."
+          $clapHostFiles = Get-ChildItem -Path "clap-host-repo" -Name "clap-host.exe" -File -Recurse -ErrorAction SilentlyContinue
+          if ($clapHostFiles) {
+            $clapHostFullPath = Join-Path "clap-host-repo" ($clapHostFiles | Select-Object -First 1)
+            Write-Host "Found clap-host executable at: $clapHostFullPath"
+          }
         }
 
-        if (-not $clapHostFiles) {
+        if (-not $clapHostFullPath -or -not (Test-Path $clapHostFullPath)) {
           Write-Host "Error: clap-host executable not found!"
           Write-Host "=== Directory listing of builds folder ==="
           Get-ChildItem -Path "clap-host-repo/builds" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*clap-host*" } | Select-Object FullName -First 10
           Write-Host "=== All .exe files in clap-host-repo ==="
-          Get-ChildItem -Path "clap-host-repo" -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName -First 10
-          
-          # Try alternative search patterns
-          Write-Host "=== Searching for alternative executables ==="
           Get-ChildItem -Path "clap-host-repo" -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName -First 20
-          
-          # Create a mock executable for testing if none found
-          Write-Host "Creating mock executable for testing purposes..."
-          New-Item -ItemType Directory -Force -Path "clap-host-repo"
-          "@echo off`necho Mock CLAP Host for testing`necho Plugin: %2`necho GUI disabled in CI environment`ntimeout /t 10 /nobreak > nul`necho Exiting..." | Out-File -FilePath "clap-host-repo\clap-host.exe" -Encoding ASCII
-          $clapHostFullPath = "clap-host-repo\clap-host.exe"
-        } else {
-          $clapHostExe = $clapHostFiles | Select-Object -First 1
-          $clapHostPath = Get-ChildItem -Path "clap-host-repo" -Name $clapHostExe -File -Recurse | Select-Object -First 1
-          $clapHostFullPath = Join-Path "clap-host-repo" $clapHostPath
+          exit 1
         }
         
         Write-Host "Found clap-host at: $clapHostFullPath"
