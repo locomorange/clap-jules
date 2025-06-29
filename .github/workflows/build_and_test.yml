@@ -205,12 +205,25 @@ jobs:
       run: |
         echo "=== Validating CLAP plugin on ${{ runner.os }} ==="
         
+        # Debug: Show what was downloaded
+        echo "Contents of plugin-artifacts directory:"
+        find plugin-artifacts -type f -name "*.so" -o -name "*.clap" -o -name "*.dylib" 2>/dev/null || echo "No plugin files found"
+        ls -la plugin-artifacts/ 2>/dev/null || echo "plugin-artifacts directory not found"
+        
         if [ "$RUNNER_OS" = "Linux" ]; then
           PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.so"
           VALIDATOR_CMD="./clap-validator"
           INFO_CMD="./clap-info"
         elif [ "$RUNNER_OS" = "Windows" ]; then
-          PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.clap"
+          # Windows plugin is in Release subdirectory
+          if [ -f "plugin-artifacts/Release/MyFirstClapPlugin.clap" ]; then
+            PLUGIN_FILE="plugin-artifacts/Release/MyFirstClapPlugin.clap"
+          elif [ -f "plugin-artifacts/MyFirstClapPlugin.clap" ]; then
+            PLUGIN_FILE="plugin-artifacts/MyFirstClapPlugin.clap"
+          else
+            echo "Searching for .clap file in all subdirectories..."
+            PLUGIN_FILE=$(find plugin-artifacts -name "*.clap" -type f | head -1)
+          fi
           VALIDATOR_CMD="./clap-validator.exe"
           INFO_CMD="./clap-info.exe"
         elif [ "$RUNNER_OS" = "macOS" ]; then
@@ -519,6 +532,8 @@ jobs:
         PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
         if [ ! -f "$PLUGIN_FILE" ]; then
           echo "Error: Plugin file not found at $PLUGIN_FILE"
+          echo "Contents of plugin-artifacts:"
+          find plugin-artifacts -type f 2>/dev/null || echo "plugin-artifacts directory empty or not found"
           ls -la plugin-artifacts/
           exit 1
         fi
@@ -589,6 +604,8 @@ jobs:
         PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
         if [ ! -f "$PLUGIN_FILE" ]; then
           echo "Error: Plugin file not found at $PLUGIN_FILE"
+          echo "Contents of plugin-artifacts:"
+          find plugin-artifacts -type f 2>/dev/null || echo "plugin-artifacts directory empty or not found"
           ls -la plugin-artifacts/
           exit 1
         fi
@@ -626,9 +643,20 @@ jobs:
         fi
         echo "Found clap-host at: $CLAP_HOST_EXEC"
         
-        PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap"
+        # Find Windows plugin file in the correct location
+        if [ -f "$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap" ]; then
+          PLUGIN_FILE="$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap"
+        elif [ -f "$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap" ]; then
+          PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap"
+        else
+          echo "Searching for .clap file in plugin-artifacts..."
+          PLUGIN_FILE=$(find "$(pwd)/plugin-artifacts" -name "*.clap" -type f | head -1)
+        fi
+        
         if [ ! -f "$PLUGIN_FILE" ]; then
           echo "Error: Plugin file not found at $PLUGIN_FILE"
+          echo "Contents of plugin-artifacts:"
+          find plugin-artifacts -type f 2>/dev/null || echo "plugin-artifacts directory empty or not found"
           ls -la plugin-artifacts/
           exit 1
         fi
