@@ -577,6 +577,14 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
         // Set up window callbacks for proper refresh handling
         glfwSetWindowUserPointer(self->window, self);
         glfwSetWindowRefreshCallback(self->window, my_plugin_gui_window_refresh_callback);
+        
+        // macOS specific: ensure window is initially visible
+#ifdef __APPLE__
+        printf("MyPlugin: Applying macOS-specific window setup\n");
+        glfwShowWindow(self->window);
+        glfwFocusWindow(self->window);
+        glfwPollEvents();
+#endif
     }
     
     // Check if we can get OpenGL context and handle gracefully
@@ -821,12 +829,23 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
         return false;
     }
     
+    // Focus and show the window
     glfwShowWindow(self->window);
+    glfwFocusWindow(self->window);
     self->gui_visible = true;
+    
+    // Force window to front on macOS
+#ifdef __APPLE__
+    glfwRequestWindowAttention(self->window);
+#endif
     
     // Render initial frame
     my_plugin_gui_render(plugin);
     
+    // Force event processing to ensure window is visible
+    glfwPollEvents();
+    
+    printf("MyPlugin: GUI show completed - window should be visible\n");
     return true;
 }
 
