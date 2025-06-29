@@ -121,21 +121,19 @@ Both tools are automatically downloaded and configured in the GitHub Actions wor
 ### CLAP Host Integration Testing
 - **Purpose**: Integration testing with reference CLAP host and GUI screenshot capture
 - **Repository**: https://github.com/free-audio/clap-host
-- **Usage**: Automatically builds clap-host, loads the plugin, and captures screenshots
+- **Integration**: Runs automatically after plugin build in GitHub Actions
 - **Platforms**: Windows, macOS, Linux with platform-specific screenshot methods
-- **Artifacts**: Screenshots and error logs are uploaded as workflow artifacts
+- **Artifacts**: Screenshots and diagnostic logs are uploaded as workflow artifacts
+- **Caching**: CLAP host builds are cached for faster subsequent runs
 
-The workflow automatically:
-1. Builds the CLAP host reference implementation on all platforms
-2. Loads the built plugin into the host application
-3. Captures screenshots showing the plugin interface with window decorations
-4. Uploads screenshots and error logs as artifacts for manual inspection
-
-For local testing, use the provided script:
-```bash
-./test_clap_host.sh
-```
-This script will build both the plugin and clap-host, then launch the plugin in the host for manual testing.
+The integrated workflow automatically:
+1. Builds the plugin first, then runs CLAP host testing in parallel with other tests
+2. Downloads plugin artifacts from the build stage
+3. Uses cached CLAP host builds when available to reduce build time
+4. Installs proper Qt6 dependencies for successful builds
+5. Loads the built plugin into the host application
+6. Captures screenshots showing the plugin interface with window decorations
+7. Uploads screenshots and diagnostic logs as artifacts for inspection
 
 ## Building
 
