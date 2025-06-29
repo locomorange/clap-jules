@@ -48,3 +48,5 @@ clap-validator.tar.gz
 # CLAP Host build artifacts (should not be committed)
 clap-host-repo/
 screenshots/
+
+clap-validator-0.3.2-ubuntu-18.04.tar.gz
