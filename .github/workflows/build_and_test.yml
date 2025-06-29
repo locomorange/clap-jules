@@ -313,27 +313,11 @@ jobs:
         echo "=== Setting up vcpkg ==="
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
+        echo "Installing RtMidi and RtAudio via vcpkg..."
+        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
         export VCPKG_ROOT="$(pwd)/vcpkg"
         echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-        echo "Installing RtMidi and RtAudio via vcpkg..."
-        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
-        
-        echo "=== Checking RtMidi installation ==="
-        find vcpkg/installed/x64-linux -name "*rtmidi*" -o -name "*RtMidi*" | head -10 || echo "No RtMidi files found"
-        ls -la vcpkg/installed/x64-linux/include/ | grep -i rt || echo "No RT headers found"
-        
-        echo "=== Creating symlinks for header compatibility ==="
-        if [ -f "vcpkg/installed/x64-linux/include/RtMidi.h" ]; then
-          mkdir -p vcpkg/installed/x64-linux/include/rtmidi
-          ln -sf ../RtMidi.h vcpkg/installed/x64-linux/include/rtmidi/RtMidi.h
-          echo "Created symlink for RtMidi.h"
-        fi
-        if [ -f "vcpkg/installed/x64-linux/include/RtAudio.h" ]; then
-          mkdir -p vcpkg/installed/x64-linux/include/rtaudio
-          ln -sf ../RtAudio.h vcpkg/installed/x64-linux/include/rtaudio/RtAudio.h
-          echo "Created symlink for RtAudio.h"
-        fi
         
         echo "=== Qt6 already installed via install-qt-action ==="
         echo "Skipping Qt6 vcpkg installation - using system Qt6"
@@ -347,28 +331,11 @@ jobs:
         echo "=== Setting up vcpkg ==="
         git clone https://github.com/Microsoft/vcpkg.git vcpkg
         ./vcpkg/bootstrap-vcpkg.sh
+        echo "Installing RtMidi and RtAudio via vcpkg..."
+        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
         export VCPKG_ROOT="$(pwd)/vcpkg"
         echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-        echo "Installing RtMidi and RtAudio via vcpkg..."
-        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
-        
-        echo "=== Checking RtMidi installation ==="
-        TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
-        find vcpkg/installed/$TRIPLET -name "*rtmidi*" -o -name "*RtMidi*" | head -10 || echo "No RtMidi files found"
-        ls -la vcpkg/installed/$TRIPLET/include/ | grep -i rt || echo "No RT headers found"
-        
-        echo "=== Creating symlinks for header compatibility ==="
-        if [ -f "vcpkg/installed/$TRIPLET/include/RtMidi.h" ]; then
-          mkdir -p vcpkg/installed/$TRIPLET/include/rtmidi
-          ln -sf ../RtMidi.h vcpkg/installed/$TRIPLET/include/rtmidi/RtMidi.h
-          echo "Created symlink for RtMidi.h"
-        fi
-        if [ -f "vcpkg/installed/$TRIPLET/include/RtAudio.h" ]; then
-          mkdir -p vcpkg/installed/$TRIPLET/include/rtaudio
-          ln -sf ../RtAudio.h vcpkg/installed/$TRIPLET/include/rtaudio/RtAudio.h
-          echo "Created symlink for RtAudio.h"
-        fi
         
         echo "=== Qt6 already installed via install-qt-action ==="
         echo "Skipping Qt6 vcpkg installation - using system Qt6"
@@ -407,38 +374,38 @@ jobs:
 
         mkdir -p ../screenshots
 
-        # Set vcpkg toolchain to our external vcpkg with Qt6
+        # Set vcpkg toolchain
         export VCPKG_ROOT="$(pwd)/../vcpkg"
         export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-        export VCPKG_TARGET_TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-linux' }}
-
+        
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
-        echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
-
-        # Verify Qt6 is available in vcpkg
-        echo "=== Verifying Qt6 in vcpkg ==="
-        ls -la "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET/include/" | grep -i qt || echo "Qt6 not found in vcpkg"
-
-        # Try external vcpkg build first
+        
+        # Check available presets
+        echo "Available CMake presets:"
+        cmake --list-presets 2>/dev/null || echo "No presets available"
+        
+        # Try vcpkg-based build first
         BUILD_SUCCESS=false
-
-        echo "Trying external vcpkg build with Qt6"
-        if cmake . -B builds/external-vcpkg -G Ninja \
+        
+        # Manual build with vcpkg toolchain
+        echo "Trying manual build with vcpkg toolchain"
+        if cmake . -B builds/vcpkg-build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-          -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-          2>&1 | tee ../screenshots/cmake-external-vcpkg-configure-log-${{ runner.os }}.txt; then
-          echo "External vcpkg configuration successful"
-          if cmake --build builds/external-vcpkg --config Release 2>&1 | tee ../screenshots/cmake-external-vcpkg-build-log-${{ runner.os }}.txt; then
-            echo "External vcpkg build successful"
+          -DVCPKG_TARGET_TRIPLET=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-linux' }} \
+          -DUsePkgConfig=OFF \
+          2>&1 | tee ../screenshots/cmake-vcpkg-configure-log-${{ runner.os }}.txt; then
+          echo "vcpkg configuration successful"
+          if cmake --build builds/vcpkg-build --config Release 2>&1 | tee ../screenshots/cmake-vcpkg-build-log-${{ runner.os }}.txt; then
+            echo "vcpkg build successful"
             BUILD_SUCCESS=true
           fi
         fi
-
-        # Fallback builds
+        
+        # Fallback to preset if vcpkg manual build failed
         if [ "$BUILD_SUCCESS" = "false" ]; then
-          echo "External vcpkg build failed, trying ninja-system preset"
+          echo "vcpkg manual build failed, trying ninja-system preset"
           if cmake --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-configure-log-${{ runner.os }}.txt; then
             echo "ninja-system preset configuration successful"
             if cmake --build --preset ninja-system 2>&1 | tee ../screenshots/cmake-preset-build-log-${{ runner.os }}.txt; then
@@ -447,7 +414,8 @@ jobs:
             fi
           fi
         fi
-
+        
+        # Last resort: simple cmake build without specific dependencies
         if [ "$BUILD_SUCCESS" = "false" ]; then
           echo "All advanced builds failed, trying simple build"
           if cmake . -B builds/simple -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee ../screenshots/cmake-simple-configure-log-${{ runner.os }}.txt; then
