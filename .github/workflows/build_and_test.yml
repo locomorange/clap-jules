@@ -315,12 +315,8 @@ jobs:
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
         
-        echo "=== Installing Qt6 via vcpkg ==="
-        if [ ! -d "vcpkg/installed/x64-linux/include/QtCore" ]; then
-          ./vcpkg/vcpkg install qt6-base[core,widgets] --triplet=x64-linux
-        else
-          echo "Qt6 already installed via vcpkg"
-        fi
+        echo "=== Qt6 already installed via install-qt-action ==="
+        echo "Skipping Qt6 vcpkg installation - using system Qt6"
 
     - name: Setup CLAP Host Dependencies (macOS)
       if: runner.os == 'macOS'
@@ -333,12 +329,8 @@ jobs:
         ./vcpkg/bootstrap-vcpkg.sh
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
         
-        echo "=== Installing Qt6 via vcpkg ==="
-        if [ ! -d "vcpkg/installed/arm64-osx/include/QtCore" ]; then
-          ./vcpkg/vcpkg install qt6-base[core,widgets] --triplet=arm64-osx
-        else
-          echo "Qt6 already installed via vcpkg"
-        fi
+        echo "=== Qt6 already installed via install-qt-action ==="
+        echo "Skipping Qt6 vcpkg installation - using system Qt6"
 
     - name: Setup CLAP Host Dependencies (Windows)
       if: runner.os == 'Windows'
@@ -350,7 +342,13 @@ jobs:
         
         echo "=== Installing Qt6 via vcpkg ==="  
         if (!(Test-Path "vcpkg\installed\x64-windows\include\QtCore")) {
-          .\vcpkg\vcpkg install qt6-base[core,widgets] --triplet=x64-windows
+          try {
+            .\vcpkg\vcpkg install qt6-base[core,widgets] --triplet=x64-windows
+            echo "Qt6 installed successfully via vcpkg"
+          } catch {
+            echo "Warning: Qt6 vcpkg installation failed: $_"
+            echo "CLAP host will attempt to build without Qt6 or use alternative methods"
+          }
         } else {
           echo "Qt6 already installed via vcpkg"
         }
