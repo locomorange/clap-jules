@@ -320,7 +320,14 @@ jobs:
         else
           echo "vcpkg directory already exists, skipping clone"
         fi
-        ./vcpkg/bootstrap-vcpkg.sh
+        
+        # Ensure vcpkg is properly bootstrapped
+        if [ ! -f "./vcpkg/vcpkg" ] && [ ! -f "./vcpkg/vcpkg.exe" ]; then
+          echo "vcpkg not bootstrapped, running bootstrap..."
+          ./vcpkg/bootstrap-vcpkg.sh
+        else
+          echo "vcpkg already bootstrapped"
+        fi
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
@@ -342,7 +349,14 @@ jobs:
         else
           echo "vcpkg directory already exists, skipping clone"
         fi
-        ./vcpkg/bootstrap-vcpkg.sh
+        
+        # Ensure vcpkg is properly bootstrapped
+        if [ ! -f "./vcpkg/vcpkg" ] && [ ! -f "./vcpkg/vcpkg.exe" ]; then
+          echo "vcpkg not bootstrapped, running bootstrap..."
+          ./vcpkg/bootstrap-vcpkg.sh
+        else
+          echo "vcpkg already bootstrapped"
+        fi
         echo "Installing RtMidi and RtAudio via vcpkg..."
         ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
         echo "$(pwd)/vcpkg" >> $GITHUB_PATH
