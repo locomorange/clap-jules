@@ -295,8 +295,12 @@ jobs:
           clap-host-${{ runner.os }}-qt6-
           clap-host-${{ runner.os }}-
 
+    - name: Skip build steps on cache hit
+      if: steps.clap-host-cache.outputs.cache-hit == 'true'
+      run: echo "CLAP Host build cache hit - skipping build steps"
+
     - name: Setup CLAP Host Dependencies (Linux)
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && steps.clap-host-cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update -y
         echo "Installing build tools and GUI dependencies..."
@@ -338,7 +342,7 @@ jobs:
         echo "Skipping Qt6 vcpkg installation - using system Qt6"
 
     - name: Setup CLAP Host Dependencies (macOS)
-      if: runner.os == 'macOS'
+      if: runner.os == 'macOS' && steps.clap-host-cache.outputs.cache-hit != 'true'
       run: |
         echo "Installing essential build tools on macOS..."
         brew install pkg-config ninja cmake git curl
@@ -367,17 +371,17 @@ jobs:
         echo "Skipping Qt6 vcpkg installation - using system Qt6"
 
     - name: Setup CLAP Host Dependencies (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       run: |
         echo "Windows CLAP host will use scripts/build.sh for static build"
         echo "Dependencies will be handled automatically by the build script"
 
     - name: Setup MSBuild (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       uses: microsoft/setup-msbuild@v2
 
     - name: Install Qt
-      if: runner.os == 'Linux' || runner.os == 'macOS'
+      if: (runner.os == 'Linux' || runner.os == 'macOS') && steps.clap-host-cache.outputs.cache-hit != 'true'
       uses: jurplel/install-qt-action@v4
 
     - name: Verify Plugin Artifact
@@ -430,6 +434,7 @@ jobs:
         fi
 
     - name: Checkout CLAP Host
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         echo "Cloning clap-host repository..."
@@ -444,7 +449,7 @@ jobs:
         fi
 
     - name: Build CLAP Host (Linux/macOS)
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         cd clap-host-repo
@@ -516,7 +521,7 @@ jobs:
         find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found"
 
     - name: Build CLAP Host (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         cd clap-host-repo
