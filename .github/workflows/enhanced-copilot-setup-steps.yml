@@ -1,0 +1,213 @@
+name: "Enhanced Copilot Setup for CLAP Development"
+
+# Copilot Action用の拡張セットアップワークフロー
+# CLAP開発に必要な全ツールとCLAP Host環境を構築
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/enhanced-copilot-setup-steps.yml
+
+env:
+  CLAP_VALIDATOR_VERSION: '0.3.2'
+  CLAP_INFO_VERSION: 'v1.2.2'
+
+jobs:
+  # Copilot Actionで認識されるジョブ名
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      # ビルド環境の包括的セットアップ
+      - name: Setup Build Environment
+        run: |
+          echo "=== Installing build tools and dependencies ==="
+          sudo apt-get update -y
+          
+          # 基本ビルドツール
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config git curl \
+            zip unzip tar wget ca-certificates
+
+          # GUI開発ライブラリ
+          sudo apt-get install -y --no-install-recommends \
+            libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
+            mesa-utils
+
+          # 仮想ディスプレイとスクリーンショットツール
+          sudo apt-get install -y --no-install-recommends \
+            xvfb x11-utils imagemagick scrot
+
+          echo "✓ Build environment setup completed"
+
+      # CLAP開発ツールのセットアップ
+      - name: Setup CLAP Development Tools
+        run: |
+          echo "=== Setting up CLAP tools ==="
+          
+          # clap-validator
+          echo "Downloading clap-validator ${{ env.CLAP_VALIDATOR_VERSION }}..."
+          wget -O clap-validator.tar.gz "https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz"
+          tar -xzf clap-validator.tar.gz
+          chmod +x clap-validator
+          
+          # clap-info
+          echo "Downloading clap-info ${{ env.CLAP_INFO_VERSION }}..."
+          wget -O clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${{ env.CLAP_INFO_VERSION }}/clap-info-linux-x64.zip"
+          unzip -q clap-info.zip
+          chmod +x clap-info
+          
+          # PATHに追加
+          echo "$PWD" >> $GITHUB_PATH
+          
+          # 動作確認
+          echo "=== Verifying CLAP tools ==="
+          ./clap-validator --help | head -5
+          ./clap-info --help | head -5
+          
+          echo "✓ CLAP tools setup completed"
+
+      # vcpkg環境構築
+      - name: Setup vcpkg Package Manager
+        run: |
+          echo "=== Setting up vcpkg ==="
+          
+          # vcpkgクローン
+          git clone https://github.com/Microsoft/vcpkg.git vcpkg
+          
+          # ブートストラップ
+          echo "Bootstrapping vcpkg..."
+          ./vcpkg/bootstrap-vcpkg.sh
+          
+          # CLAP Host用パッケージインストール
+          echo "Installing CLAP Host dependencies..."
+          ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
+          
+          # 環境変数設定
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+          echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
+          
+          echo "✓ vcpkg setup completed"
+
+      # Qt6環境構築
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.0'
+          cached: true
+
+      # CLAP Hostリポジトリ準備
+      - name: Prepare CLAP Host Repository
+        run: |
+          echo "=== Preparing CLAP Host repository ==="
+          
+          # CLAP Hostクローン
+          git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
+          
+          # 環境変数設定
+          echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
+          
+          echo "✓ CLAP Host repository prepared"
+
+      # スクリプト実行権限設定
+      - name: Setup Build Scripts
+        run: |
+          echo "=== Setting up build scripts ==="
+          
+          # スクリプト実行権限付与
+          chmod +x scripts/build-plugin.sh
+          chmod +x scripts/test-clap-host.sh
+          
+          echo "✓ Build scripts ready"
+
+      # 環境検証
+      - name: Verify Complete Environment
+        run: |
+          echo "=== Environment Verification ==="
+          
+          echo "--- Build Tools ---"
+          cmake --version
+          ninja --version
+          gcc --version
+          pkg-config --version
+          
+          echo "--- CLAP Tools ---"
+          ./clap-validator --help | head -3
+          ./clap-info --help | head -3
+          
+          echo "--- vcpkg ---"
+          echo "VCPKG_ROOT: $VCPKG_ROOT"
+          echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+          ls -la $VCPKG_ROOT/installed/x64-linux/lib/ | grep -E "(rtmidi|rtaudio)" || echo "RtMidi/RtAudio not found"
+          
+          echo "--- Qt6 ---"
+          qmake --version
+          
+          echo "--- CLAP Host ---"
+          echo "CLAP_HOST_PATH: $CLAP_HOST_PATH"
+          ls -la clap-host-repo/
+          
+          echo "--- X11 GUI Support ---"
+          dpkg -l | grep -E "(libx11|mesa)" | head -5
+          
+          echo "--- Screenshot Tools ---"
+          which xvfb-run
+          which import || echo "imagemagick import not found"
+          which scrot
+          
+          echo "✓ All environment components verified"
+
+      # テストビルド実行
+      - name: Test Plugin Build
+        run: |
+          echo "=== Testing plugin build ==="
+          
+          # プラグインビルド
+          ./scripts/build-plugin.sh
+          
+          # 成果物確認
+          if [ -f "build/MyFirstClapPlugin.so" ]; then
+            echo "✓ Plugin built successfully"
+            ls -la build/MyFirstClapPlugin.so
+          else
+            echo "✗ Plugin build failed"
+            exit 1
+          fi
+          
+          echo "✓ Plugin build test completed"
+
+      # 環境情報サマリー
+      - name: Environment Summary
+        run: |
+          echo "=== Copilot Environment Setup Summary ==="
+          echo "This environment is now ready for CLAP development with:"
+          echo "- ✓ Complete build toolchain (CMake, Ninja, GCC)"
+          echo "- ✓ CLAP validation tools (clap-validator, clap-info)"
+          echo "- ✓ vcpkg package manager with RtMidi/RtAudio"
+          echo "- ✓ Qt6 for GUI development"
+          echo "- ✓ CLAP Host for integration testing"
+          echo "- ✓ X11 virtual display for screenshot capture"
+          echo "- ✓ Build scripts for automated workflows"
+          echo ""
+          echo "Key paths:"
+          echo "- VCPKG_ROOT: $VCPKG_ROOT"
+          echo "- CLAP_HOST_PATH: $CLAP_HOST_PATH"
+          echo "- CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+          echo ""
+          echo "Available commands:"
+          echo "- ./scripts/build-plugin.sh    # Build and validate plugin"
+          echo "- ./scripts/test-clap-host.sh  # Integration test with screenshot"
+          echo "- clap-validator validate <plugin>  # Validate CLAP plugin"
+          echo "- clap-info <plugin> --brief        # Extract plugin info"
+          echo ""
+          echo "Ready for Copilot Coding Agent! 🚀"
