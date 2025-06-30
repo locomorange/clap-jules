@@ -300,7 +300,7 @@ jobs:
       run: echo "CLAP Host build cache hit - skipping build steps"
 
     - name: Setup CLAP Host Dependencies (Linux)
-      if: runner.os == 'Linux' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os == 'Linux'
       run: |
         sudo apt-get update -y
         echo "Installing build tools and GUI dependencies..."
@@ -342,7 +342,7 @@ jobs:
         echo "Skipping Qt6 vcpkg installation - using system Qt6"
 
     - name: Setup CLAP Host Dependencies (macOS)
-      if: runner.os == 'macOS' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os == 'macOS'
       run: |
         echo "Installing essential build tools on macOS..."
         brew install pkg-config ninja cmake git curl
@@ -381,7 +381,7 @@ jobs:
       uses: microsoft/setup-msbuild@v2
 
     - name: Install Qt
-      if: (runner.os == 'Linux' || runner.os == 'macOS') && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: (runner.os == 'Linux' || runner.os == 'macOS')
       uses: jurplel/install-qt-action@v4
 
     - name: Verify Plugin Artifact
