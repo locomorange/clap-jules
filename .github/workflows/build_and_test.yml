@@ -384,6 +384,15 @@ jobs:
       if: (runner.os == 'Linux' || runner.os == 'macOS')
       uses: jurplel/install-qt-action@v4
 
+    - name: Cache Screenshots for Comparison
+      uses: actions/cache@v4
+      continue-on-error: true
+      with:
+        path: previous-screenshots/
+        key: clap-host-screenshots-${{ matrix.os }}-${{ github.event.pull_request.number || github.ref }}
+        restore-keys: |
+          clap-host-screenshots-${{ matrix.os }}-
+
     - name: Verify Plugin Artifact
       shell: bash
       run: |
@@ -609,8 +618,15 @@ jobs:
         
         # Calculate screenshot hash before running
         PREV_HASH=""
-        if [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
+        # Check for previous screenshot in downloaded artifacts first
+        if [ -f "previous-screenshots/clap-host-linux-screenshot.png" ]; then
+          PREV_HASH=$(sha256sum previous-screenshots/clap-host-linux-screenshot.png | awk '{print $1}')
+          echo "Found previous screenshot in artifacts"
+        elif [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
           PREV_HASH=$(sha256sum screenshots/clap-host-linux-screenshot.png | awk '{print $1}')
+          echo "Found previous screenshot in current directory"
+        else
+          echo "No previous screenshot found - this will be the first"
         fi
         
         # Test clap-host and take screenshot
@@ -633,6 +649,9 @@ jobs:
           if [ "$NEW_HASH" != "$PREV_HASH" ]; then
             echo "Screenshot differs from previous version"
             mv screenshots/clap-host-linux-screenshot-new.png screenshots/clap-host-linux-screenshot.png
+            # Save for next comparison
+            mkdir -p previous-screenshots
+            cp screenshots/clap-host-linux-screenshot.png previous-screenshots/clap-host-linux-screenshot.png
             echo "NEW_SCREENSHOT_HASH=$NEW_HASH" >> $GITHUB_ENV
             echo "SCREENSHOT_CHANGED=true" >> $GITHUB_ENV
           else
