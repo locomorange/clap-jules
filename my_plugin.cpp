@@ -9,6 +9,10 @@
 #include <algorithm>
 #include <clap/ext/gui.h> // CLAP GUI Extension header
 
+#ifdef HAVE_BRISK
+#include <brisk/gui/GUIApplication.hpp> // For GuiApplication
+#endif
+
 #ifdef HAVE_BOOST_DI
 #include <boost/di.hpp>
 namespace di = boost::di;
@@ -67,28 +71,49 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     
     // Initialize MVVM components using dependency injection
 #ifdef HAVE_BOOST_DI
+    printf("MyPlugin: Initializing with Boost.DI\n");
     auto injector = di::make_injector(
-        di::bind<AudioModel>().to<FilterAudioModel>()
+        di::bind<AudioModel>().to<FilterAudioModel>().in(di::singleton),
+        di::bind<PluginViewModel>().to<FilterPluginViewModel>().in(di::singleton)
+#ifdef HAVE_BRISK
+        , di::bind<IGui>().to<BriskPluginGUI>().in(di::singleton)
+#else
+        , di::bind<IGui>().to<SimplePluginGUI>().in(di::singleton)
+#endif
     );
-    auto model = injector.create<std::shared_ptr<AudioModel>>();
-    self->viewModel = std::make_shared<FilterPluginViewModel>(model);
+    // Create main components through DI
+    self->viewModel = injector.create<std::shared_ptr<PluginViewModel>>();
+    self->gui = injector.create<std::shared_ptr<IGui>>();
 #else
     // Fallback without dependency injection
+    printf("MyPlugin: Initializing without Boost.DI (fallback)\n");
     auto model = std::make_shared<FilterAudioModel>();
     self->viewModel = std::make_shared<FilterPluginViewModel>(model);
+#ifdef HAVE_BRISK
+    self->gui = std::make_shared<BriskPluginGUI>();
+#else
+    self->gui = std::make_shared<SimplePluginGUI>();
+#endif
 #endif
     
-    // Initialize GUI
-    self->gui = std::make_shared<SimplePluginGUI>();
-    
     // Connect GUI to view model
-    self->gui->setFrequencyChangeCallback([self](double frequency) {
-        if (self->viewModel) {
-            self->viewModel->setFrequency(frequency);
-            self->currentFrequency = frequency;
-            printf("MyPlugin: Frequency changed to %.2f Hz via GUI\n", frequency);
-        }
-    });
+    if (self->gui) {
+        self->gui->setFrequencyChangeCallback([self](double frequency) {
+            if (self->viewModel) {
+                self->viewModel->setFrequency(frequency);
+                self->currentFrequency = frequency; // Consider if this is still needed or if VM is sole source of truth
+                printf("MyPlugin: Frequency changed to %.2f Hz via GUI callback\n", frequency);
+            }
+        });
+        // If GUI needs direct access to ViewModel, it should be injected.
+        // For now, callback is the primary interaction from GUI -> ViewModel.
+    } else {
+        printf("MyPlugin: Error - GUI component is null after initialization!\n");
+    }
+
+    if (!self->viewModel) {
+        printf("MyPlugin: Error - ViewModel component is null after initialization!\n");
+    }
     
     self->currentFrequency = 1000.0; // Default frequency
     return true;
@@ -239,14 +264,16 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     static int call_count = 0;
     call_count++;
     
+#ifndef HAVE_BRISK // This simulation is specific to SimplePluginGUI
     if (call_count == 10 && self->gui) {
         // Simulate user changing frequency after some time
-        SimplePluginGUI* simpleGUI = static_cast<SimplePluginGUI*>(self->gui.get());
-        simpleGUI->simulateFrequencyChange(500.0); // Change to 500 Hz
+        SimplePluginGUI* simpleGUI = dynamic_cast<SimplePluginGUI*>(self->gui.get());
+        if (simpleGUI) simpleGUI->simulateFrequencyChange(500.0); // Change to 500 Hz
     } else if (call_count == 20 && self->gui) {
-        SimplePluginGUI* simpleGUI = static_cast<SimplePluginGUI*>(self->gui.get());
-        simpleGUI->simulateFrequencyChange(2000.0); // Change to 2000 Hz
+        SimplePluginGUI* simpleGUI = dynamic_cast<SimplePluginGUI*>(self->gui.get());
+        if (simpleGUI) simpleGUI->simulateFrequencyChange(2000.0); // Change to 2000 Hz
     }
+#endif
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
@@ -303,19 +330,45 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
 };
 
 // --- CLAP Entry Point ---
+// Static instance for Brisk GuiApplication
+#ifdef HAVE_BRISK
+static std::unique_ptr<brisk::GuiApplication> g_brisk_gui_application;
+#endif
+
 // This is the main entry point that the host will look for.
 CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
     CLAP_VERSION,
     // init: Called once when the library is loaded.
     [](const char *plugin_path) -> bool {
         printf("MyPlugin: clap_entry.init called (path: %s)\n", plugin_path);
-        // Perform any global library initialization here if needed
+        #ifdef HAVE_BRISK
+            printf("MyPlugin: Initializing Brisk GuiApplication...\n");
+            // Catch exceptions during construction if any
+            try {
+                g_brisk_gui_application = std::make_unique<brisk::GuiApplication>();
+                // Some toolkits require an explicit init call after construction,
+                // but brisk-helloworld doesn't show it for GuiApplication.
+                // If initialization is needed and can fail, check return status.
+                printf("MyPlugin: Brisk GuiApplication initialized.\n");
+            } catch (const std::exception& e) {
+                fprintf(stderr, "MyPlugin: Failed to initialize Brisk GuiApplication: %s\n", e.what());
+                return false; // Failed to initialize
+            } catch (...) {
+                fprintf(stderr, "MyPlugin: Failed to initialize Brisk GuiApplication due to unknown exception.\n");
+                return false;
+            }
+        #endif
         return true;
     },
     // deinit: Called once when the library is unloaded.
     []() -> void {
         printf("MyPlugin: clap_entry.deinit called\n");
-        // Perform any global library cleanup here if needed
+        #ifdef HAVE_BRISK
+            printf("MyPlugin: Shutting down Brisk GuiApplication...\n");
+            g_brisk_gui_application.reset(); // Destructor of GuiApplication should handle cleanup
+            printf("MyPlugin: Brisk GuiApplication shut down.\n");
+        #endif
+        // Perform any other global library cleanup here if needed
     },
     // get_factory: Returns a factory based on its ID.
     [](const char *factory_id) -> const void * {

@@ -66,17 +66,44 @@ jobs:
     - name: Configure CMake
       shell: bash
       run: |
-        # Clear any problematic environment variables
-        unset VCPKG_ROOT
-        unset CMAKE_TOOLCHAIN_FILE
-        cmake . -B build -DCMAKE_TOOLCHAIN_FILE=
+        echo "Setting up vcpkg and CMAKE_TOOLCHAIN_FILE"
+        # Ensure vcpkg is bootstrapped (should be done by env setup script if run, but good to be sure)
+        if [ -f "vcpkg/bootstrap-vcpkg.sh" ]; then
+          ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+        elif [ -f "$VCPKG_ROOT/bootstrap-vcpkg.sh" ]; then
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+        else
+          echo "Warning: vcpkg bootstrap script not found."
+        fi
+
+        # Set CMAKE_TOOLCHAIN_FILE to the project's vcpkg instance
+        # VCPKG_ROOT should ideally be set by the overall environment setup.
+        # If not, default to ./vcpkg
+        EFFECTIVE_VCPKG_ROOT="${VCPKG_ROOT:-$(pwd)/vcpkg}"
+        TOOLCHAIN_FILE_PATH="$EFFECTIVE_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+        echo "Using VCPKG_ROOT: $EFFECTIVE_VCPKG_ROOT"
+        echo "Using CMAKE_TOOLCHAIN_FILE: $TOOLCHAIN_FILE_PATH"
+
+        if [ ! -f "$TOOLCHAIN_FILE_PATH" ]; then
+          echo "ERROR: CMAKE_TOOLCHAIN_FILE not found at $TOOLCHAIN_FILE_PATH"
+          echo "Listing contents of $EFFECTIVE_VCPKG_ROOT:"
+          ls -la "$EFFECTIVE_VCPKG_ROOT"
+          echo "Listing contents of $EFFECTIVE_VCPKG_ROOT/scripts:"
+          ls -la "$EFFECTIVE_VCPKG_ROOT/scripts"
+          echo "Listing contents of $EFFECTIVE_VCPKG_ROOT/scripts/buildsystems:"
+          ls -la "$EFFECTIVE_VCPKG_ROOT/scripts/buildsystems"
+          exit 1
+        fi
+
+        # No longer unset VCPKG_ROOT or CMAKE_TOOLCHAIN_FILE here
+        # Instead, explicitly pass the toolchain file.
+        cmake . -B build -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE_PATH" -DCMAKE_BUILD_TYPE=Release
 
     - name: Build project
       shell: bash
       run: |
-        # Clear any problematic environment variables
-        unset VCPKG_ROOT
-        unset CMAKE_TOOLCHAIN_FILE
+        # VCPKG_ROOT and CMAKE_TOOLCHAIN_FILE should be respected from configure step
         cmake --build build --config Release
 
     - name: Verify Plugin Build
@@ -146,10 +173,27 @@ jobs:
     - name: Configure and Build
       shell: bash
       run: |
-        # Clear any problematic environment variables
-        unset VCPKG_ROOT
-        unset CMAKE_TOOLCHAIN_FILE
-        cmake . -B build -DCMAKE_TOOLCHAIN_FILE=
+        echo "Setting up vcpkg and CMAKE_TOOLCHAIN_FILE for unit tests"
+        if [ -f "vcpkg/bootstrap-vcpkg.sh" ]; then
+          ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+        elif [ -f "$VCPKG_ROOT/bootstrap-vcpkg.sh" ]; then
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+        else
+          echo "Warning: vcpkg bootstrap script not found."
+        fi
+
+        EFFECTIVE_VCPKG_ROOT="${VCPKG_ROOT:-$(pwd)/vcpkg}"
+        TOOLCHAIN_FILE_PATH="$EFFECTIVE_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+        echo "Using VCPKG_ROOT: $EFFECTIVE_VCPKG_ROOT"
+        echo "Using CMAKE_TOOLCHAIN_FILE: $TOOLCHAIN_FILE_PATH"
+
+        if [ ! -f "$TOOLCHAIN_FILE_PATH" ]; then
+          echo "ERROR: CMAKE_TOOLCHAIN_FILE not found at $TOOLCHAIN_FILE_PATH for unit tests"
+          exit 1
+        fi
+
+        cmake . -B build -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE_PATH" -DCMAKE_BUILD_TYPE=Release
         cmake --build build --config Release
 
     - name: Run Unit Tests

@@ -13,9 +13,9 @@ namespace brisk {
 }
 
 // GUI View interface
-class PluginGUI {
+class IGui {
 public:
-    virtual ~PluginGUI() = default;
+    virtual ~IGui() = default;
     virtual void setFrequency(double frequency) = 0;
     virtual double getFrequency() const = 0; // May not be strictly needed if ViewModel is source of truth
     virtual void setFrequencyChangeCallback(std::function<void(double)> callback) = 0;
@@ -42,7 +42,7 @@ public:
 #include <brisk/gui/EmbedWindow.hpp> // For CLAP embedding
 
 // Brisk-based GUI implementation
-class BriskPluginGUI : public PluginGUI {
+class BriskPluginGUI : public IGui {
 public:
     BriskPluginGUI();
     ~BriskPluginGUI() override;
@@ -76,7 +76,7 @@ private:
 #else
 // Fallback SimplePluginGUI if Brisk is not available (from previous implementation)
 #include <cstdio> // For printf in SimplePluginGUI
-class SimplePluginGUI : public PluginGUI {
+class SimplePluginGUI : public IGui {
 public:
     SimplePluginGUI() : m_frequency(1000.0), m_visible(false) {}
     
