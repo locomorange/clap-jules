@@ -1,5 +1,6 @@
 #include "my_plugin.h"
 #include "mvvm_impl.h"
+#include "gui.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -60,6 +61,18 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     self->viewModel = std::make_shared<FilterPluginViewModel>(model);
 #endif
     
+    // Initialize GUI
+    self->gui = std::make_shared<SimplePluginGUI>();
+    
+    // Connect GUI to view model
+    self->gui->setFrequencyChangeCallback([self](double frequency) {
+        if (self->viewModel) {
+            self->viewModel->setFrequency(frequency);
+            self->currentFrequency = frequency;
+            printf("MyPlugin: Frequency changed to %.2f Hz via GUI\n", frequency);
+        }
+    });
+    
     self->currentFrequency = 1000.0; // Default frequency
     return true;
 }
@@ -68,6 +81,7 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
     // Reset shared pointers to release resources
+    self->gui.reset();
     self->viewModel.reset();
 }
 
@@ -81,6 +95,12 @@ static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_r
         self->viewModel->setFrequency(self->currentFrequency);
     }
     
+    // Update GUI
+    if (self->gui) {
+        self->gui->setFrequency(self->currentFrequency);
+        self->gui->show(); // Show GUI when plugin is activated
+    }
+    
     return true;
 }
 
@@ -91,6 +111,11 @@ static void my_plugin_deactivate(const struct clap_plugin *plugin) {
     // Reset filter state
     if (self->viewModel) {
         self->viewModel->reset();
+    }
+    
+    // Hide GUI
+    if (self->gui) {
+        self->gui->hide();
     }
 }
 
@@ -162,8 +187,21 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     // Called by the host to perform tasks that must run on the main thread.
-    // printf("MyPlugin: on_main_thread called\n");
+    
+    // Demo: Simulate some GUI interaction for testing
+    static int call_count = 0;
+    call_count++;
+    
+    if (call_count == 10 && self->gui) {
+        // Simulate user changing frequency after some time
+        SimplePluginGUI* simpleGUI = static_cast<SimplePluginGUI*>(self->gui.get());
+        simpleGUI->simulateFrequencyChange(500.0); // Change to 500 Hz
+    } else if (call_count == 20 && self->gui) {
+        SimplePluginGUI* simpleGUI = static_cast<SimplePluginGUI*>(self->gui.get());
+        simpleGUI->simulateFrequencyChange(2000.0); // Change to 2000 Hz
+    }
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---

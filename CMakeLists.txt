@@ -109,7 +109,7 @@ message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstC
 add_subdirectory(libs/googletest)
 enable_testing()
 
-add_executable(my_plugin_tests test/test_my_plugin.cpp)
+add_executable(my_plugin_tests test/test_my_plugin.cpp filter.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 include(GoogleTest)

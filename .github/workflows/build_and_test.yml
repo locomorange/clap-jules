@@ -65,10 +65,19 @@ jobs:
 
     - name: Configure CMake
       shell: bash
-      run: cmake . -B build
+      run: |
+        # Clear any problematic environment variables
+        unset VCPKG_ROOT
+        unset CMAKE_TOOLCHAIN_FILE
+        cmake . -B build -DCMAKE_TOOLCHAIN_FILE=
 
     - name: Build project
-      run: cmake --build build --config Release
+      shell: bash
+      run: |
+        # Clear any problematic environment variables
+        unset VCPKG_ROOT
+        unset CMAKE_TOOLCHAIN_FILE
+        cmake --build build --config Release
 
     - name: Verify Plugin Build
       id: verify
@@ -137,7 +146,10 @@ jobs:
     - name: Configure and Build
       shell: bash
       run: |
-        cmake . -B build
+        # Clear any problematic environment variables
+        unset VCPKG_ROOT
+        unset CMAKE_TOOLCHAIN_FILE
+        cmake . -B build -DCMAKE_TOOLCHAIN_FILE=
         cmake --build build --config Release
 
     - name: Run Unit Tests
