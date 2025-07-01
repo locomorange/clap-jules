@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <clap/ext/gui.h> // CLAP GUI Extension header
 
 #ifdef HAVE_BOOST_DI
 #include <boost/di.hpp>
@@ -24,6 +25,22 @@ static void my_plugin_reset(const struct clap_plugin *plugin);
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process);
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
+
+// --- CLAP GUI Extension Callbacks ---
+static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static void gui_destroy(const clap_plugin_t *plugin);
+static bool gui_set_scale(const clap_plugin_t *plugin, double scale);
+static bool gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool gui_can_resize(const clap_plugin_t *plugin);
+static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints);
+static bool gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height);
+static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window);
+static bool gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window);
+static void gui_suggest_title(const clap_plugin_t *plugin, const char *title);
+static bool gui_show(const clap_plugin_t *plugin);
+static bool gui_hide(const clap_plugin_t *plugin);
+
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -182,12 +199,40 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
-    printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        // BRISK_LOG_INFO("Host requested CLAP_EXT_GUI");
+        printf("MyPlugin: Host requested CLAP_EXT_GUI\n");
+        // Return the GUI extension struct
+        static const clap_plugin_gui_t gui_extension = {
+            gui_create,
+            gui_destroy,
+            gui_set_scale,
+            gui_get_size,
+            gui_can_resize,
+            gui_get_resize_hints,
+            gui_adjust_size,
+            gui_set_size,
+            gui_set_parent,
+            gui_set_transient,
+            gui_suggest_title,
+            gui_show,
+            gui_hide
+        };
+        return &gui_extension;
+    }
+
+    printf("MyPlugin: Host requesting unknown extension: %s\n", id);
+    return NULL;
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    // This is where GUI events could be processed if Brisk needs manual pumping,
+    // but typically Brisk runs its own event loop on a thread or integrates with host's loop.
+    // For CLAP, GUI operations are often driven by host calls to the GUI extension functions.
+    // If Brisk needs periodic updates not tied to direct interactions, this could be a place.
+    // brisk::Application::instance().processEvents(); // Example if Brisk needs this.
     // Called by the host to perform tasks that must run on the main thread.
     
     // Demo: Simulate some GUI interaction for testing
@@ -285,3 +330,122 @@ CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
         return NULL;
     }
 };
+
+// --- CLAP GUI Extension Callback Implementations ---
+
+static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (!self || !self->gui) return false;
+
+    // Check if the GUI API is supported (e.g., CLAP_WINDOW_API_X11 on Linux)
+    // For Brisk, it should handle various native backends.
+    // We pass the clap_window_t (which includes parent handle and API) to BriskPluginGUI::create
+    printf("MyPlugin: gui_create called. API: %s, is_floating: %d\n", api, is_floating);
+
+    // The clap_window_t itself is passed in gui_set_parent or gui_set_transient by the host.
+    // gui_create is more about checking if the plugin *can* create a GUI with the given API.
+    // Brisk's EmbedWindow will need the actual parent handle from clap_window_t.
+    // For now, we assume BriskPluginGUI::create will be called later via gui_set_parent.
+    // However, some hosts might call create and expect immediate window setup if is_floating is true.
+    // Let's defer actual Brisk window creation to gui_set_parent for embedded,
+    // and potentially handle floating here if Brisk supports it directly.
+
+    // For CLAP, the plugin should create its window content when gui_set_parent is called.
+    // gui_create is more of a check. If Brisk needs global init, it could be here or in plugin_init.
+    // For now, we rely on BriskPluginGUI::create to handle the embedding.
+    // The bool return here often indicates if the plugin *can* provide a GUI of this type.
+    return true;
+}
+
+static void gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: gui_destroy called\n");
+    if (self && self->gui) {
+        self->gui->destroy(); // Call the destroy method on our GUI object
+    }
+}
+
+static bool gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: gui_set_scale called with scale %.2f\n", scale);
+    // TODO: If Brisk supports UI scaling, implement this.
+    // if (self && self->gui) { return self->gui->set_scale(scale); }
+    return false; // Not implemented yet
+}
+
+static bool gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (!self || !self->gui) return false;
+    bool result = self->gui->get_size(width, height);
+    // printf("MyPlugin: gui_get_size called. Reported: %u x %u\n", *width, *height);
+    return result;
+}
+
+static bool gui_can_resize(const clap_plugin_t *plugin) {
+    // TODO: Check if Brisk window is resizable. For now, assume false or a fixed size.
+    printf("MyPlugin: gui_can_resize called\n");
+    return false; // Or query self->gui if it has such a property
+}
+
+static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    printf("MyPlugin: gui_get_resize_hints called\n");
+    // TODO: Provide resize hints if resizable.
+    return false;
+}
+
+static bool gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: gui_adjust_size called with preferred %u x %u\n", *width, *height);
+    // TODO: Ask Brisk GUI to adjust to a preferred size, it might return a new valid size.
+    // For now, let's say we stick to the requested size if possible, or our default.
+    // if (self && self->gui) { return self->gui->adjust_size(width, height); }
+    // If not implemented, returning false means the host should use get_size.
+    return gui_get_size(plugin, width, height); // Fallback to current/default size
+}
+
+static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (!self || !self->gui) return false;
+    printf("MyPlugin: gui_set_size called with %u x %u\n", width, height);
+    return self->gui->set_size(width, height);
+}
+
+static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (!self || !self->gui) return false;
+    printf("MyPlugin: gui_set_parent called. Parent HWND: %p, API: %s\n", window->parent, window->plugin_api);
+    // This is where the actual Brisk window should be created and parented.
+    return self->gui->create(window);
+}
+
+static bool gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: gui_set_transient called. Parent HWND: %p, API: %s\n", window->parent, window->plugin_api);
+    // For floating windows. Brisk might handle this similarly to set_parent or have specific API.
+    // If BriskPluginGUI::create can handle this (e.g. by creating a non-embedded window if window->parent is null)
+    // if (self && self->gui) { return self->gui->create_transient(window); }
+    return false; // Not implemented for now for transient windows
+}
+
+static void gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: gui_suggest_title: %s\n", title);
+    // TODO: If Brisk window is floating and has a title bar, set it.
+    // if (self && self->gui) { self->gui->set_title(title); }
+}
+
+static bool gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (!self || !self->gui) return false;
+    printf("MyPlugin: gui_show called\n");
+    self->gui->show();
+    return true;
+}
+
+static bool gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (!self || !self->gui) return false;
+    printf("MyPlugin: gui_hide called\n");
+    self->gui->hide();
+    return true;
+}

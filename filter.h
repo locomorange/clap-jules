@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <kfr/all.hpp> // KFR main header
 
 class LowPassFilter {
 public:
@@ -9,16 +10,16 @@ public:
     void setSampleRate(double sampleRate);
     void setFrequency(double frequency);
     void reset();
+    // Process a single channel of audio
     void process(float* input, float* output, uint32_t numSamples);
     
 private:
-    double m_sampleRate = 44100.0;
-    double m_frequency = 1000.0;
+    double m_sampleRate;
+    double m_frequency;
     
-    // Simple implementation for now
-    double m_prevInput = 0.0;
-    double m_prevOutput = 0.0;
-    double m_alpha = 0.5;
-    
-    void updateFilter();
+    kfr::biquad_filter<kfr::f32> m_filter;
+    kfr::biquad_coeffs<kfr::f32> m_coeffs;
+    kfr::univector<kfr::f32> m_tempBuffer; // Temporary buffer for KFR processing
+
+    void updateCoeffs();
 };

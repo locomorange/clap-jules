@@ -65,12 +65,58 @@ else()
     set(KFR_AVAILABLE FALSE)
 endif()
 
-# For now, let's skip Brisk until we get the basic build working
-# We'll add it step by step
+# Add Brisk (GUI library)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
+    message(STATUS "Found Brisk, adding as subdirectory")
+    # Set Brisk options if needed, e.g., disable tests if they cause issues in this context
+    set(BRISK_TESTS OFF CACHE BOOL "Disable Brisk tests" FORCE)
+    set(BRISK_EXAMPLES OFF CACHE BOOL "Disable Brisk examples" FORCE)
+    # On Linux, Brisk might default to WebGPU if available, or D3D11 on Windows.
+    # For typical plugin GUI, we might not need WebGPU explicitly unless it's a core requirement.
+    # Let's assume default graphics backend is sufficient for now.
+    # If ICU is optional and causing issues, it could be disabled:
+    # set(BRISK_ICU OFF CACHE BOOL "Disable ICU for Brisk" FORCE)
+    add_subdirectory(libs/brisk)
+    set(BRISK_AVAILABLE TRUE)
+    # Required system libraries for Brisk on Linux (may vary based on Brisk's config)
+    # These are often needed for X11, OpenGL, Fontconfig, etc.
+    find_package(XKB REQUIRED) # From clap-host, Brisk might need similar
+    find_package(Fontconfig REQUIRED)
+    find_package(X11 REQUIRED)
+    # OpenGL is usually found by Brisk's CMake or via Qt6 if Brisk uses it.
+    # If Brisk uses Qt, Qt's dependencies will be handled.
+    # If Brisk has its own X11/OpenGL backend, ensure those libs are linked.
+else()
+    message(WARNING "Brisk not found, GUI will be unavailable or limited")
+    set(BRISK_AVAILABLE FALSE)
+endif()
 
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp filter.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp filter.cpp gui.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Link Brisk libraries if Brisk is available
+if(BRISK_AVAILABLE)
+    # Attempt to link with Brisk's main GUI components.
+    # Brisk might export targets like Brisk::gui, Brisk::widgets, etc.
+    # Or direct library names like brisk-gui, brisk-widgets.
+    # Based on brisk's CMakeLists, it creates brisk-gui and brisk-widgets.
+    # These likely depend on brisk-core, brisk-graphics, brisk-window.
+    # Linking brisk-gui should pull in necessary dependencies.
+    target_link_libraries(my_clap_plugin PRIVATE
+        brisk-gui # Main GUI logic
+        brisk-widgets # Common widgets
+        # brisk-window # Windowing system abstraction, likely pulled by gui
+        # brisk-graphics # Graphics rendering, likely pulled by gui/window
+        # brisk-core # Core utilities, likely pulled by everything else
+        # brisk-i18n # If ICU is enabled and used, might be needed
+    )
+    # Link X11, Fontconfig etc. if Brisk doesn't do it automatically via its targets
+    target_link_libraries(my_clap_plugin PRIVATE X11::X11 Fontconfig::Fontconfig Threads::Threads)
+    # OpenGL should be handled by Brisk internally if it uses it directly, or by Qt if Brisk uses Qt.
+    # For now, assume Brisk's targets handle their own GL needs.
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_BRISK)
+endif()
 
 # Add boost-di include if available
 if(BOOST_DI_INCLUDE_DIR)
