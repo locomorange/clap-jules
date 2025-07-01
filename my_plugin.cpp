@@ -3,6 +3,7 @@
 #include "src/MVVM.h"
 #include "src/DIContainer.h"
 #include "src/ClapParameterExtension.h"
+#include <clap/plugin-features.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -23,7 +24,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
