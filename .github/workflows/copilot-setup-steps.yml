@@ -1,4 +1,4 @@
-name: "Enhanced Copilot Setup for CLAP Development"
+name: "Copilot Setup Steps"
 
 # Copilot Action用の拡張セットアップワークフロー
 # CLAP開発に必要な全ツールとCLAP Host環境を構築
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - .github/workflows/enhanced-copilot-setup-steps.yml
+      - .github/workflows/copilot-setup-steps.yml
 
 env:
   CLAP_VALIDATOR_VERSION: '0.3.2'
