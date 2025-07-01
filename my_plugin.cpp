@@ -1,7 +1,16 @@
 #include "my_plugin.h"
+#include "mvvm_impl.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <memory>
+#include <vector>
+#include <algorithm>
+
+#ifdef HAVE_BOOST_DI
+#include <boost/di.hpp>
+namespace di = boost::di;
+#endif
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -17,45 +26,72 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio_effect", "filter", nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
     "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
+    "My CLAP Filter Plugin with MVVM", // name
     "My Company",           // vendor
     "https://example.com",  // url
     "https://example.com/bugtracker", // manual_url
     "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "0.1.0",                // version
+    "A CLAP audio plugin with KFR low-pass filter and MVVM architecture.", // description
     plugin_features, // features
-    // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
 
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
-    printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin: Initializing plugin with MVVM architecture\n");
+    
+    // Initialize MVVM components using dependency injection
+#ifdef HAVE_BOOST_DI
+    auto injector = di::make_injector(
+        di::bind<AudioModel>().to<FilterAudioModel>()
+    );
+    auto model = injector.create<std::shared_ptr<AudioModel>>();
+    self->viewModel = std::make_shared<FilterPluginViewModel>(model);
+#else
+    // Fallback without dependency injection
+    auto model = std::make_shared<FilterAudioModel>();
+    self->viewModel = std::make_shared<FilterPluginViewModel>(model);
+#endif
+    
+    self->currentFrequency = 1000.0; // Default frequency
     return true;
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    // Reset shared pointers to release resources
+    self->viewModel.reset();
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    // Allocate and prepare resources needed for processing (e.g., buffers)
+    
+    // Configure the view model with sample rate
+    if (self->viewModel) {
+        self->viewModel->setSampleRate(sample_rate);
+        self->viewModel->setFrequency(self->currentFrequency);
+    }
+    
     return true;
 }
 
 static void my_plugin_deactivate(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Deactivating plugin\n");
-    // Free resources allocated in activate
+    
+    // Reset filter state
+    if (self->viewModel) {
+        self->viewModel->reset();
+    }
 }
 
 static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
@@ -68,50 +104,53 @@ static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
 }
 
 static void my_plugin_reset(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Resetting plugin\n");
-    // Reset plugin state (e.g., clear buffers, reset parameters)
+    
+    // Reset plugin state through view model
+    if (self->viewModel) {
+        self->viewModel->reset();
+    }
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Process audio through MVVM architecture
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0 && self->viewModel) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
 
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+        if (out_buf->channel_count >= 1 && in_buf->channel_count >= 1 && out_buf->data32 && in_buf->data32) {
+            // Create interleaved buffers for processing
+            uint32_t channels = std::min(out_buf->channel_count, in_buf->channel_count);
+            std::vector<float> interleavedInput(process->frames_count * channels);
+            std::vector<float> interleavedOutput(process->frames_count * channels);
+            
+            // Interleave input
+            for (uint32_t ch = 0; ch < channels; ++ch) {
+                for (uint32_t i = 0; i < process->frames_count; ++i) {
+                    interleavedInput[i * channels + ch] = in_buf->data32[ch][i];
+                }
+            }
+            
+            // Process through view model
+            self->viewModel->processAudio(
+                interleavedInput.data(), 
+                interleavedOutput.data(), 
+                process->frames_count, 
+                channels
+            );
+            
+            // De-interleave output
+            for (uint32_t ch = 0; ch < channels; ++ch) {
+                for (uint32_t i = 0; i < process->frames_count; ++i) {
+                    out_buf->data32[ch][i] = interleavedOutput[i * channels + ch];
+                }
+            }
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 

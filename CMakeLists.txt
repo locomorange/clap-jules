@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Find required packages
+find_package(Threads REQUIRED)
 
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
@@ -39,9 +42,48 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add boost-di (header-only library)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include")
+    message(STATUS "Found boost-di, adding include path")
+    set(BOOST_DI_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include")
+else()
+    message(WARNING "boost-di not found, some features may be disabled")
+endif()
+
+# Add KFR (DSP library) - but make it optional for now
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
+    message(STATUS "Found KFR, adding as subdirectory")
+    set(KFR_DISABLE_TESTS ON CACHE BOOL "Disable KFR tests")
+    set(KFR_DISABLE_EXAMPLES ON CACHE BOOL "Disable KFR examples")
+    set(KFR_DISABLE_TOOLS ON CACHE BOOL "Disable KFR tools")
+    set(KFR_STD_COMPLEX OFF CACHE BOOL "Use KFR complex")
+    # Note: Brisk may have complex CMake requirements, so we'll add it carefully
+    add_subdirectory(libs/kfr)
+    set(KFR_AVAILABLE TRUE)
+else()
+    message(WARNING "KFR not found, audio processing features may be limited")
+    set(KFR_AVAILABLE FALSE)
+endif()
+
+# For now, let's skip Brisk until we get the basic build working
+# We'll add it step by step
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED my_plugin.cpp filter.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Add boost-di include if available
+if(BOOST_DI_INCLUDE_DIR)
+    target_include_directories(my_clap_plugin PRIVATE ${BOOST_DI_INCLUDE_DIR})
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_BOOST_DI)
+endif()
+
+# Link KFR for DSP processing if available
+if(TARGET kfr AND KFR_AVAILABLE)
+    target_link_libraries(my_clap_plugin PRIVATE kfr)
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_KFR)
+endif()
+
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
