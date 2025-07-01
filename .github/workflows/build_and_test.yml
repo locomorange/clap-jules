@@ -63,6 +63,26 @@ jobs:
           fi
         done
 
+    - name: Setup vcpkg
+      shell: bash
+      run: |
+        echo "=== Setting up vcpkg ==="
+        if [ ! -d "vcpkg" ] || [ ! -f "vcpkg/vcpkg" ] && [ ! -f "vcpkg/vcpkg.exe" ]; then
+          echo "Cloning vcpkg repository..."
+          git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        else
+          echo "vcpkg directory seems to exist."
+        fi
+
+        echo "Bootstrapping vcpkg..."
+        ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+        if [ -z "$VCPKG_ROOT" ]; then
+          echo "Setting VCPKG_ROOT environment variable"
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+        fi
+        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
+
     - name: Configure CMake
       shell: bash
       run: |
@@ -169,6 +189,26 @@ jobs:
           libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
           libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
           pkg-config build-essential mesa-utils
+
+    - name: Setup vcpkg
+      shell: bash
+      run: |
+        echo "=== Setting up vcpkg ==="
+        if [ ! -d "vcpkg" ] || [ ! -f "vcpkg/vcpkg" ] && [ ! -f "vcpkg/vcpkg.exe" ]; then
+          echo "Cloning vcpkg repository..."
+          git clone https://github.com/Microsoft/vcpkg.git vcpkg
+        else
+          echo "vcpkg directory seems to exist."
+        fi
+
+        echo "Bootstrapping vcpkg..."
+        ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+        if [ -z "$VCPKG_ROOT" ]; then
+          echo "Setting VCPKG_ROOT environment variable"
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+        fi
+        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
 
     - name: Configure and Build
       shell: bash
