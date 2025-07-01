@@ -87,6 +87,7 @@ add_library(my_clap_plugin SHARED
     my_plugin.cpp
     src/AudioProcessor.cpp
     src/MVVM.cpp
+    src/ClapParameterExtension.cpp
 )
 
 # Link libraries

@@ -2,6 +2,7 @@
 #include "src/AudioProcessor.h"
 #include "src/MVVM.h"
 #include "src/DIContainer.h"
+#include "src/ClapParameterExtension.h"
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -137,10 +138,12 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 }
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        return ClapeJules::ClapExt::ParameterExtension::getInterface();
+    }
+    
     printf("ClapeJules: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported yet
+    return NULL; // Extension not supported
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {

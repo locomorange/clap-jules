@@ -20,7 +20,7 @@ jobs:
   build-plugin:
     name: Build Plugin on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 45  # Increased timeout for new dependencies
     strategy:
       fail-fast: false
       matrix:
@@ -32,6 +32,20 @@ jobs:
       with:
         submodules: 'recursive'
 
+    - name: Cache submodules and build dependencies  
+      uses: actions/cache@v4
+      with:
+        path: |
+          libs/boost-di
+          libs/brisk
+          libs/kfr
+          libs/clap
+          libs/clap-helpers  
+          libs/googletest
+        key: submodules-${{ runner.os }}-${{ hashFiles('.gitmodules') }}
+        restore-keys: |
+          submodules-${{ runner.os }}-
+
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
@@ -40,7 +54,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update -y
-        echo "Installing GUI dependencies..."
+        echo "Installing GUI dependencies and build tools..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
             libx11-dev \
@@ -54,6 +68,8 @@ jobs:
             libxfixes-dev \
             pkg-config \
             build-essential \
+            ninja-build \
+            cmake \
             mesa-utils; then
             echo "GUI dependencies installed successfully"
             break
@@ -109,7 +125,7 @@ jobs:
     name: Unit Tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 20
+    timeout-minutes: 30  # Increased timeout for new dependencies
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +136,20 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+
+    - name: Cache submodules and build dependencies  
+      uses: actions/cache@v4
+      with:
+        path: |
+          libs/boost-di
+          libs/brisk
+          libs/kfr
+          libs/clap
+          libs/clap-helpers  
+          libs/googletest
+        key: submodules-${{ runner.os }}-${{ hashFiles('.gitmodules') }}
+        restore-keys: |
+          submodules-${{ runner.os }}-
 
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
@@ -132,7 +162,7 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
           libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
           libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
-          pkg-config build-essential mesa-utils
+          pkg-config build-essential ninja-build cmake mesa-utils
 
     - name: Configure and Build
       shell: bash
@@ -147,7 +177,7 @@ jobs:
     name: CLAP Validation on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 20
+    timeout-minutes: 30  # Increased timeout
     strategy:
       fail-fast: false
       matrix:
@@ -275,6 +305,20 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+
+    - name: Cache submodules
+      uses: actions/cache@v4
+      with:
+        path: |
+          libs/boost-di
+          libs/brisk
+          libs/kfr
+          libs/clap
+          libs/clap-helpers  
+          libs/googletest
+        key: submodules-${{ runner.os }}-${{ hashFiles('.gitmodules') }}
+        restore-keys: |
+          submodules-${{ runner.os }}-
 
     - name: Download Plugin Artifacts
       uses: actions/download-artifact@v4

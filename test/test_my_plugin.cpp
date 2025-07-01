@@ -2,6 +2,7 @@
 #include "../src/AudioProcessor.h"
 #include "../src/MVVM.h"
 #include "../src/DIContainer.h"
+#include "../src/ClapParameterExtension.h"
 
 // Placeholder for functions from my_clap_plugin.h
 // For example, if you have a function like:
@@ -58,6 +59,24 @@ TEST(DITest, ContainerCreation) {
     ASSERT_NE(audioProcessor, nullptr);
     ASSERT_NE(viewModel, nullptr);
     ASSERT_NE(view, nullptr);
+}
+
+// Test CLAP parameter extension
+TEST(ClapParameterTest, ParameterInfo) {
+    // Test parameter count
+    EXPECT_EQ(ClapeJules::ClapExt::ParameterExtension::count(nullptr), 1);
+    
+    // Test parameter info
+    clap_param_info param_info;
+    EXPECT_TRUE(ClapeJules::ClapExt::ParameterExtension::get_info(nullptr, 0, &param_info));
+    EXPECT_EQ(param_info.id, 1);
+    EXPECT_STREQ(param_info.name, "Frequency");
+    EXPECT_EQ(param_info.min_value, 20.0);
+    EXPECT_EQ(param_info.max_value, 20000.0);
+    EXPECT_EQ(param_info.default_value, 1000.0);
+    
+    // Test invalid parameter index
+    EXPECT_FALSE(ClapeJules::ClapExt::ParameterExtension::get_info(nullptr, 1, &param_info));
 }
 
 int main(int argc, char **argv) {
