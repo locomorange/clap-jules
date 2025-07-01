@@ -1,0 +1,28 @@
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Error at vcpkg/scripts/buildsystems/vcpkg.cmake:859 (_find_package):
+  Could not find a package configuration file provided by "Qt6Core" with any
+  of the following names:
+
+    Qt6CoreConfig.cmake
+    qt6core-config.cmake
+
+  Add the installation prefix of "Qt6Core" to CMAKE_PREFIX_PATH or set
+  "Qt6Core_DIR" to a directory containing one of the above files.  If
+  "Qt6Core" provides a separate development package or SDK, be sure it has
+  been installed.
+Call Stack (most recent call first):
+  CMakeLists.txt:19 (find_package)
+
+
+-- Configuring incomplete, errors occurred!
