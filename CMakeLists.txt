@@ -94,7 +94,11 @@ add_library(my_clap_plugin SHARED
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
 # Add include directories and link libraries for new dependencies
-target_include_directories(my_clap_plugin PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(my_clap_plugin PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+target_compile_definitions(my_clap_plugin PRIVATE MY_CLAP_PLUGIN_EXPORTS)
 
 if(BOOST_DI_INCLUDE_DIR)
     target_include_directories(my_clap_plugin PRIVATE "${BOOST_DI_INCLUDE_DIR}")
@@ -139,7 +143,10 @@ add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin clap)
 
 # Add include directories for tests
-target_include_directories(my_plugin_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(my_plugin_tests PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
 if(BOOST_DI_INCLUDE_DIR)
     target_include_directories(my_plugin_tests PRIVATE "${BOOST_DI_INCLUDE_DIR}")
 endif()

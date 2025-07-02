@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <atomic>
+#include "common/dll_export.h"
 
 namespace ClapeJules {
 
@@ -10,7 +11,7 @@ namespace ClapeJules {
 class AudioProcessor;
 
 // Simple Parameter for MVVM binding
-class Parameter {
+class CLAP_JULES_EXPORT Parameter {
 public:
     Parameter(float initialValue, float minValue, float maxValue)
         : m_value(initialValue), m_minValue(minValue), m_maxValue(maxValue) {}
@@ -30,7 +31,7 @@ private:
 };
 
 // ViewModel for MVVM pattern
-class FilterViewModel {
+class CLAP_JULES_EXPORT FilterViewModel {
 public:
     explicit FilterViewModel(std::shared_ptr<AudioProcessor> processor);
     ~FilterViewModel();
@@ -46,7 +47,7 @@ private:
 };
 
 // Simple UI View
-class FilterView {
+class CLAP_JULES_EXPORT FilterView {
 public:
     explicit FilterView(std::shared_ptr<FilterViewModel> viewModel);
     ~FilterView();

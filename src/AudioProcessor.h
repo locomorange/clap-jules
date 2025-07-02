@@ -5,10 +5,11 @@
 #include <clap/clap.h>
 #include <memory>
 #include <atomic>
+#include "common/dll_export.h"
 
 namespace ClapeJules {
 
-class AudioProcessor {
+class CLAP_JULES_EXPORT AudioProcessor {
 public:
     AudioProcessor();
     ~AudioProcessor();

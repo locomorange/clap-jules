@@ -3,6 +3,7 @@
 #include <clap/clap.h>
 #include <clap/ext/params.h>
 #include <memory>
+#include "common/dll_export.h"
 
 namespace ClapeJules {
     class Parameter;
@@ -11,7 +12,7 @@ namespace ClapeJules {
 namespace ClapeJules::ClapExt {
 
 // CLAP parameter extension implementation
-class ParameterExtension {
+class CLAP_JULES_EXPORT ParameterExtension {
 public:
     explicit ParameterExtension(std::shared_ptr<Parameter> frequencyParam);
     
