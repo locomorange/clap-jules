@@ -39,9 +39,64 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add boost-di (header-only library)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
+    message(STATUS "Found boost-di, adding include directory")
+    set(BOOST_DI_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include")
+else()
+    message(WARNING "boost-di not found")
+endif()
+
+# Add KFR library
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
+    message(STATUS "Found KFR, adding as subdirectory")
+    set(KFR_ENABLE_TESTS OFF CACHE BOOL "Don't build KFR tests")
+    set(KFR_ENABLE_EXAMPLES OFF CACHE BOOL "Don't build KFR examples")
+    set(KFR_ENABLE_TOOLS OFF CACHE BOOL "Don't build KFR tools")
+    add_subdirectory(libs/kfr)
+else()
+    message(WARNING "KFR not found")
+endif()
+
+# Add Brisk library
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk/brisk.h")
+    message(STATUS "Found Brisk, adding include directory")
+    set(BRISK_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+    
+    # Create brisk interface target
+    add_library(brisk INTERFACE)
+    target_include_directories(brisk INTERFACE ${BRISK_INCLUDE_DIR})
+else()
+    message(WARNING "Brisk not found")
+endif()
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED 
+    my_plugin.cpp
+    src/plugin_model.h
+    src/audio_processor.h  
+    src/plugin_viewmodel.h
+    src/brisk_ui_view.h
+)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Add include directories for our source files
+target_include_directories(my_clap_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Link boost-di (header-only)
+if (DEFINED BOOST_DI_INCLUDE_DIR)
+    target_include_directories(my_clap_plugin PRIVATE ${BOOST_DI_INCLUDE_DIR})
+endif()
+
+# Link KFR if available  
+if (TARGET kfr)
+    target_link_libraries(my_clap_plugin PRIVATE kfr)
+endif()
+
+# Link Brisk if available
+if (TARGET brisk)
+    target_link_libraries(my_clap_plugin PRIVATE brisk)
+endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -69,6 +124,17 @@ enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+
+# Add include directories for tests
+target_include_directories(my_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if (DEFINED BOOST_DI_INCLUDE_DIR)
+    target_include_directories(my_plugin_tests PRIVATE ${BOOST_DI_INCLUDE_DIR})
+endif()
+
+# Link KFR for tests if available  
+if (TARGET kfr)
+    target_link_libraries(my_plugin_tests PRIVATE kfr)
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)

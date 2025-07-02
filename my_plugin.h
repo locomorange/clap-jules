@@ -1,11 +1,26 @@
 #pragma once
 
 #include <clap/clap.h>
+#include "src/plugin_viewmodel.h"
+#include "src/audio_processor.h"
+#include "src/brisk_ui_view.h"
+#include <memory>
 
-// Basic plugin structure
+// Plugin structure with MVVM components
 typedef struct {
     clap_plugin_t plugin;
-    // Add any other plugin-specific data here
+    
+    // MVVM components
+    std::shared_ptr<plugin::PluginModel> model;
+    std::shared_ptr<plugin::AudioProcessor> processor;
+    std::shared_ptr<plugin::PluginViewModel> viewmodel;
+    std::shared_ptr<plugin::BriskUIView> ui_view;
+    
+    // Plugin state
+    double sample_rate;
+    uint32_t min_frames;
+    uint32_t max_frames;
+    bool is_processing;
 } my_plugin_t;
 
 // Plugin factory ID

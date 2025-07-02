@@ -2,6 +2,8 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <algorithm> // For std::min
+#include <exception> // For exception handling
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -17,7 +19,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio-effect", nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
@@ -36,35 +38,79 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
-    return true;
+    
+    try {
+        // Create dependency injection container
+        auto injector = plugin::CreateDIContainer();
+        
+        // Initialize MVVM components
+        self->model = injector.create<std::shared_ptr<plugin::PluginModel>>();
+        self->processor = injector.create<std::shared_ptr<plugin::AudioProcessor>>();
+        self->viewmodel = injector.create<std::shared_ptr<plugin::PluginViewModel>>();
+        self->ui_view = injector.create<std::shared_ptr<plugin::BriskUIView>>();
+        
+        // Initialize plugin state
+        self->sample_rate = 44100.0;
+        self->is_processing = false;
+        
+        printf("MyPlugin: MVVM components initialized successfully\n");
+        return true;
+    } catch (const std::exception& e) {
+        printf("MyPlugin: Failed to initialize MVVM components: %s\n", e.what());
+        return false;
+    }
 }
 
 static void my_plugin_destroy(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Destroying plugin\n");
-    // Free any resources allocated in init
+    
+    // Clean up MVVM components
+    if (self) {
+        self->ui_view.reset();
+        self->viewmodel.reset();
+        self->processor.reset();
+        self->model.reset();
+    }
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    // Allocate and prepare resources needed for processing (e.g., buffers)
+    
+    // Store activation parameters
+    self->sample_rate = sample_rate;
+    self->min_frames = min_frames_count;
+    self->max_frames = max_frames_count;
+    
+    // Initialize audio processor with sample rate
+    if (self->processor) {
+        self->processor->Initialize(sample_rate);
+        printf("MyPlugin: Audio processor initialized with sample rate %.2f\n", sample_rate);
+    }
+    
     return true;
 }
 
 static void my_plugin_deactivate(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Deactivating plugin\n");
-    // Free resources allocated in activate
+    self->is_processing = false;
 }
 
 static bool my_plugin_start_processing(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Starting processing\n");
+    self->is_processing = true;
     return true;
 }
 
 static void my_plugin_stop_processing(const struct clap_plugin *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Stopping processing\n");
+    self->is_processing = false;
 }
 
 static void my_plugin_reset(const struct clap_plugin *plugin) {
@@ -73,45 +119,32 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
-
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
-
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->is_processing || !self->processor) {
+        return CLAP_PROCESS_CONTINUE;
+    }
+    
+    // Process audio from input to output with KFR low-pass filter
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
+        
+        if (out_buf->channel_count >= 1 && in_buf->channel_count >= 1 && 
+            out_buf->data32 && in_buf->data32) {
+            
+            // Process each channel
+            for (uint32_t ch = 0; ch < std::min(out_buf->channel_count, in_buf->channel_count); ++ch) {
+                // Apply low-pass filter to the channel
+                self->processor->ProcessAudio(
+                    in_buf->data32[ch], 
+                    out_buf->data32[ch], 
+                    process->frames_count
+                );
+            }
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 
