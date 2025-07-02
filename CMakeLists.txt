@@ -125,16 +125,30 @@ enable_testing()
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
+add_executable(integration_tests test/test_integration.cpp)
+target_link_libraries(integration_tests PRIVATE gtest gtest_main my_clap_plugin)
+
 # Add include directories for tests
 target_include_directories(my_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(integration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 if (DEFINED BOOST_DI_INCLUDE_DIR)
     target_include_directories(my_plugin_tests PRIVATE ${BOOST_DI_INCLUDE_DIR})
+    target_include_directories(integration_tests PRIVATE ${BOOST_DI_INCLUDE_DIR})
 endif()
 
 # Link KFR for tests if available  
 if (TARGET kfr)
     target_link_libraries(my_plugin_tests PRIVATE kfr)
+    target_link_libraries(integration_tests PRIVATE kfr)
+endif()
+
+# Link Brisk for tests if available
+if (TARGET brisk)
+    target_link_libraries(my_plugin_tests PRIVATE brisk)
+    target_link_libraries(integration_tests PRIVATE brisk)
 endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+gtest_discover_tests(integration_tests)
