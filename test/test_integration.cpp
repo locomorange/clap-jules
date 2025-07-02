@@ -5,6 +5,9 @@
 #include "../src/brisk_ui_view.h"
 #include <memory>
 #include <cmath>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 #include <vector>
 
 // Integration test for the complete MVVM system
