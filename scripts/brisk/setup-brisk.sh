@@ -36,12 +36,12 @@ mkdir -p "$BRISK_CACHE_DIR"
 # For now, create placeholder structure
 echo "Creating placeholder brisk structure..."
 
-mkdir -p "$BRISK_DIR/include/brisk"
-mkdir -p "$BRISK_DIR/lib"
-mkdir -p "$BRISK_DIR/bin"
-
-# Create placeholder header
-cat > "$BRISK_DIR/include/brisk/brisk.h" << 'EOF'
+        mkdir -p "$BRISK_DIR/include/brisk"
+        mkdir -p "$BRISK_DIR/lib"
+        mkdir -p "$BRISK_DIR/bin"
+        
+        # Create placeholder header
+        cat > "$BRISK_DIR/include/brisk/brisk.h" << 'EOF'
 #pragma once
 
 // Placeholder brisk header - replace with actual brisk integration
