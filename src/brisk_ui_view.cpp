@@ -28,12 +28,22 @@ bool BriskUIView::Initialize(void* parent_handle) {
             20.0, 20000.0, viewmodel_->GetCurrentCutoffFrequency()
         );
         
+        // Position the knob in center of window
+        frequency_knob_->SetPosition(200, 150); // Center of 400x300 window
+        frequency_knob_->SetRadius(40); // Larger radius for better visibility
+        
         // Set up knob callback
         frequency_knob_->SetCallback([this](double value) {
             this->OnFrequencyKnobChanged(value);
         });
         
         parent_handle_ = parent_handle;
+        
+        // Set initial window size
+        if (window_) {
+            window_->SetSize(400, 300);
+        }
+        
         printf("BriskUIView: UI components created successfully\n");
         return true;
     } catch (const std::exception& e) {
@@ -66,11 +76,16 @@ void BriskUIView::UpdateUI() {
     if (frequency_knob_) {
         frequency_knob_->SetValue(current_cutoff_);
     }
+    
+    // Trigger redraw
+    DrawSampleContent();
 }
 
 // Handle parameter changes from UI
 void BriskUIView::OnFrequencyKnobChanged(double value) {
+    current_cutoff_ = value;
     viewmodel_->OnCutoffFrequencyChanged(value);
+    printf("BriskUIView: Frequency knob changed to %.1f Hz\n", value);
 }
 
 // Sample drawing function using brisk
@@ -78,13 +93,30 @@ void BriskUIView::DrawSampleContent() {
     printf("BriskUIView: Drawing sample content\n");
     if (window_) {
         try {
-            window_->Render();
+            // Begin drawing
+            window_->BeginDraw();
+            
+            // Draw UI title
+            window_->DrawText(10, 25, "CLAP Low-Pass Filter Plugin");
+            
+            // Draw frequency label
+            char freq_label[64];
+            snprintf(freq_label, sizeof(freq_label), "Cutoff: %.1f Hz", current_cutoff_);
+            window_->DrawText(150, 80, freq_label);
+            
+            // Draw the frequency knob
+            if (frequency_knob_) {
+                frequency_knob_->Draw(window_.get());
+            }
             
             // Draw frequency response visualization
             DrawFrequencyResponse();
             
             // Draw filter characteristics
             DrawFilterCharacteristics();
+            
+            // End drawing
+            window_->EndDraw();
             
             printf("BriskUIView: Drawing completed successfully\n");
         } catch (const std::exception& e) {
@@ -95,15 +127,25 @@ void BriskUIView::DrawSampleContent() {
 
 // Draw frequency response graph
 void BriskUIView::DrawFrequencyResponse() {
-    // TODO: Implement frequency response visualization
-    // This would draw a graph showing the filter's frequency response
+    if (!window_) return;
+    
+    // Draw a simple frequency response visualization
+    window_->DrawText(10, 220, "Frequency Response:");
+    window_->DrawText(10, 240, "20Hz              1kHz              20kHz");
+    window_->DrawText(10, 260, "[-----|-----|-----|-----|-----|-----]");
+    
     printf("BriskUIView: Drawing frequency response graph\n");
 }
 
 // Draw filter characteristics display
 void BriskUIView::DrawFilterCharacteristics() {
-    // TODO: Display current filter parameters
-    // Show cutoff frequency, filter type, etc.
+    if (!window_) return;
+    
+    // Display current filter parameters
+    char info[128];
+    snprintf(info, sizeof(info), "Low-Pass Filter @ %.1f Hz", current_cutoff_);
+    window_->DrawText(10, 50, info);
+    
     printf("BriskUIView: Drawing filter characteristics (Cutoff: %.1f Hz)\n", current_cutoff_);
 }
 
@@ -111,8 +153,15 @@ void BriskUIView::DrawFilterCharacteristics() {
 void BriskUIView::SetSize(uint32_t width, uint32_t height) {
     printf("BriskUIView: Resizing to %ux%u\n", width, height);
     if (window_) {
-        // TODO: Implement window resizing in Brisk
-        // window_->SetSize(width, height);
+        window_->SetSize(width, height);
+        
+        // Reposition knob to center of new size
+        if (frequency_knob_) {
+            frequency_knob_->SetPosition(width / 2, height / 2);
+        }
+        
+        // Redraw with new layout
+        DrawSampleContent();
     }
 }
 

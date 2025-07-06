@@ -60,15 +60,33 @@ endif()
 
 # Add Brisk library
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk/brisk.h")
-    message(STATUS "Found Brisk, adding include directory")
+    message(STATUS "Found Brisk, creating static library")
     set(BRISK_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
     
-    # Create brisk interface target (header-only placeholder)
-    add_library(brisk INTERFACE)
-    target_include_directories(brisk INTERFACE ${BRISK_INCLUDE_DIR})
+    # Create brisk static library
+    add_library(brisk STATIC libs/brisk/src/brisk.cpp)
+    target_include_directories(brisk PUBLIC ${BRISK_INCLUDE_DIR})
     
-    # Add compiler definitions to handle brisk as header-only
-    target_compile_definitions(brisk INTERFACE BRISK_HEADER_ONLY=1)
+    # Platform-specific dependencies
+    if (UNIX AND NOT APPLE)
+        # Linux: X11 and Cairo for graphics
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(X11 REQUIRED x11)
+        pkg_check_modules(CAIRO REQUIRED cairo)
+        
+        target_link_libraries(brisk PUBLIC ${X11_LIBRARIES} ${CAIRO_LIBRARIES})
+        target_include_directories(brisk PUBLIC ${X11_INCLUDE_DIRS} ${CAIRO_INCLUDE_DIRS})
+        target_compile_options(brisk PUBLIC ${X11_CFLAGS_OTHER} ${CAIRO_CFLAGS_OTHER})
+        
+        message(STATUS "Brisk: Linux X11/Cairo support enabled")
+    elseif(WIN32)
+        # Windows: GDI+ or Direct2D (placeholder for now)
+        message(STATUS "Brisk: Windows support not yet implemented")
+    elseif(APPLE)
+        # macOS: Core Graphics (placeholder for now)
+        message(STATUS "Brisk: macOS support not yet implemented")
+    endif()
+    
 else()
     message(WARNING "Brisk not found")
 endif()
