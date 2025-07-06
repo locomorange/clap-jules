@@ -4,8 +4,7 @@
 #include <memory>
 #include <functional>
 
-#include "brisk/Window.h"
-#include "brisk/Knob.h"
+#include "brisk/brisk.h"
 
 namespace plugin {
 
