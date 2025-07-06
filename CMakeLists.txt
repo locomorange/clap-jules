@@ -77,6 +77,7 @@ add_library(my_clap_plugin SHARED
     src/audio_processor.h  
     src/plugin_viewmodel.h
     src/brisk_ui_view.h
+    src/brisk_ui_view.cpp
 )
 target_link_libraries(my_clap_plugin PRIVATE clap)
 

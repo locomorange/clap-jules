@@ -36,7 +36,7 @@ private:
 // Dependency injection configuration
 namespace di = boost::di;
 
-auto CreateDIContainer() {
+inline auto CreateDIContainer() {
     return di::make_injector(
         di::bind<PluginModel>().in(di::singleton),
         di::bind<AudioProcessor>().in(di::singleton),

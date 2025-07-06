@@ -1,4 +1,5 @@
 #include "my_plugin.h"
+#include <clap/ext/gui.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -17,6 +18,23 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
+// --- GUI Extension Forward Declarations ---
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating);
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating);
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin);
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale);
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin);
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints);
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height);
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height);
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window);
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window);
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title);
+static bool my_plugin_gui_show(const clap_plugin_t *plugin);
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
+
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
 static const char *const plugin_features[] = {"audio-effect", nullptr};
@@ -33,6 +51,25 @@ static const clap_plugin_descriptor_t my_plugin_descriptor = {
     "A simple example CLAP audio plugin.", // description
     plugin_features, // features
     // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
+};
+
+// --- GUI Extension Implementation ---
+static const clap_plugin_gui_t my_plugin_gui_extension = {
+    my_plugin_gui_is_api_supported,
+    my_plugin_gui_get_preferred_api,
+    my_plugin_gui_create,
+    my_plugin_gui_destroy,
+    my_plugin_gui_set_scale,
+    my_plugin_gui_get_size,
+    my_plugin_gui_can_resize,
+    my_plugin_gui_get_resize_hints,
+    my_plugin_gui_adjust_size,
+    my_plugin_gui_set_size,
+    my_plugin_gui_set_parent,
+    my_plugin_gui_set_transient,
+    my_plugin_gui_suggest_title,
+    my_plugin_gui_show,
+    my_plugin_gui_hide,
 };
 
 
@@ -54,6 +91,13 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
         // Initialize plugin state
         self->sample_rate = 44100.0;
         self->is_processing = false;
+        
+        // Initialize GUI state
+        self->gui_created = false;
+        self->gui_visible = false;
+        self->gui_width = 400;
+        self->gui_height = 300;
+        self->parent_window = nullptr;
         
         printf("MyPlugin: MVVM components initialized successfully\n");
         return true;
@@ -149,10 +193,17 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 }
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
+    printf("MyPlugin: Host requesting extension: %s\n", id);
+    
+    // Return GUI extension if requested
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        printf("MyPlugin: Returning GUI extension\n");
+        return &my_plugin_gui_extension;
+    }
+    
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
-    printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    return NULL; // Extension not supported
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
@@ -203,6 +254,9 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->plugin.get_extension = my_plugin_get_extension;
     self->plugin.on_main_thread = my_plugin_on_main_thread;
 
+    // Store host pointer for GUI extension
+    self->host = host;
+
     printf("MyPlugin: Plugin instance created successfully.\n");
     return &self->plugin;
 }
@@ -212,6 +266,235 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
     my_factory_get_plugin_descriptor,
     my_factory_create_plugin,
 };
+
+// --- GUI Extension Function Implementations ---
+
+static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    printf("MyPlugin GUI: Checking API support for %s (floating: %s)\n", api, is_floating ? "true" : "false");
+    
+    // Support common windowing APIs
+    if (strcmp(api, CLAP_WINDOW_API_X11) == 0) return true;
+    if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0) return true;
+    if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) return true;
+    if (strcmp(api, CLAP_WINDOW_API_WAYLAND) == 0) return is_floating; // Wayland only supports floating
+    
+    return false;
+}
+
+static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    printf("MyPlugin GUI: Getting preferred API\n");
+    
+    // Prefer embedded windows over floating
+    *is_floating = false;
+    
+    // Return platform-specific preferred API
+#ifdef __linux__
+    *api = CLAP_WINDOW_API_X11;
+#elif defined(_WIN32)
+    *api = CLAP_WINDOW_API_WIN32;
+#elif defined(__APPLE__)
+    *api = CLAP_WINDOW_API_COCOA;
+#else
+    *api = CLAP_WINDOW_API_X11; // Fallback
+#endif
+    
+    return true;
+}
+
+static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Creating GUI with API %s (floating: %s)\n", api ? api : "null", is_floating ? "true" : "false");
+    
+    if (self->gui_created) {
+        printf("MyPlugin GUI: GUI already created\n");
+        return false;
+    }
+    
+    try {
+        // Initialize the Brisk UI
+        if (self->ui_view && self->ui_view->Initialize(nullptr)) {
+            self->gui_created = true;
+            self->gui_visible = false;
+            printf("MyPlugin GUI: GUI created successfully\n");
+            return true;
+        } else {
+            printf("MyPlugin GUI: Failed to initialize Brisk UI\n");
+            return false;
+        }
+    } catch (const std::exception& e) {
+        printf("MyPlugin GUI: Exception during GUI creation: %s\n", e.what());
+        return false;
+    }
+}
+
+static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Destroying GUI\n");
+    
+    if (self->gui_created) {
+        self->gui_visible = false;
+        self->gui_created = false;
+        self->parent_window = nullptr;
+        printf("MyPlugin GUI: GUI destroyed\n");
+    }
+}
+
+static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    printf("MyPlugin GUI: Setting scale to %f\n", scale);
+    // TODO: Implement scaling support in Brisk UI
+    return true; // Accept any scale for now
+}
+
+static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created) {
+        printf("MyPlugin GUI: Cannot get size - GUI not created\n");
+        return false;
+    }
+    
+    *width = self->gui_width;
+    *height = self->gui_height;
+    printf("MyPlugin GUI: Returning size %ux%u\n", *width, *height);
+    return true;
+}
+
+static bool my_plugin_gui_can_resize(const clap_plugin_t *plugin) {
+    printf("MyPlugin GUI: Can resize - returning true\n");
+    return true; // Allow resizing
+}
+
+static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    printf("MyPlugin GUI: Getting resize hints\n");
+    
+    hints->can_resize_horizontally = true;
+    hints->can_resize_vertically = true;
+    hints->preserve_aspect_ratio = false;
+    hints->aspect_ratio_width = 0;
+    hints->aspect_ratio_height = 0;
+    
+    return true;
+}
+
+static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    printf("MyPlugin GUI: Adjusting size from %ux%u\n", *width, *height);
+    
+    // Enforce minimum size
+    if (*width < 200) *width = 200;
+    if (*height < 150) *height = 150;
+    
+    // Enforce maximum size
+    if (*width > 1200) *width = 1200;
+    if (*height > 800) *height = 800;
+    
+    printf("MyPlugin GUI: Adjusted size to %ux%u\n", *width, *height);
+    return true;
+}
+
+static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Setting size to %ux%u\n", width, height);
+    
+    if (!self->gui_created) {
+        printf("MyPlugin GUI: Cannot set size - GUI not created\n");
+        return false;
+    }
+    
+    self->gui_width = width;
+    self->gui_height = height;
+    
+    // TODO: Notify Brisk UI of size change
+    return true;
+}
+
+static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Setting parent window (API: %s)\n", window->api);
+    
+    if (!self->gui_created) {
+        printf("MyPlugin GUI: Cannot set parent - GUI not created\n");
+        return false;
+    }
+    
+    // Store parent window info
+    self->parent_window = window->ptr;
+    
+    // Initialize Brisk UI with parent window
+    try {
+        if (self->ui_view && self->ui_view->Initialize(window->ptr)) {
+            printf("MyPlugin GUI: Parent window set successfully\n");
+            return true;
+        } else {
+            printf("MyPlugin GUI: Failed to set parent window\n");
+            return false;
+        }
+    } catch (const std::exception& e) {
+        printf("MyPlugin GUI: Exception setting parent window: %s\n", e.what());
+        return false;
+    }
+}
+
+static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    printf("MyPlugin GUI: Setting transient window (API: %s)\n", window->api);
+    // TODO: Implement transient window support for floating windows
+    return true;
+}
+
+static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    printf("MyPlugin GUI: Suggested title: %s\n", title);
+    // TODO: Set window title in Brisk UI
+}
+
+static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Showing GUI\n");
+    
+    if (!self->gui_created) {
+        printf("MyPlugin GUI: Cannot show - GUI not created\n");
+        return false;
+    }
+    
+    try {
+        if (self->ui_view) {
+            self->ui_view->SetVisible(true);
+            self->ui_view->UpdateUI();
+            self->gui_visible = true;
+            printf("MyPlugin GUI: GUI shown successfully\n");
+            return true;
+        } else {
+            printf("MyPlugin GUI: No UI view available\n");
+            return false;
+        }
+    } catch (const std::exception& e) {
+        printf("MyPlugin GUI: Exception showing GUI: %s\n", e.what());
+        return false;
+    }
+}
+
+static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin GUI: Hiding GUI\n");
+    
+    if (!self->gui_created) {
+        printf("MyPlugin GUI: Cannot hide - GUI not created\n");
+        return false;
+    }
+    
+    try {
+        if (self->ui_view) {
+            self->ui_view->SetVisible(false);
+            self->gui_visible = false;
+            printf("MyPlugin GUI: GUI hidden successfully\n");
+            return true;
+        } else {
+            printf("MyPlugin GUI: No UI view available\n");
+            return false;
+        }
+    } catch (const std::exception& e) {
+        printf("MyPlugin GUI: Exception hiding GUI: %s\n", e.what());
+        return false;
+    }
+}
 
 // --- CLAP Entry Point ---
 // This is the main entry point that the host will look for.

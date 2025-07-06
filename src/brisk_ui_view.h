@@ -16,8 +16,14 @@ public:
     // Initialize the UI window
     bool Initialize(void* parent_handle) {
         try {
+            printf("BriskUIView: Initializing with parent handle: %p\n", parent_handle);
+            
             // Initialize brisk application if not already done
-            brisk::Application::Initialize();
+            if (!brisk_initialized_) {
+                brisk::Application::Initialize();
+                brisk_initialized_ = true;
+                printf("BriskUIView: Brisk application initialized\n");
+            }
             
             // Create brisk window
             window_ = std::make_unique<brisk::Window>(parent_handle);
@@ -33,6 +39,7 @@ public:
             });
             
             parent_handle_ = parent_handle;
+            printf("BriskUIView: UI components created successfully\n");
             return true;
         } catch (const std::exception& e) {
             printf("BriskUIView: Failed to initialize: %s\n", e.what());
@@ -43,8 +50,13 @@ public:
     // Show/hide the window
     void SetVisible(bool visible) {
         visible_ = visible;
+        printf("BriskUIView: Setting visibility to %s\n", visible ? "true" : "false");
         if (window_) {
             window_->SetVisible(visible);
+            if (visible) {
+                // Trigger a redraw when shown
+                DrawSampleContent();
+            }
         }
     }
     
@@ -68,12 +80,45 @@ public:
     
     // Sample drawing function using brisk
     void DrawSampleContent() {
+        printf("BriskUIView: Drawing sample content\n");
         if (window_) {
-            window_->Render();
+            try {
+                window_->Render();
+                
+                // Draw frequency response visualization
+                DrawFrequencyResponse();
+                
+                // Draw filter characteristics
+                DrawFilterCharacteristics();
+                
+                printf("BriskUIView: Drawing completed successfully\n");
+            } catch (const std::exception& e) {
+                printf("BriskUIView: Exception during drawing: %s\n", e.what());
+            }
         }
-        // TODO: Add frequency response visualization
-        // TODO: Add waveform display
-        // TODO: Add filter characteristics graph
+    }
+    
+    // Draw frequency response graph
+    void DrawFrequencyResponse() {
+        // TODO: Implement frequency response visualization
+        // This would draw a graph showing the filter's frequency response
+        printf("BriskUIView: Drawing frequency response graph\n");
+    }
+    
+    // Draw filter characteristics display
+    void DrawFilterCharacteristics() {
+        // TODO: Display current filter parameters
+        // Show cutoff frequency, filter type, etc.
+        printf("BriskUIView: Drawing filter characteristics (Cutoff: %.1f Hz)\n", current_cutoff_);
+    }
+    
+    // Handle window resize
+    void SetSize(uint32_t width, uint32_t height) {
+        printf("BriskUIView: Resizing to %ux%u\n", width, height);
+        if (window_) {
+            // TODO: Implement window resizing in Brisk
+            // window_->SetSize(width, height);
+        }
     }
     
     // Cleanup
@@ -90,6 +135,7 @@ private:
     void* parent_handle_ = nullptr;
     bool visible_ = false;
     double current_cutoff_ = 1000.0;
+    static bool brisk_initialized_; // Static flag to track brisk initialization
 };
 
 } // namespace plugin
