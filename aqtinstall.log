@@ -302,3 +302,155 @@
 2025-07-06 08:23:28,935 - aqt.updater - INFO - updater 140428518222720 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6EglFSDeviceIntegration.prl
 2025-07-06 08:23:28,935 - aqt.main - INFO - installer 140428518222720 Finished installation
 2025-07-06 08:23:28,935 - aqt.main - INFO - installer 140428518222720 Time elapsed: 10.28457814 second
+2025-07-06 14:20:53,213 - aqt.main - INFO - installer 139752349809536 aqtinstall(aqt) v3.3.0 on Python 3.12.11 [CPython GCC 13.3.0]
+2025-07-06 14:20:53,505 - aqt.main - INFO - installer 139705769847680 aqtinstall(aqt) v3.3.0 on Python 3.12.11 [CPython GCC 13.3.0]
+2025-07-06 14:20:53,506 - aqt.helper - DEBUG - helper 139705769847680 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/Updates.xml.sha256
+2025-07-06 14:20:55,482 - aqt.helper - DEBUG - helper 140054848129920 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtbase-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z.sha256
+2025-07-06 14:20:55,486 - aqt.helper - DEBUG - helper 140525670468480 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtsvg-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z.sha256
+2025-07-06 14:20:55,486 - aqt.helper - DEBUG - helper 140285709990784 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtdeclarative-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z.sha256
+2025-07-06 14:20:55,490 - aqt.helper - DEBUG - helper 139839566908288 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qttools-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z.sha256
+2025-07-06 14:20:56,269 - aqt.helper - INFO - helper 140525670468480 Downloading qtsvg...
+2025-07-06 14:20:56,270 - aqt.helper - INFO - helper 139839566908288 Downloading qttools...
+2025-07-06 14:20:56,271 - aqt.helper - INFO - helper 140054848129920 Downloading qtbase...
+2025-07-06 14:20:56,271 - aqt.helper - INFO - helper 140285709990784 Downloading qtdeclarative...
+2025-07-06 14:20:56,269 - aqt.installer - DEBUG - installer 140525670468480 Download URL: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtsvg-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,270 - aqt.installer - DEBUG - installer 139839566908288 Download URL: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qttools-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,271 - aqt.installer - DEBUG - installer 140054848129920 Download URL: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtbase-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,271 - aqt.installer - DEBUG - installer 140285709990784 Download URL: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtdeclarative-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,895 - aqt.helper - DEBUG - helper 140525670468480 Asked to redirect(302) to: https://qt.mirror.constant.com/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtsvg-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,895 - aqt.helper - INFO - helper 140525670468480 Redirected: qt.mirror.constant.com
+2025-07-06 14:20:56,897 - aqt.helper - DEBUG - helper 139839566908288 Asked to redirect(302) to: https://qt.mirror.constant.com/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qttools-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,897 - aqt.helper - INFO - helper 139839566908288 Redirected: qt.mirror.constant.com
+2025-07-06 14:20:56,951 - aqt.helper - DEBUG - helper 140285709990784 Asked to redirect(302) to: https://qt.mirror.constant.com/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtdeclarative-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,951 - aqt.helper - INFO - helper 140285709990784 Redirected: qt.mirror.constant.com
+2025-07-06 14:20:56,951 - aqt.helper - DEBUG - helper 140054848129920 Asked to redirect(302) to: https://qt.mirror.constant.com/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtbase-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:56,951 - aqt.helper - INFO - helper 140054848129920 Redirected: qt.mirror.constant.com
+2025-07-06 14:20:57,580 - aqt.installer - INFO - installer 140525670468480 Finished installation of qtsvg-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z in 2.09643346
+2025-07-06 14:20:57,591 - aqt.helper - DEBUG - helper 140525670468480 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qttranslations-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z.sha256
+2025-07-06 14:20:58,424 - aqt.helper - INFO - helper 140525670468480 Downloading qttranslations...
+2025-07-06 14:20:58,424 - aqt.installer - DEBUG - installer 140525670468480 Download URL: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qttranslations-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:59,055 - aqt.helper - DEBUG - helper 140525670468480 Asked to redirect(302) to: https://qt.mirror.constant.com/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qttranslations-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:20:59,055 - aqt.helper - INFO - helper 140525670468480 Redirected: qt.mirror.constant.com
+2025-07-06 14:20:59,881 - aqt.installer - INFO - installer 140525670468480 Finished installation of qttranslations-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z in 2.29109081
+2025-07-06 14:20:59,901 - aqt.helper - DEBUG - helper 140525670468480 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtwayland-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z.sha256
+2025-07-06 14:21:00,582 - aqt.helper - INFO - helper 140525670468480 Downloading qtwayland...
+2025-07-06 14:21:00,583 - aqt.installer - DEBUG - installer 140525670468480 Download URL: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtwayland-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:21:00,834 - aqt.installer - INFO - installer 140054848129920 Finished installation of qtbase-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z in 5.35455564
+2025-07-06 14:21:00,851 - aqt.helper - DEBUG - helper 140054848129920 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841icu-linux-Rhel7.2-x64.7z.sha256
+2025-07-06 14:21:01,154 - aqt.installer - INFO - installer 139839566908288 Finished installation of qttools-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z in 5.66618381
+2025-07-06 14:21:01,206 - aqt.helper - DEBUG - helper 140525670468480 Asked to redirect(302) to: https://qt.mirror.constant.com/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841qtwayland-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z
+2025-07-06 14:21:01,207 - aqt.helper - INFO - helper 140525670468480 Redirected: qt.mirror.constant.com
+2025-07-06 14:21:01,633 - aqt.helper - INFO - helper 140054848129920 Downloading icu...
+2025-07-06 14:21:01,634 - aqt.installer - DEBUG - installer 140054848129920 Download URL: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841icu-linux-Rhel7.2-x64.7z
+2025-07-06 14:21:01,817 - aqt.installer - INFO - installer 140525670468480 Finished installation of qtwayland-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z in 1.91804559
+2025-07-06 14:21:02,256 - aqt.helper - DEBUG - helper 140054848129920 Asked to redirect(302) to: https://qt.mirror.constant.com/online/qtsdkrepository/linux_x64/desktop/qt6_650/qt.qt6.650.gcc_64/6.5.0-0-202303290841icu-linux-Rhel7.2-x64.7z
+2025-07-06 14:21:02,256 - aqt.helper - INFO - helper 140054848129920 Redirected: qt.mirror.constant.com
+2025-07-06 14:21:03,523 - aqt.installer - INFO - installer 140054848129920 Finished installation of icu-linux-Rhel7.2-x64.7z in 2.67267100
+2025-07-06 14:21:04,271 - aqt.installer - INFO - installer 140285709990784 Finished installation of qtdeclarative-Linux-RHEL_8_4-GCC-Linux-RHEL_8_4-X86_64.7z in 8.78688066
+2025-07-06 14:21:04,349 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/bin/qmake
+2025-07-06 14:21:04,353 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Platform.pc
+2025-07-06 14:21:04,353 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6LabsSharedImage.pc
+2025-07-06 14:21:04,353 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Help.pc
+2025-07-06 14:21:04,354 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QmlXmlListModel.pc
+2025-07-06 14:21:04,354 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickControls2.pc
+2025-07-06 14:21:04,354 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickTemplates2.pc
+2025-07-06 14:21:04,356 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6LabsQmlModels.pc
+2025-07-06 14:21:04,356 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6OpenGLWidgets.pc
+2025-07-06 14:21:04,356 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Linguist.pc
+2025-07-06 14:21:04,356 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Test.pc
+2025-07-06 14:21:04,357 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickLayouts.pc
+2025-07-06 14:21:04,357 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickDialogs2QuickImpl.pc
+2025-07-06 14:21:04,357 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6DBus.pc
+2025-07-06 14:21:04,357 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Gui.pc
+2025-07-06 14:21:04,357 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6PrintSupport.pc
+2025-07-06 14:21:04,358 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Concurrent.pc
+2025-07-06 14:21:04,358 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickTest.pc
+2025-07-06 14:21:04,358 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickControls2Impl.pc
+2025-07-06 14:21:04,358 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickWidgets.pc
+2025-07-06 14:21:04,359 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QmlLocalStorage.pc
+2025-07-06 14:21:04,359 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Widgets.pc
+2025-07-06 14:21:04,359 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6UiPlugin.pc
+2025-07-06 14:21:04,359 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Svg.pc
+2025-07-06 14:21:04,360 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6WaylandClient.pc
+2025-07-06 14:21:04,360 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Quick.pc
+2025-07-06 14:21:04,360 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Qml.pc
+2025-07-06 14:21:04,360 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickDialogs2.pc
+2025-07-06 14:21:04,361 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6LabsFolderListModel.pc
+2025-07-06 14:21:04,361 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Core.pc
+2025-07-06 14:21:04,361 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6LabsSettings.pc
+2025-07-06 14:21:04,361 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Sql.pc
+2025-07-06 14:21:04,362 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QmlModels.pc
+2025-07-06 14:21:04,362 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Designer.pc
+2025-07-06 14:21:04,362 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Xml.pc
+2025-07-06 14:21:04,362 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6SvgWidgets.pc
+2025-07-06 14:21:04,362 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6LabsAnimation.pc
+2025-07-06 14:21:04,363 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6Network.pc
+2025-07-06 14:21:04,363 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QmlWorkerScript.pc
+2025-07-06 14:21:04,363 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QuickDialogs2Utils.pc
+2025-07-06 14:21:04,363 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QmlCore.pc
+2025-07-06 14:21:04,364 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6OpenGL.pc
+2025-07-06 14:21:04,364 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6UiTools.pc
+2025-07-06 14:21:04,364 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6LabsWavefrontMesh.pc
+2025-07-06 14:21:04,364 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/pkgconfig/Qt6QmlIntegration.pc
+2025-07-06 14:21:04,365 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickWidgets.prl
+2025-07-06 14:21:04,366 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Xml.prl
+2025-07-06 14:21:04,366 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickLayouts.prl
+2025-07-06 14:21:04,366 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Designer.prl
+2025-07-06 14:21:04,366 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickTemplates2.prl
+2025-07-06 14:21:04,367 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6DesignerComponents.prl
+2025-07-06 14:21:04,367 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlWorkerScript.prl
+2025-07-06 14:21:04,367 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6DBus.prl
+2025-07-06 14:21:04,367 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickDialogs2QuickImpl.prl
+2025-07-06 14:21:04,367 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6WaylandEglClientHwIntegration.prl
+2025-07-06 14:21:04,368 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6EglFsKmsSupport.prl
+2025-07-06 14:21:04,368 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6FbSupport.prl
+2025-07-06 14:21:04,368 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlModels.prl
+2025-07-06 14:21:04,368 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6PacketProtocol.prl
+2025-07-06 14:21:04,369 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6KmsSupport.prl
+2025-07-06 14:21:04,369 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlXmlListModel.prl
+2025-07-06 14:21:04,369 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlDom.prl
+2025-07-06 14:21:04,369 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickControls2.prl
+2025-07-06 14:21:04,370 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Help.prl
+2025-07-06 14:21:04,370 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlCompiler.prl
+2025-07-06 14:21:04,370 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlTypeRegistrar.prl
+2025-07-06 14:21:04,370 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickParticles.prl
+2025-07-06 14:21:04,370 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickEffects.prl
+2025-07-06 14:21:04,371 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Test.prl
+2025-07-06 14:21:04,371 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6OpenGL.prl
+2025-07-06 14:21:04,371 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickDialogs2.prl
+2025-07-06 14:21:04,371 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6XcbQpa.prl
+2025-07-06 14:21:04,371 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6LabsWavefrontMesh.prl
+2025-07-06 14:21:04,372 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickControls2Impl.prl
+2025-07-06 14:21:04,372 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6OpenGLWidgets.prl
+2025-07-06 14:21:04,372 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlDebug.prl
+2025-07-06 14:21:04,372 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6LabsQmlModels.prl
+2025-07-06 14:21:04,373 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlLocalStorage.prl
+2025-07-06 14:21:04,373 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6LabsSettings.prl
+2025-07-06 14:21:04,373 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Core.prl
+2025-07-06 14:21:04,373 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6WaylandClient.prl
+2025-07-06 14:21:04,373 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickTestUtils.prl
+2025-07-06 14:21:04,374 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickDialogs2Utils.prl
+2025-07-06 14:21:04,374 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickControlsTestUtils.prl
+2025-07-06 14:21:04,374 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6UiTools.prl
+2025-07-06 14:21:04,374 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6DeviceDiscoverySupport.prl
+2025-07-06 14:21:04,374 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6PrintSupport.prl
+2025-07-06 14:21:04,375 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Qml.prl
+2025-07-06 14:21:04,375 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Network.prl
+2025-07-06 14:21:04,375 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6WlShellIntegration.prl
+2025-07-06 14:21:04,375 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Svg.prl
+2025-07-06 14:21:04,375 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6LabsFolderListModel.prl
+2025-07-06 14:21:04,376 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QmlCore.prl
+2025-07-06 14:21:04,376 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Sql.prl
+2025-07-06 14:21:04,376 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickTest.prl
+2025-07-06 14:21:04,376 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6LabsSharedImage.prl
+2025-07-06 14:21:04,376 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6LabsAnimation.prl
+2025-07-06 14:21:04,377 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6QuickShapes.prl
+2025-07-06 14:21:04,377 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Widgets.prl
+2025-07-06 14:21:04,377 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6InputSupport.prl
+2025-07-06 14:21:04,377 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Concurrent.prl
+2025-07-06 14:21:04,378 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6SvgWidgets.prl
+2025-07-06 14:21:04,378 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Gui.prl
+2025-07-06 14:21:04,378 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6Quick.prl
+2025-07-06 14:21:04,378 - aqt.updater - INFO - updater 139705769847680 Patching /home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib/libQt6EglFSDeviceIntegration.prl
+2025-07-06 14:21:04,378 - aqt.main - INFO - installer 139705769847680 Finished installation
+2025-07-06 14:21:04,379 - aqt.main - INFO - installer 139705769847680 Time elapsed: 10.87310730 second

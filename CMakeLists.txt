@@ -129,7 +129,10 @@ enable_testing()
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
-add_executable(integration_tests test/test_integration.cpp)
+add_executable(integration_tests 
+    test/test_integration.cpp
+    src/brisk_ui_view.cpp
+)
 target_link_libraries(integration_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 # Add include directories for tests
