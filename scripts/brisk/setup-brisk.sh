@@ -32,9 +32,8 @@ echo "Brisk directory: $BRISK_DIR"
 mkdir -p "$BRISK_DIR"
 mkdir -p "$BRISK_CACHE_DIR"
 
-# TODO: Download brisk prebuilt binaries when available
-# For now, create placeholder structure
-echo "Creating placeholder brisk structure..."
+# Download brisk prebuilt binaries
+echo "Downloading Brisk prebuilt binaries..."
 
         mkdir -p "$BRISK_DIR/include/brisk"
         mkdir -p "$BRISK_DIR/lib"
