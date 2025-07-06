@@ -1,5 +1,6 @@
 #include "my_plugin.h"
 #include <clap/ext/gui.h>
+#include <clap/ext/params.h>
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
@@ -34,6 +35,14 @@ static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_
 static void my_plugin_gui_suggest_title(const clap_plugin_t *plugin, const char *title);
 static bool my_plugin_gui_show(const clap_plugin_t *plugin);
 static bool my_plugin_gui_hide(const clap_plugin_t *plugin);
+
+// --- Parameters Extension Forward Declarations ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin);
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info);
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value);
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size);
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value);
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
@@ -70,6 +79,30 @@ static const clap_plugin_gui_t my_plugin_gui_extension = {
     my_plugin_gui_suggest_title,
     my_plugin_gui_show,
     my_plugin_gui_hide,
+};
+
+// --- Parameters Extension Implementation ---
+static const clap_plugin_params_t my_plugin_params_extension = {
+    my_plugin_params_count,
+    my_plugin_params_get_info,
+    my_plugin_params_get_value,
+    my_plugin_params_value_to_text,
+    my_plugin_params_text_to_value,
+    my_plugin_params_flush,
+};
+
+// Parameter definitions
+#define PARAM_CUTOFF_FREQUENCY 0
+
+static const clap_param_info_t param_info_cutoff = {
+    PARAM_CUTOFF_FREQUENCY,  // id
+    CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_MODULATABLE,  // flags
+    nullptr,  // cookie
+    "Cutoff Frequency",  // name
+    "",  // module
+    20.0,  // min_value (20 Hz)
+    20000.0,  // max_value (20 kHz)
+    1000.0,  // default_value (1 kHz)
 };
 
 
@@ -169,6 +202,19 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
         return CLAP_PROCESS_CONTINUE;
     }
     
+    // Process parameter events
+    if (process->in_events) {
+        for (uint32_t i = 0; i < process->in_events->size(process->in_events); ++i) {
+            const clap_event_header_t *event = process->in_events->get(process->in_events, i);
+            if (event->type == CLAP_EVENT_PARAM_VALUE && event->space_id == CLAP_CORE_EVENT_SPACE_ID) {
+                const clap_event_param_value_t *param_event = (const clap_event_param_value_t *)event;
+                if (param_event->param_id == PARAM_CUTOFF_FREQUENCY && self->viewmodel) {
+                    self->viewmodel->OnCutoffFrequencyChanged(param_event->value);
+                }
+            }
+        }
+    }
+    
     // Process audio from input to output with KFR low-pass filter
     if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
         clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
@@ -201,8 +247,13 @@ static const void *my_plugin_get_extension(const struct clap_plugin *plugin, con
         return &my_plugin_gui_extension;
     }
     
+    // Return parameters extension if requested
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        printf("MyPlugin: Returning parameters extension\n");
+        return &my_plugin_params_extension;
+    }
+    
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     return NULL; // Extension not supported
 }
 
@@ -493,6 +544,85 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     } catch (const std::exception& e) {
         printf("MyPlugin GUI: Exception hiding GUI: %s\n", e.what());
         return false;
+    }
+}
+
+// --- Parameters Extension Function Implementations ---
+
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
+    printf("MyPlugin Params: Returning parameter count: 1\n");
+    return 1; // We have one parameter: cutoff frequency
+}
+
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info) {
+    printf("MyPlugin Params: Getting parameter info for index %u\n", param_index);
+    
+    if (param_index == 0) {
+        *param_info = param_info_cutoff;
+        return true;
+    }
+    
+    return false;
+}
+
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin Params: Getting value for parameter %u\n", param_id);
+    
+    if (param_id == PARAM_CUTOFF_FREQUENCY && self->model) {
+        *value = self->model->GetCutoffFrequency();
+        return true;
+    }
+    
+    return false;
+}
+
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size) {
+    printf("MyPlugin Params: Converting value %.2f to text for parameter %u\n", value, param_id);
+    
+    if (param_id == PARAM_CUTOFF_FREQUENCY) {
+        snprintf(display, size, "%.1f Hz", value);
+        return true;
+    }
+    
+    return false;
+}
+
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value) {
+    printf("MyPlugin Params: Converting text '%s' to value for parameter %u\n", display, param_id);
+    
+    if (param_id == PARAM_CUTOFF_FREQUENCY) {
+        char *endptr;
+        double parsed_value = strtod(display, &endptr);
+        if (endptr != display) {
+            *value = std::max(20.0, std::min(20000.0, parsed_value));
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    printf("MyPlugin Params: Flushing parameters (processing %u input events)\n", in->size(in));
+    
+    // Process parameter change events
+    for (uint32_t i = 0; i < in->size(in); ++i) {
+        const clap_event_header_t *event = in->get(in, i);
+        if (event->type == CLAP_EVENT_PARAM_VALUE && event->space_id == CLAP_CORE_EVENT_SPACE_ID) {
+            const clap_event_param_value_t *param_event = (const clap_event_param_value_t *)event;
+            printf("MyPlugin Params: Parameter %u changed to %f\n", param_event->param_id, param_event->value);
+            
+            if (param_event->param_id == PARAM_CUTOFF_FREQUENCY && self->viewmodel) {
+                self->viewmodel->OnCutoffFrequencyChanged(param_event->value);
+                
+                // Update UI if available
+                if (self->ui_view) {
+                    self->ui_view->UpdateUI();
+                }
+            }
+        }
     }
 }
 
