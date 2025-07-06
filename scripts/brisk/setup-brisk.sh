@@ -32,16 +32,44 @@ echo "Brisk directory: $BRISK_DIR"
 mkdir -p "$BRISK_DIR"
 mkdir -p "$BRISK_CACHE_DIR"
 
-# TODO: Download brisk prebuilt binaries when available
-# For now, create placeholder structure
-echo "Creating placeholder brisk structure..."
+# Download brisk prebuilt binaries
+echo "Downloading Brisk prebuilt binaries..."
 
-mkdir -p "$BRISK_DIR/include/brisk"
-mkdir -p "$BRISK_DIR/lib"
-mkdir -p "$BRISK_DIR/bin"
+# Determine architecture
+ARCH="x86_64"
+if [[ "$PLATFORM" == "linux" ]]; then
+    ARCHIVE_NAME="brisk-linux-${ARCH}.tar.xz"
+    DEPS_NAME="brisk-deps-linux-${ARCH}.tar.xz"
+elif [[ "$PLATFORM" == "macos" ]]; then
+    # Detect ARM vs Intel Mac
+    if [[ $(uname -m) == "arm64" ]]; then
+        ARCH="arm64"
+    fi
+    ARCHIVE_NAME="brisk-macos-${ARCH}.tar.xz"
+    DEPS_NAME="brisk-deps-macos-${ARCH}.tar.xz"
+elif [[ "$PLATFORM" == "windows" ]]; then
+    ARCHIVE_NAME="brisk-windows-${ARCH}.tar.xz"
+    DEPS_NAME="brisk-deps-windows-${ARCH}.tar.xz"
+fi
 
-# Create placeholder header
-cat > "$BRISK_DIR/include/brisk/brisk.h" << 'EOF'
+# Download URLs
+BRISK_URL="${BRISK_BASE_URL}/latest/download/${ARCHIVE_NAME}"
+DEPS_URL="${BRISK_BASE_URL}/latest/download/${DEPS_NAME}"
+
+echo "Downloading from: $BRISK_URL"
+
+# Download brisk prebuilt package
+if [[ ! -f "$BRISK_CACHE_DIR/$ARCHIVE_NAME" ]]; then
+    echo "Downloading Brisk prebuilt package..."
+    curl -L -o "$BRISK_CACHE_DIR/$ARCHIVE_NAME" "$BRISK_URL" || {
+        echo "Failed to download Brisk prebuilt package, falling back to placeholder"
+        # Create placeholder structure as fallback
+        mkdir -p "$BRISK_DIR/include/brisk"
+        mkdir -p "$BRISK_DIR/lib"
+        mkdir -p "$BRISK_DIR/bin"
+        
+        # Create placeholder header
+        cat > "$BRISK_DIR/include/brisk/brisk.h" << 'EOF'
 #pragma once
 
 // Placeholder brisk header - replace with actual brisk integration

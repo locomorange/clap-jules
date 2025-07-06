@@ -63,9 +63,12 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk/brisk.h")
     message(STATUS "Found Brisk, adding include directory")
     set(BRISK_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
     
-    # Create brisk interface target
+    # Create brisk interface target (header-only placeholder)
     add_library(brisk INTERFACE)
     target_include_directories(brisk INTERFACE ${BRISK_INCLUDE_DIR})
+    
+    # Add compiler definitions to handle brisk as header-only
+    target_compile_definitions(brisk INTERFACE BRISK_HEADER_ONLY=1)
 else()
     message(WARNING "Brisk not found")
 endif()
