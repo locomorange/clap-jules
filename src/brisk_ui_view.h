@@ -4,11 +4,8 @@
 #include <memory>
 #include <functional>
 
-// Forward declarations
-namespace brisk {
-    class Window;
-    class Knob;
-}
+#include "brisk/Window.h"
+#include "brisk/Knob.h"
 
 namespace plugin {
 
