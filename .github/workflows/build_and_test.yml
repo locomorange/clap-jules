@@ -61,6 +61,7 @@ jobs:
         echo "Installing GUI dependencies..."
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
+            libcairo2-dev \
             libx11-dev \
             libxcursor-dev \
             libxrandr-dev \
@@ -150,7 +151,7 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
           libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
           libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
-          pkg-config build-essential mesa-utils
+          pkg-config build-essential mesa-utils libcairo2-dev
 
     - name: Configure and Build
       shell: bash
@@ -325,7 +326,7 @@ jobs:
         for attempt in 1 2 3; do
           if sudo apt-get install -y --no-install-recommends \
             libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
-            libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev libcairo2-dev \
             pkg-config build-essential mesa-utils ninja-build cmake git curl \
             zip unzip tar xvfb x11-utils imagemagick scrot; then
             echo "Dependencies installed successfully"
