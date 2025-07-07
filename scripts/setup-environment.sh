@@ -71,7 +71,7 @@ install_build_tools() {
             sudo apt-get update -y
             sudo apt-get install -y --no-install-recommends \
                 build-essential cmake ninja-build pkg-config git curl \
-                zip unzip tar wget ca-certificates
+                zip unzip tar wget ca-certificates make
             ;;
         "macos")
             # Homebrew経由でインストール
@@ -277,13 +277,30 @@ setup_vcpkg() {
         ./vcpkg/bootstrap-vcpkg.sh
     fi
     
+    # vcpkgの実行可能ファイル確認
+    VCPKG_EXECUTABLE="$PROJECT_ROOT/vcpkg/vcpkg"
+    if [[ "$PLATFORM" == "windows" ]]; then
+        VCPKG_EXECUTABLE="$PROJECT_ROOT/vcpkg/vcpkg.exe"
+    fi
+    
+    if [[ ! -f "$VCPKG_EXECUTABLE" ]]; then
+        log_error "vcpkg executable not found after bootstrap: $VCPKG_EXECUTABLE"
+        return 1
+    fi
+    
     # 依存関係インストール
     log_info "Installing CLAP Host dependencies..."
-    ./vcpkg/vcpkg install rtmidi rtaudio --triplet="$TRIPLET"
+    "$VCPKG_EXECUTABLE" install rtmidi rtaudio --triplet="$TRIPLET"
     
     # 環境変数設定
     export VCPKG_ROOT="$PROJECT_ROOT/vcpkg"
     export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+    
+    # ツールチェーンファイル存在確認
+    if [[ ! -f "$CMAKE_TOOLCHAIN_FILE" ]]; then
+        log_error "vcpkg CMake toolchain file not found: $CMAKE_TOOLCHAIN_FILE"
+        return 1
+    fi
     
     log_success "vcpkg setup completed"
     log_info "VCPKG_ROOT: $VCPKG_ROOT"
@@ -328,6 +345,12 @@ verify_environment() {
         log_warning "Ninja not found"
     fi
     
+    if command -v make &> /dev/null; then
+        make --version | head -1
+    else
+        log_warning "Make not found"
+    fi
+    
     if command -v gcc &> /dev/null; then
         gcc --version | head -1
     elif command -v clang &> /dev/null; then
@@ -363,6 +386,12 @@ verify_environment() {
     # vcpkg確認
     if [[ -n "$VCPKG_ROOT" && -d "$VCPKG_ROOT" ]]; then
         log_info "vcpkg: $VCPKG_ROOT"
+        if [[ -f "$CMAKE_TOOLCHAIN_FILE" ]]; then
+            log_info "vcpkg CMake toolchain: $CMAKE_TOOLCHAIN_FILE"
+        else
+            log_warning "vcpkg CMake toolchain file not found: $CMAKE_TOOLCHAIN_FILE"
+        fi
+        
         if [[ -d "$VCPKG_ROOT/installed/$TRIPLET" ]]; then
             log_info "vcpkg packages installed for $TRIPLET"
         else
@@ -375,8 +404,13 @@ verify_environment() {
     # CLAP Host確認
     if [[ -n "$CLAP_HOST_PATH" && -d "$CLAP_HOST_PATH" ]]; then
         log_info "CLAP Host: $CLAP_HOST_PATH"
+        if [[ -f "$CLAP_HOST_PATH/CMakeLists.txt" ]]; then
+            log_info "CLAP Host CMakeLists.txt found"
+        else
+            log_warning "CLAP Host CMakeLists.txt not found"
+        fi
     else
-        log_warning "CLAP Host not configured"
+        log_warning "CLAP Host not configured or directory not found"
     fi
     
     log_success "Environment verification completed"
@@ -395,6 +429,15 @@ export VCPKG_ROOT="$PROJECT_ROOT/vcpkg"
 export CMAKE_TOOLCHAIN_FILE="$PROJECT_ROOT/vcpkg/scripts/buildsystems/vcpkg.cmake"
 export CLAP_HOST_PATH="$PROJECT_ROOT/clap-host-repo"
 export PATH="$PROJECT_ROOT:\$PATH"
+
+# CLAPツールへのパス追加
+if [[ "$PLATFORM" == "linux" ]]; then
+    export PATH="$PROJECT_ROOT:\$PATH"
+elif [[ "$PLATFORM" == "macos" ]]; then
+    export PATH="$PROJECT_ROOT:\$PATH"
+elif [[ "$PLATFORM" == "windows" ]]; then
+    export PATH="$PROJECT_ROOT:\$PATH"
+fi
 EOF
 
     # Qt6環境変数を追加（存在する場合）
@@ -406,6 +449,10 @@ EOF
     fi
     
     log_success "Environment saved to .env file"
+    
+    # .envファイルの内容を確認表示
+    log_info "Environment file contents:"
+    cat "$PROJECT_ROOT/.env"
 }
 
 # メイン処理
@@ -469,11 +516,17 @@ main() {
     fi
     
     if [[ "$SKIP_VCPKG" == false ]]; then
-        setup_vcpkg
+        setup_vcpkg || {
+            log_error "vcpkg setup failed"
+            exit 1
+        }
     fi
     
     if [[ "$SKIP_CLAP_HOST" == false ]]; then
-        setup_clap_host
+        setup_clap_host || {
+            log_error "CLAP Host setup failed"
+            exit 1
+        }
     fi
     
     verify_environment

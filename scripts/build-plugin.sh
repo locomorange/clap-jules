@@ -3,6 +3,18 @@ set -e
 
 echo "=== CLAP Plugin Build Script ==="
 
+# プロジェクトルート取得
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 環境変数読み込み
+if [[ -f "$PROJECT_ROOT/.env" ]]; then
+    echo "Loading environment from .env file..."
+    source "$PROJECT_ROOT/.env"
+else
+    echo "Warning: .env file not found. Please run setup-environment.sh first."
+fi
+
 # サブモジュール初期化
 echo "Initializing submodules..."
 git submodule update --init --recursive
@@ -15,7 +27,55 @@ fi
 
 # CMake設定
 echo "Configuring CMake..."
-cmake . -B build -DCMAKE_BUILD_TYPE=Release
+
+# 環境変数デバッグ情報
+echo "Debug: Environment variables:"
+echo "  PROJECT_ROOT: $PROJECT_ROOT"
+echo "  VCPKG_ROOT: $VCPKG_ROOT"
+echo "  CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+echo "  TRIPLET: $TRIPLET"
+
+# CMakeオプションを構築
+CMAKE_ARGS=()
+CMAKE_ARGS+=("-B" "build")
+CMAKE_ARGS+=("-DCMAKE_BUILD_TYPE=Release")
+
+# ビルドシステムの選択
+if command -v ninja &> /dev/null; then
+    echo "Using Ninja build system"
+    CMAKE_ARGS+=("-G" "Ninja")
+elif command -v make &> /dev/null; then
+    echo "Using Make build system"
+    CMAKE_ARGS+=("-G" "Unix Makefiles")
+else
+    echo "Warning: Neither Ninja nor Make found, using default generator"
+fi
+
+# vcpkgツールチェーンファイルが存在する場合、使用する
+if [[ -n "$CMAKE_TOOLCHAIN_FILE" && -f "$CMAKE_TOOLCHAIN_FILE" ]]; then
+    echo "Using vcpkg toolchain: $CMAKE_TOOLCHAIN_FILE"
+    CMAKE_ARGS+=("-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE")
+else
+    echo "Warning: vcpkg toolchain file not found or not set"
+    if [[ -n "$CMAKE_TOOLCHAIN_FILE" ]]; then
+        echo "  CMAKE_TOOLCHAIN_FILE is set to: $CMAKE_TOOLCHAIN_FILE"
+        echo "  File exists: $(ls -la "$CMAKE_TOOLCHAIN_FILE" 2>/dev/null || echo "No")"
+    else
+        echo "  CMAKE_TOOLCHAIN_FILE is not set"
+    fi
+fi
+
+# ビルドツールの確認
+echo "Debug: Build tools availability:"
+echo "  cmake: $(command -v cmake || echo "Not found")"
+echo "  make: $(command -v make || echo "Not found")"
+echo "  ninja: $(command -v ninja || echo "Not found")"
+echo "  gcc: $(command -v gcc || echo "Not found")"
+
+echo "CMake command: cmake . ${CMAKE_ARGS[*]}"
+
+# CMake実行
+cmake . "${CMAKE_ARGS[@]}"
 
 # ビルド実行
 echo "Building plugin..."
