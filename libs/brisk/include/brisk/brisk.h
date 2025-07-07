@@ -3,15 +3,19 @@
 // Simple UI framework for CLAP plugin GUI
 // Implements basic drawing primitives for frequency knob
 
+// Standard library includes
 #include <functional>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
+// Platform-specific definitions
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+// Platform-specific includes
 #ifdef __linux__
     #include <X11/Xlib.h>
     #include <X11/Xutil.h>

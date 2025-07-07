@@ -1,5 +1,8 @@
 #include "brisk/brisk.h"
 #include <cstring>
+#include <cstdio>
+#include <functional>
+#include <algorithm>
 
 namespace brisk {
 
