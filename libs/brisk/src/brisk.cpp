@@ -6,6 +6,20 @@ namespace brisk {
 // Static member definition
 bool Application::initialized_ = false;
 
+void Application::Initialize() {
+    printf("Brisk: Application initialized\n");
+    initialized_ = true;
+}
+
+void Application::Shutdown() {
+    printf("Brisk: Application shutdown\n");
+    initialized_ = false;
+}
+
+bool Application::IsInitialized() {
+    return initialized_;
+}
+
 #ifdef __linux__
 
 Window::Window(void* parent_handle) 
@@ -253,5 +267,48 @@ void Window::InitializePlatform() {}
 void Window::CleanupPlatform() {}
 
 #endif
+
+// Knob implementation
+Knob::Knob(double min_val, double max_val, double initial_val)
+    : min_value_(min_val), max_value_(max_val), current_value_(initial_val),
+      x_(0), y_(0), radius_(30), needs_redraw_(true) {}
+
+void Knob::SetValue(double value) {
+    double old_value = current_value_;
+    current_value_ = std::max(min_value_, std::min(max_value_, value));
+    if (old_value != current_value_) {
+        needs_redraw_ = true;
+    }
+}
+
+double Knob::GetValue() const {
+    return current_value_;
+}
+
+void Knob::SetCallback(std::function<void(double)> callback) {
+    callback_ = callback;
+}
+
+void Knob::SetPosition(int x, int y) {
+    x_ = x;
+    y_ = y;
+    needs_redraw_ = true;
+}
+
+void Knob::SetRadius(int radius) {
+    radius_ = radius;
+    needs_redraw_ = true;
+}
+
+void Knob::Draw(Window* window) {
+    if (needs_redraw_) {
+        window->DrawKnob(x_, y_, radius_, current_value_, min_value_, max_value_);
+        needs_redraw_ = false;
+    }
+}
+
+bool Knob::NeedsRedraw() const { 
+    return needs_redraw_; 
+}
 
 } // namespace brisk

@@ -67,6 +67,9 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk/brisk.h")
     add_library(brisk STATIC libs/brisk/src/brisk.cpp)
     target_include_directories(brisk PUBLIC ${BRISK_INCLUDE_DIR})
     
+    # Enable position independent code for static library
+    set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    
     # Platform-specific dependencies
     if (UNIX AND NOT APPLE)
         # Linux: X11 and Cairo for graphics
