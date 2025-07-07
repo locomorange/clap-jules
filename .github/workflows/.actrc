@@ -1,0 +1,17 @@
+# act configuration for this repository
+# Override global settings for CLAP development
+
+# Use larger image for better compatibility with C++ development
+-P ubuntu-latest=catthehacker/ubuntu:full-latest
+
+# Mount volumes for caching
+--volume /var/run/docker.sock:/var/run/docker.sock
+
+# Bind workspace to maintain file access
+--bind
+
+# Reuse containers for faster iteration
+--reuse
+
+# Platform specific settings
+-P ubuntu-22.04=catthehacker/ubuntu:full-22.04

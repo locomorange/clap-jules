@@ -36,32 +36,16 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup GUI Dependencies (Ubuntu only)
-      if: runner.os == 'Linux'
+    - name: Setup Development Environment
       run: |
-        sudo apt-get update -y
-        echo "Installing GUI dependencies..."
-        for attempt in 1 2 3; do
-          if sudo apt-get install -y --no-install-recommends \
-            libx11-dev \
-            libxcursor-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxi-dev \
-            libgl1-mesa-dev \
-            libglu1-mesa-dev \
-            libxxf86vm-dev \
-            libxfixes-dev \
-            pkg-config \
-            build-essential \
-            mesa-utils; then
-            echo "GUI dependencies installed successfully"
-            break
-          else
-            echo "Attempt $attempt failed, retrying..."
-            sleep 2
-          fi
-        done
+        echo "Setting up development environment using shared script..."
+        bash scripts/setup-environment.sh --skip-qt6
+        
+    - name: Install Qt6
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.5.0'
+        cache: true
 
     - name: Configure CMake
       shell: bash
@@ -125,14 +109,16 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup GUI Dependencies (Ubuntu only)
-      if: runner.os == 'Linux'
+    - name: Setup Development Environment
       run: |
-        sudo apt-get update -y
-        sudo apt-get install -y --no-install-recommends \
-          libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
-          libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
-          pkg-config build-essential mesa-utils
+        echo "Setting up development environment using shared script..."
+        bash scripts/setup-environment.sh --skip-qt6
+        
+    - name: Install Qt6
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.5.0'
+        cache: true --skip-clap-host
 
     - name: Configure and Build
       shell: bash
@@ -299,82 +285,12 @@ jobs:
       if: steps.clap-host-cache.outputs.cache-hit == 'true'
       run: echo "CLAP Host build cache hit - skipping build steps"
 
-    - name: Setup CLAP Host Dependencies (Linux)
-      if: runner.os == 'Linux'
+    - name: Setup CLAP Host Dependencies
       run: |
-        sudo apt-get update -y
-        echo "Installing build tools and GUI dependencies..."
-        for attempt in 1 2 3; do
-          if sudo apt-get install -y --no-install-recommends \
-            libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
-            libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
-            pkg-config build-essential mesa-utils ninja-build cmake git curl \
-            zip unzip tar xvfb x11-utils imagemagick scrot; then
-            echo "Dependencies installed successfully"
-            break
-          else
-            echo "Attempt $attempt failed, retrying..."
-            sleep 2
-          fi
-        done
+        echo "Setting up CLAP Host dependencies using shared script..."
+        bash scripts/setup-environment.sh --skip-qt6
 
-        echo "=== Setting up vcpkg ==="
-        if [ ! -d "vcpkg" ] || [ ! -f "vcpkg/.git/config" ]; then
-          echo "Cloning fresh vcpkg repository..."
-          rm -rf vcpkg 2>/dev/null || true
-          git clone https://github.com/Microsoft/vcpkg.git vcpkg
-        else
-          echo "vcpkg directory exists, updating..."
-          cd vcpkg && git pull && cd ..
-        fi
-        
-        # Always bootstrap to ensure it's working
-        echo "Bootstrapping vcpkg..."
-        ./vcpkg/bootstrap-vcpkg.sh
-        
-        echo "Installing RtMidi and RtAudio via vcpkg..."
-        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=x64-linux
-        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
-        export VCPKG_ROOT="$(pwd)/vcpkg"
-        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-        
-        echo "=== Qt6 already installed via install-qt-action ==="
-        echo "Skipping Qt6 vcpkg installation - using system Qt6"
 
-    - name: Setup CLAP Host Dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        echo "Installing essential build tools on macOS..."
-        brew install pkg-config ninja cmake git curl
-
-        echo "=== Setting up vcpkg ==="
-        if [ ! -d "vcpkg" ] || [ ! -f "vcpkg/.git/config" ]; then
-          echo "Cloning fresh vcpkg repository..."
-          rm -rf vcpkg 2>/dev/null || true
-          git clone https://github.com/Microsoft/vcpkg.git vcpkg
-        else
-          echo "vcpkg directory exists, updating..."
-          cd vcpkg && git pull && cd ..
-        fi
-        
-        # Always bootstrap to ensure it's working
-        echo "Bootstrapping vcpkg..."
-        ./vcpkg/bootstrap-vcpkg.sh
-        
-        echo "Installing RtMidi and RtAudio via vcpkg..."
-        ./vcpkg/vcpkg install rtmidi rtaudio --triplet=${{ runner.os == 'macOS' && 'arm64-osx' || 'x64-osx' }}
-        echo "$(pwd)/vcpkg" >> $GITHUB_PATH
-        export VCPKG_ROOT="$(pwd)/vcpkg"
-        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-        
-        echo "=== Qt6 already installed via install-qt-action ==="
-        echo "Skipping Qt6 vcpkg installation - using system Qt6"
-
-    - name: Setup CLAP Host Dependencies (Windows)
-      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
-      run: |
-        echo "Windows CLAP host will use scripts/build.sh for static build"
-        echo "Dependencies will be handled automatically by the build script"
 
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'

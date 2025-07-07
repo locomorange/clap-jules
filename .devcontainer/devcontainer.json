@@ -2,5 +2,27 @@
   "image": "mcr.microsoft.com/devcontainers/universal:2",
   "features": {
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
-  }
+  },
+  "postCreateCommand": "bash .devcontainer/run-workflow.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python"
+      ],
+      "settings": {
+        "cmake.configureArgs": [
+          "-DCMAKE_BUILD_TYPE=Release"
+        ],
+        "cmake.buildDirectory": "${workspaceFolder}/build"
+      }
+    }
+  },
+  "forwardPorts": [],
+  "mounts": [
+    "source=clap-jules-vcpkg,target=${containerWorkspaceFolder}/vcpkg,type=volume",
+    "source=clap-jules-clap-host,target=${containerWorkspaceFolder}/clap-host-repo,type=volume",
+    "source=clap-jules-qt,target=${containerWorkspaceFolder}/Qt,type=volume"
+  ]
 }

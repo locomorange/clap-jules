@@ -1,0 +1,24 @@
+# act configuration for running GitHub Actions locally
+# https://github.com/nektos/act
+
+# Use ubuntu-latest compatible image
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+
+# Container architecture
+--container-architecture linux/amd64
+
+# Artifact server
+--artifact-server-path /tmp/artifacts
+
+# Verbose output for debugging
+--verbose
+
+# Platform mapping
+-P ubuntu-22.04=catthehacker/ubuntu:act-22.04
+-P ubuntu-20.04=catthehacker/ubuntu:act-20.04
+
+# Environment variables
+--env DEBIAN_FRONTEND=noninteractive
+--env CI=true
+--env RUNNER_OS=Linux
+--env RUNNER_ARCH=X64
