@@ -273,10 +273,9 @@ jobs:
       id: clap-host-cache
       with:
         path: |
-          clap-host-repo/builds/
-          clap-host-repo/vcpkg_installed/
+          clap-host-repo/
           vcpkg/installed/
-        key: clap-host-${{ runner.os }}-qt6-${{ hashFiles('**/vcpkg.json', '**/CMakeLists.txt') }}
+        key: clap-host-${{ runner.os }}-qt6-${{ hashFiles('clap-host-repo/CMakeLists.txt', 'clap-host-repo/vcpkg.json') }}
         restore-keys: |
           clap-host-${{ runner.os }}-qt6-
           clap-host-${{ runner.os }}-
@@ -286,14 +285,37 @@ jobs:
       run: echo "CLAP Host build cache hit - skipping build steps"
 
     - name: Setup CLAP Host Dependencies
+      if: steps.clap-host-cache.outputs.cache-hit != 'true' || steps.verify-cache.outputs.cache-hit == 'false'
       run: |
         echo "Setting up CLAP Host dependencies using shared script..."
         bash scripts/setup-environment.sh --skip-qt6
 
+    - name: Verify Cache Content and Force Rebuild if Incomplete
+      if: steps.clap-host-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        echo "=== Verifying cached CLAP Host files ==="
+        echo "Checking for clap-host-repo directory..."
+        if [ -d "clap-host-repo" ]; then
+          echo "clap-host-repo directory exists"
+          echo "Looking for executables in cache..."
+          if find clap-host-repo -name "clap-host*" -type f 2>/dev/null | head -1 | grep -q .; then
+            echo "Executable found in cache - cache is valid"
+          else
+            echo "No executables found in cache - forcing rebuild by invalidating cache"
+            echo "cache-hit=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "ERROR: clap-host-repo directory not found in cache!"
+          echo "Cache is incomplete - forcing rebuild by invalidating cache"
+          echo "cache-hit=false" >> $GITHUB_OUTPUT
+        fi
+      id: verify-cache
+
 
 
     - name: Setup MSBuild (Windows)
-      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows' && (steps.clap-host-cache.outputs.cache-hit != 'true' || steps.verify-cache.outputs.cache-hit == 'false')
       uses: microsoft/setup-msbuild@v2
 
     - name: Install Qt
@@ -359,7 +381,7 @@ jobs:
         fi
 
     - name: Checkout CLAP Host
-      if: steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: steps.clap-host-cache.outputs.cache-hit != 'true' || steps.verify-cache.outputs.cache-hit == 'false'
       shell: bash
       run: |
         echo "Cloning clap-host repository..."
@@ -374,7 +396,7 @@ jobs:
         fi
 
     - name: Build CLAP Host (Linux/macOS)
-      if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os != 'Windows' && (steps.clap-host-cache.outputs.cache-hit != 'true' || steps.verify-cache.outputs.cache-hit == 'false')
       shell: bash
       run: |
         cd clap-host-repo
@@ -446,7 +468,7 @@ jobs:
         find builds -name "clap-host*" -type f 2>/dev/null | tee ../screenshots/found-executables-${{ runner.os }}.txt || echo "No clap-host executable found"
 
     - name: Build CLAP Host (Windows)
-      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows' && (steps.clap-host-cache.outputs.cache-hit != 'true' || steps.verify-cache.outputs.cache-hit == 'false')
       shell: bash
       run: |
         cd clap-host-repo
@@ -499,13 +521,59 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on Linux ==="
         
-        CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
+        # First ensure clap-host-repo exists
+        if [ ! -d "clap-host-repo" ]; then
+          echo "ERROR: clap-host-repo directory not found!"
+          echo "This indicates a cache or build issue. Attempting emergency setup..."
+          bash scripts/setup-environment.sh --skip-qt6
+          if [ ! -d "clap-host-repo" ]; then
+            echo "Emergency setup failed. Available directories:"
+            ls -la
+            exit 1
+          fi
+        fi
+        
+        # Search for clap-host executable more thoroughly
+        echo "Searching for clap-host executable..."
+        CLAP_HOST_EXEC=""
+        
+        # Try multiple search patterns
+        for pattern in "clap-host" "*clap-host*" "clap_host" "*clap_host*"; do
+          FOUND=$(find clap-host-repo -name "$pattern" -type f -executable 2>/dev/null | head -1)
+          if [ -n "$FOUND" ] && [ -x "$FOUND" ]; then
+            CLAP_HOST_EXEC="$FOUND"
+            echo "Found executable clap-host at: $CLAP_HOST_EXEC"
+            break
+          fi
+        done
+        
+        # If still not found, list all executables for debugging
         if [ -z "$CLAP_HOST_EXEC" ]; then
           echo "Error: clap-host executable not found!"
-          find clap-host-repo -name "*clap*" -type f | head -10
+          echo "Available executables in clap-host-repo:"
+          find clap-host-repo -type f -executable | head -20
+          echo "All files containing 'clap':"
+          find clap-host-repo -name "*clap*" -type f | head -20
+          
+          # Try to build if no executable found
+          echo "Attempting to rebuild CLAP Host..."
+          cd clap-host-repo
+          if cmake . -B builds/emergency -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build builds/emergency --config Release; then
+            echo "Emergency build completed"
+            cd ..
+            CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f -executable | head -1)
+          else
+            echo "Emergency build failed"
+            cd ..
+            exit 1
+          fi
+        fi
+        
+        if [ -z "$CLAP_HOST_EXEC" ]; then
+          echo "Fatal: Could not find or build clap-host executable"
           exit 1
         fi
-        echo "Found clap-host at: $CLAP_HOST_EXEC"
+        
         chmod +x "$CLAP_HOST_EXEC"
         
         # Use override if available, otherwise use standard path
@@ -588,13 +656,57 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on macOS (screenshot disabled) ==="
         
-        CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
+        # First ensure clap-host-repo exists
+        if [ ! -d "clap-host-repo" ]; then
+          echo "ERROR: clap-host-repo directory not found!"
+          echo "This indicates a cache or build issue. Attempting emergency setup..."
+          bash scripts/setup-environment.sh --skip-qt6
+          if [ ! -d "clap-host-repo" ]; then
+            echo "Emergency setup failed. Available directories:"
+            ls -la
+            exit 1
+          fi
+        fi
+        
+        # Search for clap-host executable more thoroughly
+        echo "Searching for clap-host executable..."
+        CLAP_HOST_EXEC=""
+        
+        # Try multiple search patterns
+        for pattern in "clap-host" "*clap-host*" "clap_host" "*clap_host*"; do
+          FOUND=$(find clap-host-repo -name "$pattern" -type f -executable 2>/dev/null | head -1)
+          if [ -n "$FOUND" ] && [ -x "$FOUND" ]; then
+            CLAP_HOST_EXEC="$FOUND"
+            echo "Found executable clap-host at: $CLAP_HOST_EXEC"
+            break
+          fi
+        done
+        
+        # If still not found, try emergency build
         if [ -z "$CLAP_HOST_EXEC" ]; then
           echo "Error: clap-host executable not found!"
-          find clap-host-repo -name "*clap*" -type f | head -10
+          echo "Available executables in clap-host-repo:"
+          find clap-host-repo -type f -executable | head -20
+          
+          # Try to build if no executable found
+          echo "Attempting to rebuild CLAP Host..."
+          cd clap-host-repo
+          if cmake . -B builds/emergency -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build builds/emergency --config Release; then
+            echo "Emergency build completed"
+            cd ..
+            CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f -executable | head -1)
+          else
+            echo "Emergency build failed"
+            cd ..
+            exit 1
+          fi
+        fi
+        
+        if [ -z "$CLAP_HOST_EXEC" ]; then
+          echo "Fatal: Could not find or build clap-host executable"
           exit 1
         fi
-        echo "Found clap-host at: $CLAP_HOST_EXEC"
+        
         chmod +x "$CLAP_HOST_EXEC"
         
         # Use override if available, otherwise use standard path
@@ -633,18 +745,56 @@ jobs:
       run: |
         echo "=== Testing CLAP Host with Plugin on Windows (screenshot disabled) ==="
         
-        # Find clap-host executable
-        CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host*.exe" -type f | head -1)
+        # First ensure clap-host-repo exists
+        if [ ! -d "clap-host-repo" ]; then
+          echo "ERROR: clap-host-repo directory not found!"
+          echo "This indicates a cache or build issue. Attempting emergency setup..."
+          bash scripts/setup-environment.sh --skip-qt6
+          if [ ! -d "clap-host-repo" ]; then
+            echo "Emergency setup failed. Available directories:"
+            ls -la
+            exit 1
+          fi
+        fi
+        
+        # Find clap-host executable with better search
+        echo "Searching for clap-host executable..."
+        CLAP_HOST_EXEC=""
+        
+        # Try multiple search patterns for Windows
+        for pattern in "clap-host*.exe" "clap-host" "*clap-host*" "clap_host*"; do
+          FOUND=$(find clap-host-repo -name "$pattern" -type f 2>/dev/null | head -1)
+          if [ -n "$FOUND" ] && [ -f "$FOUND" ]; then
+            CLAP_HOST_EXEC="$FOUND"
+            echo "Found clap-host executable at: $CLAP_HOST_EXEC"
+            break
+          fi
+        done
+        
+        # If still not found, try emergency build
         if [ -z "$CLAP_HOST_EXEC" ]; then
-          CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host" -type f | head -1)
+          echo "Error: clap-host executable not found!"
+          echo "Available files in clap-host-repo:"
+          find clap-host-repo -name "*clap*" -type f | head -20
+          
+          # Try to build if no executable found
+          echo "Attempting to rebuild CLAP Host..."
+          cd clap-host-repo
+          if cmake -B builds/emergency -DCMAKE_BUILD_TYPE=Release && cmake --build builds/emergency --config Release; then
+            echo "Emergency build completed"
+            cd ..
+            CLAP_HOST_EXEC=$(find clap-host-repo -name "clap-host*.exe" -o -name "clap-host" -type f | head -1)
+          else
+            echo "Emergency build failed"
+            cd ..
+            exit 1
+          fi
         fi
         
         if [ -z "$CLAP_HOST_EXEC" ]; then
-          echo "Error: clap-host executable not found!"
-          find clap-host-repo -name "*clap*" -type f | head -10
+          echo "Fatal: Could not find or build clap-host executable"
           exit 1
         fi
-        echo "Found clap-host at: $CLAP_HOST_EXEC"
         
         # Use override if available, otherwise find Windows plugin file
         if [ -n "$PLUGIN_FILE_OVERRIDE" ]; then
