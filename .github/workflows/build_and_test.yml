@@ -280,16 +280,6 @@ jobs:
           clap-host-${{ runner.os }}-qt6-
           clap-host-${{ runner.os }}-
 
-    - name: Skip build steps on cache hit
-      if: steps.clap-host-cache.outputs.cache-hit == 'true'
-      run: echo "CLAP Host build cache hit - skipping build steps"
-
-    - name: Setup CLAP Host Dependencies
-      if: steps.clap-host-cache.outputs.cache-hit != 'true' || steps.verify-cache.outputs.cache-hit == 'false'
-      run: |
-        echo "Setting up CLAP Host dependencies using shared script..."
-        bash scripts/setup-environment.sh --skip-qt6
-
     - name: Verify Cache Content and Force Rebuild if Incomplete
       if: steps.clap-host-cache.outputs.cache-hit == 'true'
       shell: bash
@@ -311,6 +301,16 @@ jobs:
           echo "cache-hit=false" >> $GITHUB_OUTPUT
         fi
       id: verify-cache
+
+    - name: Skip build steps on cache hit
+      if: steps.clap-host-cache.outputs.cache-hit == 'true' && steps.verify-cache.outputs.cache-hit != 'false'
+      run: echo "CLAP Host build cache hit - skipping build steps"
+
+    - name: Setup CLAP Host Dependencies
+      if: steps.clap-host-cache.outputs.cache-hit != 'true' || steps.verify-cache.outputs.cache-hit == 'false'
+      run: |
+        echo "Setting up CLAP Host dependencies using shared script..."
+        bash scripts/setup-environment.sh --skip-qt6
 
 
 
