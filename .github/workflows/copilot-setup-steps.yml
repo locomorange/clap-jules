@@ -8,6 +8,10 @@ on:
     paths:
       - .github/workflows/copilot-setup-steps.yml
 
+env:
+  CLAP_VALIDATOR_VERSION: '0.3.2'
+  CLAP_INFO_VERSION: 'v1.2.2'
+
 jobs:
   # Copilot Actionで認識されるジョブ名
   copilot-setup-steps:

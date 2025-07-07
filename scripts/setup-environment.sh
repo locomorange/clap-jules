@@ -215,10 +215,10 @@ install_clap_tools() {
             # clap-validator
             if ! command -v clap-validator &> /dev/null; then
                 log_info "Downloading clap-validator $CLAP_VALIDATOR_VERSION..."
-                curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/$CLAP_VALIDATOR_VERSION/clap-validator-macos.zip"
-                unzip -q clap-validator.zip
+                curl -L -o clap-validator.tar.gz "https://github.com/free-audio/clap-validator/releases/download/$CLAP_VALIDATOR_VERSION/clap-validator-$CLAP_VALIDATOR_VERSION-macos-universal.tar.gz"
+                tar -xzf clap-validator.tar.gz
                 chmod +x clap-validator
-                rm clap-validator.zip
+                rm clap-validator.tar.gz
             fi
             
             # clap-info
