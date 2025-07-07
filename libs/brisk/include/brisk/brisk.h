@@ -8,6 +8,10 @@
 #include <cmath>
 #include <cstdio>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 #ifdef __linux__
     #include <X11/Xlib.h>
     #include <X11/Xutil.h>
