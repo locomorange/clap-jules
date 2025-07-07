@@ -42,7 +42,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
             libgl1-mesa-dev libglu1-mesa-dev libxxf86vm-dev libxfixes-dev \
-            mesa-utils
+            mesa-utils libcairo2-dev
 
           # 仮想ディスプレイとスクリーンショットツール
           sudo apt-get install -y --no-install-recommends \
