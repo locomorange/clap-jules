@@ -217,8 +217,9 @@ install_clap_tools() {
                 log_info "Downloading clap-validator $CLAP_VALIDATOR_VERSION..."
                 curl -L -o clap-validator.tar.gz "https://github.com/free-audio/clap-validator/releases/download/$CLAP_VALIDATOR_VERSION/clap-validator-$CLAP_VALIDATOR_VERSION-macos-universal.tar.gz"
                 tar -xzf clap-validator.tar.gz
+                mv binaries/clap-validator ./clap-validator
                 chmod +x clap-validator
-                rm clap-validator.tar.gz
+                rm -rf clap-validator.tar.gz binaries
             fi
             
             # clap-info
