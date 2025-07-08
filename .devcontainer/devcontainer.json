@@ -1,25 +1,6 @@
 {
-  "name": "CLAP Plugin Development with Act",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
   "features": {
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
-  "postCreateCommand": "/usr/local/bin/post-create-setup.sh",
-  "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-  ],
-  "privileged": true,
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "ms-vscode.cmake-tools",
-        "ms-vscode.cpptools-extension-pack",
-        "GitHub.copilot",
-        "GitHub.copilot-chat"
-      ]
-    }
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   }
 }
