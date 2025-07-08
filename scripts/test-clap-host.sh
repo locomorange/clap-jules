@@ -28,20 +28,43 @@ fi
 cd "$CLAP_HOST_PATH"
 echo "✓ Using CLAP Host at: $(pwd)"
 
-# 環境変数確認
+# 環境変数確認（Brisk用vcpkgと分離）
 if [ -z "$VCPKG_ROOT" ]; then
-    echo "⚠ VCPKG_ROOT not set - trying to find vcpkg..."
-    if [ -d "../vcpkg" ]; then
+    echo "⚠ VCPKG_ROOT not set - trying to find vcpkg for clap-host..."
+    
+    # clap-host専用のvcpkgを探す（Brisk用とは別）
+    if [ -d "../clap-host-vcpkg" ]; then
+        export VCPKG_ROOT="$(pwd)/../clap-host-vcpkg"
+    elif [ -d "../../clap-host-vcpkg" ]; then
+        export VCPKG_ROOT="$(pwd)/../../clap-host-vcpkg"
+    elif [ -d "../vcpkg" ]; then
         export VCPKG_ROOT="$(pwd)/../vcpkg"
     elif [ -d "../../vcpkg" ]; then
         export VCPKG_ROOT="$(pwd)/../../vcpkg"
     else
-        echo "✗ vcpkg not found - please set VCPKG_ROOT or install vcpkg"
-        exit 1
+        echo "✗ vcpkg not found for clap-host"
+        echo "  Note: Brisk has its own vcpkg at libs/brisk/vcpkg"
+        echo "  Installing separate vcpkg for clap-host..."
+        
+        # Install separate vcpkg for clap-host
+        cd ..
+        if [ ! -d "clap-host-vcpkg" ]; then
+            git clone https://github.com/Microsoft/vcpkg.git clap-host-vcpkg
+            cd clap-host-vcpkg
+            if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+                ./bootstrap-vcpkg.bat
+            else
+                ./bootstrap-vcpkg.sh
+            fi
+            cd ..
+        fi
+        export VCPKG_ROOT="$(pwd)/clap-host-vcpkg"
+        cd "$CLAP_HOST_PATH"
     fi
 fi
 
-echo "✓ Using vcpkg at: $VCPKG_ROOT"
+echo "✓ Using clap-host vcpkg at: $VCPKG_ROOT"
+echo "  (Separate from Brisk vcpkg to avoid conflicts)"
 export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 
 # ビルド試行（複数の方法を試す）

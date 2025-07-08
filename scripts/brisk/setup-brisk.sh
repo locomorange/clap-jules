@@ -80,6 +80,40 @@ download_if_needed() {
     fi
 }
 
+# Function to verify Brisk installation
+verify_brisk_installation() {
+    echo "=== Verifying Brisk installation ==="
+    
+    # Check for pack_resource tool
+    local pack_resource_tool="$BRISK_DIR/installed/x64-linux/tools/pack-resource/pack_resource"
+    if [ -f "$pack_resource_tool" ]; then
+        echo "✓ Found pack_resource tool at: $pack_resource_tool"
+        chmod +x "$pack_resource_tool"
+        
+        # Add to PATH for CMAKE to find it
+        export PATH="$BRISK_DIR/installed/x64-linux/tools/pack-resource:$PATH"
+        echo "✓ Added pack_resource to PATH"
+    else
+        echo "⚠️  pack_resource tool not found at expected location"
+    fi
+    
+    # Check for other essential tools
+    local tools_dir="$BRISK_DIR/installed/x64-linux/tools"
+    if [ -d "$tools_dir" ]; then
+        echo "✓ Found tools directory with $(ls "$tools_dir" | wc -l) tool packages"
+    fi
+    
+    # Check for headers
+    if [ -d "$BRISK_DIR/include/brisk" ]; then
+        echo "✓ Found Brisk headers"
+    fi
+    
+    # Check for libraries
+    if [ -d "$BRISK_DIR/lib" ] && [ -n "$(ls "$BRISK_DIR/lib"/*brisk* 2>/dev/null)" ]; then
+        echo "✓ Found Brisk libraries"
+    fi
+}
+
 # Download prebuilt binaries
 echo "Downloading Brisk prebuilt binaries for $PLATFORM_SUFFIX..."
 
@@ -144,6 +178,9 @@ if [ "$PREBUILT_AVAILABLE" = true ] && [ "$DEPS_AVAILABLE" = true ]; then
         if [ -d "lib" ]; then
             echo "  - Available libraries: $(ls lib/*brisk* 2>/dev/null | wc -l) files"
         fi
+        
+        # Setup vcpkg for Brisk if dependencies are available
+        verify_brisk_installation
     else
         echo "⚠️  Extraction seems incomplete, falling back to header-only mode"
         PREBUILT_AVAILABLE=false
@@ -165,178 +202,26 @@ elif [ "$DEPS_AVAILABLE" = true ]; then
             echo "⚠️  Failed to extract Brisk-Dependencies, falling back to header-only mode"
             DEPS_AVAILABLE=false
         fi
-    fi
-    
-    # Verify extraction
-    if [ -d "include" ]; then
-        echo "✓ Brisk dependencies successfully installed (headers only)"
-        echo "  - Include directory: $BRISK_DIR/include"
-        
-        # List available headers for verification
-        if [ -d "include/brisk" ]; then
-            echo "  - Available headers: $(ls include/brisk/*.h* 2>/dev/null | wc -l) files"
+    fi        # Verify extraction
+        if [ -d "include" ]; then
+            echo "✓ Brisk dependencies successfully installed (headers only)"
+            echo "  - Include directory: $BRISK_DIR/include"
+            
+            # List available headers for verification
+            if [ -d "include/brisk" ]; then
+                echo "  - Available headers: $(ls include/brisk/*.h* 2>/dev/null | wc -l) files"
+            fi
+            PREBUILT_AVAILABLE=false  # No prebuilt libraries, but headers are available
+            
+            # Verify Brisk installation
+            verify_brisk_installation
+        else
+            echo "⚠️  Dependencies extraction seems incomplete, falling back to header-only mode"
+            PREBUILT_AVAILABLE=false
+            DEPS_AVAILABLE=false
         fi
-        PREBUILT_AVAILABLE=false  # No prebuilt libraries, but headers are available
-    else
-        echo "⚠️  Dependencies extraction seems incomplete, falling back to header-only mode"
-        PREBUILT_AVAILABLE=false
-        DEPS_AVAILABLE=false
-    fi
 fi
 
-# Fallback: Create minimal header-only interface
-if [ "$PREBUILT_AVAILABLE" = false ]; then
-    echo "Creating minimal header-only Brisk interface..."
-    
-    mkdir -p "$BRISK_DIR/include/brisk"
-    
-    cat > "$BRISK_DIR/include/brisk/brisk.h" << 'EOF'
-#pragma once
-
-// Minimal Brisk header-only interface
-// This is a fallback when prebuilt binaries are not available
-
-#include <functional>
-#include <memory>
-
-namespace brisk {
-
-// Forward declarations
-class Window;
-class Widget;
-
-// Basic application lifecycle
-class Application {
-public:
-    static void Initialize();
-    static void Shutdown();
-    static bool IsInitialized();
-    
-private:
-    static bool initialized_;
-};
-
-// Basic window class
-class Window {
-public:
-    explicit Window(void* parent_handle = nullptr);
-    virtual ~Window();
-    
-    void SetVisible(bool visible);
-    void SetSize(int width, int height);
-    void* GetHandle() const;
-    void Update();
-    
-    // Widget management
-    void AddWidget(std::shared_ptr<Widget> widget);
-    void RemoveWidget(std::shared_ptr<Widget> widget);
-    
-private:
-    void* parent_handle_;
-    bool visible_;
-    int width_, height_;
-    std::vector<std::shared_ptr<Widget>> widgets_;
-};
-
-// Base widget class
-class Widget {
-public:
-    virtual ~Widget() = default;
-    virtual void Draw() = 0;
-    virtual void Update() {}
-    
-    void SetPosition(int x, int y) { x_ = x; y_ = y; }
-    void SetSize(int width, int height) { width_ = width; height_ = height; }
-    
-protected:
-    int x_ = 0, y_ = 0;
-    int width_ = 100, height_ = 50;
-};
-
-// Knob widget for parameter control
-class Knob : public Widget {
-public:
-    Knob(double min_val, double max_val, double initial_val);
-    
-    void SetValue(double value);
-    double GetValue() const;
-    void SetCallback(std::function<void(double)> callback);
-    
-    void Draw() override;
-    
-private:
-    double min_value_, max_value_, current_value_;
-    std::function<void(double)> callback_;
-};
-
-} // namespace brisk
-EOF
-
-    echo "✓ Minimal Brisk header-only interface created"
-fi
-
-# Create CMake configuration
-cat > "$BRISK_DIR/BriskConfig.cmake" << EOF
-# Brisk CMake configuration
-# Generated by setup-brisk.sh
-
-set(BRISK_FOUND TRUE)
-set(BRISK_INCLUDE_DIR "\${CMAKE_CURRENT_LIST_DIR}/include")
-set(BRISK_LIBRARY_DIR "\${CMAKE_CURRENT_LIST_DIR}/lib")
-
-# Create brisk target
-if(NOT TARGET brisk)
-    if(EXISTS "\${BRISK_LIBRARY_DIR}")
-        # Full prebuilt library mode
-        find_library(BRISK_LIBRARY 
-            NAMES brisk libbrisk
-            PATHS "\${BRISK_LIBRARY_DIR}"
-            NO_DEFAULT_PATH
-        )
-        
-        if(BRISK_LIBRARY)
-            add_library(brisk SHARED IMPORTED)
-            set_target_properties(brisk PROPERTIES
-                IMPORTED_LOCATION "\${BRISK_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "\${BRISK_INCLUDE_DIR}"
-            )
-            message(STATUS "Brisk: Using prebuilt shared library at \${BRISK_LIBRARY}")
-        else()
-            # Header-only fallback - check if we have implementation
-            if(EXISTS "\${CMAKE_CURRENT_LIST_DIR}/src/brisk.cpp")
-                # Create static library with implementation
-                add_library(brisk STATIC "\${CMAKE_CURRENT_LIST_DIR}/src/brisk.cpp")
-                target_include_directories(brisk PUBLIC "\${BRISK_INCLUDE_DIR}")
-                set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
-                message(STATUS "Brisk: Using static library with header-only implementation")
-            else()
-                # Pure header-only mode
-                add_library(brisk INTERFACE)
-                target_include_directories(brisk INTERFACE "\${BRISK_INCLUDE_DIR}")
-                message(STATUS "Brisk: Using header-only interface (no prebuilt library found)")
-            endif()
-        endif()
-    else()
-        # Header-only mode - check if we have implementation
-        if(EXISTS "\${CMAKE_CURRENT_LIST_DIR}/src/brisk.cpp")
-            # Create static library with implementation
-            add_library(brisk STATIC "\${CMAKE_CURRENT_LIST_DIR}/src/brisk.cpp")
-            target_include_directories(brisk PUBLIC "\${BRISK_INCLUDE_DIR}")
-            set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
-            message(STATUS "Brisk: Using static library with header-only implementation")
-        else()
-            # Pure header-only mode
-            add_library(brisk INTERFACE)
-            target_include_directories(brisk INTERFACE "\${BRISK_INCLUDE_DIR}")
-            message(STATUS "Brisk: Using header-only interface")
-        endif()
-    endif()
-endif()
-
-message(STATUS "Brisk found: \${BRISK_INCLUDE_DIR}")
-EOF
-
-echo "✓ Brisk CMake configuration created"
 echo "=== Brisk setup completed ==="
 
 # Print summary

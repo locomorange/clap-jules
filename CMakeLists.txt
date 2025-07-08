@@ -1,8 +1,46 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
+
+# Set BRISK_DIR for consistent referencing
+set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+
+# Initialize Brisk CMake setup according to documentation
+if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
+    # Set vcpkg toolchain if available - MUST be done before project()
+    if (EXISTS "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
+        set(CMAKE_TOOLCHAIN_FILE "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+        message(STATUS "Brisk: Using vcpkg toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+    endif()
+endif()
+
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+# Continue with Brisk setup after project()
+if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
+    # Add vcpkg installed path to CMAKE_PREFIX_PATH
+    if (EXISTS "${BRISK_DIR}/installed/x64-linux")
+        set(CMAKE_PREFIX_PATH "${BRISK_DIR}/installed/x64-linux" ${CMAKE_PREFIX_PATH})
+        message(STATUS "Brisk: Added vcpkg installed path to CMAKE_PREFIX_PATH")
+    endif()
+    
+    # Add Brisk lib/cmake to CMAKE_PREFIX_PATH
+    set(CMAKE_PREFIX_PATH "${BRISK_DIR}/lib/cmake/brisk" ${CMAKE_PREFIX_PATH})
+    message(STATUS "Brisk: Added Brisk cmake path to CMAKE_PREFIX_PATH")
+    
+    # Add pack_resource tool to PATH so Brisk can find it
+    if (EXISTS "${BRISK_DIR}/installed/x64-linux/tools/pack-resource/pack_resource")
+        set(ENV{PATH} "${BRISK_DIR}/installed/x64-linux/tools/pack-resource:$ENV{PATH}")
+        message(STATUS "Added pack_resource to PATH: ${BRISK_DIR}/installed/x64-linux/tools/pack-resource")
+    endif()
+endif()
+
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Restore original CMAKE_TOOLCHAIN_FILE after Brisk configuration
+if(DEFINED ORIGINAL_CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${ORIGINAL_CMAKE_TOOLCHAIN_FILE}")
+    message(STATUS "Restored original CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
+endif()
 
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
@@ -58,36 +96,18 @@ else()
     message(WARNING "KFR not found")
 endif()
 
-# Add Brisk library (prebuilt binaries)
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk")
-    message(STATUS "Found Brisk, attempting to configure...")
+# Add Brisk library using proper CMake configuration
+if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
+    message(STATUS "Found Brisk CMake configuration, loading...")
+    find_package(Brisk REQUIRED CONFIG PATHS "${BRISK_DIR}/lib/cmake/brisk" NO_DEFAULT_PATH)
     
-    # Use the BriskConfig.cmake created by setup script
-    set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk" ${CMAKE_PREFIX_PATH})
-    find_package(Brisk QUIET CONFIG PATHS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk" NO_DEFAULT_PATH)
-    
-    if(Brisk_FOUND OR TARGET brisk)
-        message(STATUS "Brisk: Configuration successful")
-    else()
-        # Fallback: create target manually
-        message(STATUS "Brisk: Using fallback configuration")
-        
-        # Check if we have implementation file for header-only mode
-        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/src/brisk.cpp")
-            # Header-only mode with implementation
-            add_library(brisk STATIC libs/brisk/src/brisk.cpp)
-            target_include_directories(brisk PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
-            set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
-            message(STATUS "Brisk: Created static library with header-only implementation")
-        else()
-            # Pure interface mode
-            add_library(brisk INTERFACE)
-            target_include_directories(brisk INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
-            message(STATUS "Brisk: Created interface library")
-        endif()
+    if(Brisk_FOUND)
+        message(STATUS "Brisk: Configuration successful with proper targets")
+        set(BRISK_FOUND TRUE)
     endif()
 else()
     message(WARNING "Brisk not found - run scripts/brisk/setup-brisk.sh to install prebuilt binaries")
+    set(BRISK_FOUND FALSE)
 endif()
 
 # Add your plugin target here
@@ -115,8 +135,15 @@ if (TARGET kfr)
 endif()
 
 # Link Brisk if available
-if (TARGET brisk)
-    target_link_libraries(my_clap_plugin PRIVATE brisk)
+if (BRISK_FOUND)
+    target_link_libraries(my_clap_plugin PRIVATE 
+        Brisk::Widgets 
+        Brisk::Gui 
+        Brisk::Core
+        Brisk::Graphics
+        Brisk::Window
+    )
+    message(STATUS "Linking Brisk libraries to my_clap_plugin")
 endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
@@ -125,6 +152,15 @@ else()
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "") # Use default suffix (.so or .dylib)
 endif()
 set_target_properties(my_clap_plugin PROPERTIES OUTPUT_NAME "MyFirstClapPlugin")
+
+# Additional Brisk setup for plugin if available
+if (BRISK_FOUND)
+    # Note: brisk_setup_executable is typically for standalone applications
+    # For a plugin, we may need different setup, but let's try this if the function exists
+    if(COMMAND brisk_setup_executable)
+        brisk_setup_executable(my_clap_plugin)
+    endif()
+endif()
 
 
 # Install the plugin (optional, but good practice)
@@ -168,9 +204,22 @@ if (TARGET kfr)
 endif()
 
 # Link Brisk for tests if available
-if (TARGET brisk)
-    target_link_libraries(my_plugin_tests PRIVATE brisk)
-    target_link_libraries(integration_tests PRIVATE brisk)
+if (BRISK_FOUND)
+    target_link_libraries(my_plugin_tests PRIVATE 
+        Brisk::Widgets 
+        Brisk::Gui 
+        Brisk::Core
+        Brisk::Graphics
+        Brisk::Window
+    )
+    target_link_libraries(integration_tests PRIVATE 
+        Brisk::Widgets 
+        Brisk::Gui 
+        Brisk::Core
+        Brisk::Graphics
+        Brisk::Window
+    )
+    message(STATUS "Linking Brisk libraries to test targets")
 endif()
 
 include(GoogleTest)
