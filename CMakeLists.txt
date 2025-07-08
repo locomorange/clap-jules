@@ -60,22 +60,22 @@ endif()
 
 # Add Brisk library
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk/brisk.h")
-    message(STATUS "Found Brisk, creating static library")
     set(BRISK_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
-    
-    # Create brisk static library
-    add_library(brisk STATIC libs/brisk/src/brisk.cpp)
-    target_include_directories(brisk PUBLIC ${BRISK_INCLUDE_DIR})
-    
-    # Enable position independent code for static library
-    set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
     
     # Platform-specific dependencies
     if (UNIX AND NOT APPLE)
         # Linux: X11 and Cairo for graphics
+        message(STATUS "Found Brisk, creating static library for Linux")
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(X11 REQUIRED x11)
         pkg_check_modules(CAIRO REQUIRED cairo)
+        
+        # Create brisk static library (Linux only)
+        add_library(brisk STATIC libs/brisk/src/brisk.cpp)
+        target_include_directories(brisk PUBLIC ${BRISK_INCLUDE_DIR})
+        
+        # Enable position independent code for static library
+        set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
         
         target_link_libraries(brisk PUBLIC ${X11_LIBRARIES} ${CAIRO_LIBRARIES})
         target_include_directories(brisk PUBLIC ${X11_INCLUDE_DIRS} ${CAIRO_INCLUDE_DIRS})

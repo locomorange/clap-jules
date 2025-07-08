@@ -1,0 +1,1114 @@
+﻿2025-07-07T18:14:23.1609642Z Current runner version: '2.325.0'
+2025-07-07T18:14:23.1633184Z ##[group]Operating System
+2025-07-07T18:14:23.1634100Z Ubuntu
+2025-07-07T18:14:23.1634584Z 24.04.2
+2025-07-07T18:14:23.1635056Z LTS
+2025-07-07T18:14:23.1635635Z ##[endgroup]
+2025-07-07T18:14:23.1636173Z ##[group]Runner Image
+2025-07-07T18:14:23.1636746Z Image: ubuntu-24.04
+2025-07-07T18:14:23.1637437Z Version: 20250629.1.0
+2025-07-07T18:14:23.1638445Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20250629.1/images/ubuntu/Ubuntu2404-Readme.md
+2025-07-07T18:14:23.1640173Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20250629.1
+2025-07-07T18:14:23.1641190Z ##[endgroup]
+2025-07-07T18:14:23.1641693Z ##[group]Runner Image Provisioner
+2025-07-07T18:14:23.1642287Z 2.0.449.1
+2025-07-07T18:14:23.1642760Z ##[endgroup]
+2025-07-07T18:14:23.1643882Z ##[group]GITHUB_TOKEN Permissions
+2025-07-07T18:14:23.1645661Z Contents: write
+2025-07-07T18:14:23.1646391Z Metadata: read
+2025-07-07T18:14:23.1647056Z PullRequests: write
+2025-07-07T18:14:23.1647708Z ##[endgroup]
+2025-07-07T18:14:23.1650217Z Secret source: Actions
+2025-07-07T18:14:23.1650867Z Prepare workflow directory
+2025-07-07T18:14:23.2176525Z Prepare all required actions
+2025-07-07T18:14:23.2231358Z Getting action download info
+2025-07-07T18:14:24.2123760Z ##[group]Download immutable action package 'actions/checkout@v4'
+2025-07-07T18:14:24.2125099Z Version: 4.2.2
+2025-07-07T18:14:24.2126389Z Digest: sha256:ccb2698953eaebd21c7bf6268a94f9c26518a7e38e27e0b83c1fe1ad049819b1
+2025-07-07T18:14:24.2128168Z Source commit SHA: 11bd71901bbe5b1630ceea73d27597364c9af683
+2025-07-07T18:14:24.2129454Z ##[endgroup]
+2025-07-07T18:14:24.2975317Z ##[group]Download immutable action package 'actions/cache@v4'
+2025-07-07T18:14:24.2976738Z Version: 4.2.3
+2025-07-07T18:14:24.2978373Z Digest: sha256:c8a3bb963e1f1826d8fcc8d1354f0dd29d8ac1db1d4f6f20247055ae11b81ed9
+2025-07-07T18:14:24.2981193Z Source commit SHA: 5a3ec84eff668545956fd18022155c47e93e2684
+2025-07-07T18:14:24.2982807Z ##[endgroup]
+2025-07-07T18:14:24.4017585Z Download action repository 'microsoft/setup-msbuild@v2' (SHA:6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce)
+2025-07-07T18:14:24.7724060Z ##[group]Download immutable action package 'actions/upload-artifact@v4'
+2025-07-07T18:14:24.7725775Z Version: 4.6.2
+2025-07-07T18:14:24.7727304Z Digest: sha256:290722aa3281d5caf23d0acdc3dbeb3424786a1a01a9cc97e72f147225e37c38
+2025-07-07T18:14:24.7729730Z Source commit SHA: ea165f8d65b6e75b540449e92b4886f43607fa02
+2025-07-07T18:14:24.7731152Z ##[endgroup]
+2025-07-07T18:14:24.9756737Z Complete job name: Build Plugin on ubuntu-latest
+2025-07-07T18:14:25.0573807Z ##[group]Run actions/checkout@v4
+2025-07-07T18:14:25.0575143Z with:
+2025-07-07T18:14:25.0575908Z   submodules: recursive
+2025-07-07T18:14:25.0576810Z   repository: locomorange/clap-jules
+2025-07-07T18:14:25.0578072Z   token: ***
+2025-07-07T18:14:25.0579000Z   ssh-strict: true
+2025-07-07T18:14:25.0579812Z   ssh-user: git
+2025-07-07T18:14:25.0580636Z   persist-credentials: true
+2025-07-07T18:14:25.0581572Z   clean: true
+2025-07-07T18:14:25.0582389Z   sparse-checkout-cone-mode: true
+2025-07-07T18:14:25.0583390Z   fetch-depth: 1
+2025-07-07T18:14:25.0584181Z   fetch-tags: false
+2025-07-07T18:14:25.0584995Z   show-progress: true
+2025-07-07T18:14:25.0585830Z   lfs: false
+2025-07-07T18:14:25.0586607Z   set-safe-directory: true
+2025-07-07T18:14:25.0587743Z env:
+2025-07-07T18:14:25.0588493Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:25.0589591Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:25.0590470Z ##[endgroup]
+2025-07-07T18:14:25.2336390Z Syncing repository: locomorange/clap-jules
+2025-07-07T18:14:25.2341297Z ##[group]Getting Git version info
+2025-07-07T18:14:25.2343783Z Working directory is '/home/runner/work/clap-jules/clap-jules'
+2025-07-07T18:14:25.2347587Z [command]/usr/bin/git version
+2025-07-07T18:14:25.2350060Z git version 2.49.0
+2025-07-07T18:14:25.2383637Z ##[endgroup]
+2025-07-07T18:14:25.2397701Z Temporarily overriding HOME='/home/runner/work/_temp/9da2acfa-a1c3-444b-aae4-fa68b21f2575' before making global git config changes
+2025-07-07T18:14:25.2401260Z Adding repository directory to the temporary git global config as a safe directory
+2025-07-07T18:14:25.2403836Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/clap-jules/clap-jules
+2025-07-07T18:14:25.2435216Z Deleting the contents of '/home/runner/work/clap-jules/clap-jules'
+2025-07-07T18:14:25.2438915Z ##[group]Initializing the repository
+2025-07-07T18:14:25.2442791Z [command]/usr/bin/git init /home/runner/work/clap-jules/clap-jules
+2025-07-07T18:14:25.2499216Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-07-07T18:14:25.2501306Z hint: is subject to change. To configure the initial branch name to use in all
+2025-07-07T18:14:25.2503487Z hint: of your new repositories, which will suppress this warning, call:
+2025-07-07T18:14:25.2505213Z hint:
+2025-07-07T18:14:25.2506124Z hint: 	git config --global init.defaultBranch <name>
+2025-07-07T18:14:25.2507284Z hint:
+2025-07-07T18:14:25.2508824Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-07-07T18:14:25.2511023Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-07-07T18:14:25.2512428Z hint:
+2025-07-07T18:14:25.2513169Z hint: 	git branch -m <name>
+2025-07-07T18:14:25.2514932Z Initialized empty Git repository in /home/runner/work/clap-jules/clap-jules/.git/
+2025-07-07T18:14:25.2518114Z [command]/usr/bin/git remote add origin https://github.com/locomorange/clap-jules
+2025-07-07T18:14:25.2548290Z ##[endgroup]
+2025-07-07T18:14:25.2549866Z ##[group]Disabling automatic garbage collection
+2025-07-07T18:14:25.2551747Z [command]/usr/bin/git config --local gc.auto 0
+2025-07-07T18:14:25.2580642Z ##[endgroup]
+2025-07-07T18:14:25.2581945Z ##[group]Setting up auth
+2025-07-07T18:14:25.2587210Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-07-07T18:14:25.2618318Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-07-07T18:14:25.2893099Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-07-07T18:14:25.2931805Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-07-07T18:14:25.3163149Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-07-07T18:14:25.3205511Z ##[endgroup]
+2025-07-07T18:14:25.3206942Z ##[group]Fetching the repository
+2025-07-07T18:14:25.3216515Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +8bc0ae0845ed3eb27d31b668458d1b753e5f0e02:refs/remotes/pull/112/merge
+2025-07-07T18:14:25.6916666Z From https://github.com/locomorange/clap-jules
+2025-07-07T18:14:25.6918369Z  * [new ref]         8bc0ae0845ed3eb27d31b668458d1b753e5f0e02 -> pull/112/merge
+2025-07-07T18:14:25.6942671Z ##[endgroup]
+2025-07-07T18:14:25.6943841Z ##[group]Determining the checkout info
+2025-07-07T18:14:25.6945362Z ##[endgroup]
+2025-07-07T18:14:25.6950366Z [command]/usr/bin/git sparse-checkout disable
+2025-07-07T18:14:25.6991259Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-07-07T18:14:25.7019793Z ##[group]Checking out the ref
+2025-07-07T18:14:25.7023670Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/112/merge
+2025-07-07T18:14:25.7096275Z Note: switching to 'refs/remotes/pull/112/merge'.
+2025-07-07T18:14:25.7097346Z 
+2025-07-07T18:14:25.7097952Z You are in 'detached HEAD' state. You can look around, make experimental
+2025-07-07T18:14:25.7100052Z changes and commit them, and you can discard any commits you make in this
+2025-07-07T18:14:25.7102517Z state without impacting any branches by switching back to a branch.
+2025-07-07T18:14:25.7104286Z 
+2025-07-07T18:14:25.7105219Z If you want to create a new branch to retain commits you create, you may
+2025-07-07T18:14:25.7107457Z do so (now or later) by using -c with the switch command. Example:
+2025-07-07T18:14:25.7108954Z 
+2025-07-07T18:14:25.7109527Z   git switch -c <new-branch-name>
+2025-07-07T18:14:25.7110489Z 
+2025-07-07T18:14:25.7111021Z Or undo this operation with:
+2025-07-07T18:14:25.7111892Z 
+2025-07-07T18:14:25.7112357Z   git switch -
+2025-07-07T18:14:25.7112986Z 
+2025-07-07T18:14:25.7113996Z Turn off this advice by setting config variable advice.detachedHead to false
+2025-07-07T18:14:25.7115495Z 
+2025-07-07T18:14:25.7117188Z HEAD is now at 8bc0ae0 Merge d6fd8304ba06b8ff6be9546da2a7387fd2645af2 into f6eec128bf4b9c65ec55eb085f3cc1402adbd933
+2025-07-07T18:14:25.7120660Z ##[endgroup]
+2025-07-07T18:14:25.7121860Z ##[group]Setting up auth for fetching submodules
+2025-07-07T18:14:25.7124026Z [command]/usr/bin/git config --global http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-07-07T18:14:25.7147561Z [command]/usr/bin/git config --global --unset-all url.https://github.com/.insteadOf
+2025-07-07T18:14:25.7176948Z [command]/usr/bin/git config --global --add url.https://github.com/.insteadOf git@github.com:
+2025-07-07T18:14:25.7209337Z [command]/usr/bin/git config --global --add url.https://github.com/.insteadOf org-47374565@github.com:
+2025-07-07T18:14:25.7237419Z ##[endgroup]
+2025-07-07T18:14:25.7239529Z ##[group]Fetching submodules
+2025-07-07T18:14:25.7241328Z [command]/usr/bin/git submodule sync --recursive
+2025-07-07T18:14:25.7467231Z [command]/usr/bin/git -c protocol.version=2 submodule update --init --force --depth=1 --recursive
+2025-07-07T18:14:25.7682579Z Submodule 'libs/boost-di' (https://github.com/boost-ext/di.git) registered for path 'libs/boost-di'
+2025-07-07T18:14:25.7685909Z Submodule 'clap' (https://github.com/free-audio/clap.git) registered for path 'libs/clap'
+2025-07-07T18:14:25.7690670Z Submodule 'libs/clap-helpers' (https://github.com/free-audio/clap-helpers.git) registered for path 'libs/clap-helpers'
+2025-07-07T18:14:25.7695118Z Submodule 'googletest' (https://github.com/google/googletest.git) registered for path 'libs/googletest'
+2025-07-07T18:14:25.7702118Z Submodule 'libs/kfr' (https://github.com/kfrlib/kfr.git) registered for path 'libs/kfr'
+2025-07-07T18:14:25.7728500Z Cloning into '/home/runner/work/clap-jules/clap-jules/libs/boost-di'...
+2025-07-07T18:14:26.8009074Z Cloning into '/home/runner/work/clap-jules/clap-jules/libs/clap'...
+2025-07-07T18:14:27.2640308Z Cloning into '/home/runner/work/clap-jules/clap-jules/libs/clap-helpers'...
+2025-07-07T18:14:27.6193405Z Cloning into '/home/runner/work/clap-jules/clap-jules/libs/googletest'...
+2025-07-07T18:14:28.0410789Z Cloning into '/home/runner/work/clap-jules/clap-jules/libs/kfr'...
+2025-07-07T18:14:29.1604392Z Submodule path 'libs/boost-di': checked out '20b6454c889f23c1e7c9eb5136cd7e3d6f6d718d'
+2025-07-07T18:14:29.1878399Z Submodule path 'libs/clap': checked out '69a69252fdd6ac1d06e246d9a04c0a89d9607a17'
+2025-07-07T18:14:29.1989287Z Submodule path 'libs/clap-helpers': checked out '58ab81b1dc8219e859529c1306f364bb3aedf7d5'
+2025-07-07T18:14:30.2175062Z From https://github.com/google/googletest
+2025-07-07T18:14:30.2175834Z  * branch            52eb8108c5bdec04579160ae17225d66034bd723 -> FETCH_HEAD
+2025-07-07T18:14:30.2515191Z Submodule path 'libs/googletest': checked out '52eb8108c5bdec04579160ae17225d66034bd723'
+2025-07-07T18:14:30.3636779Z Submodule path 'libs/kfr': checked out '0e964b9feaba938ae6e40098d5556279617199b5'
+2025-07-07T18:14:30.3670071Z [command]/usr/bin/git submodule foreach --recursive git config --local gc.auto 0
+2025-07-07T18:14:30.3881624Z Entering 'libs/boost-di'
+2025-07-07T18:14:30.3923738Z Entering 'libs/clap'
+2025-07-07T18:14:30.3962471Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:30.4002082Z Entering 'libs/googletest'
+2025-07-07T18:14:30.4039614Z Entering 'libs/kfr'
+2025-07-07T18:14:30.4085436Z ##[endgroup]
+2025-07-07T18:14:30.4086267Z ##[group]Persisting credentials for submodules
+2025-07-07T18:14:30.4094250Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'url\.https\:\/\/github\.com\/\.insteadOf' && git config --local --unset-all 'url.https://github.com/.insteadOf' || :"
+2025-07-07T18:14:30.4311034Z Entering 'libs/boost-di'
+2025-07-07T18:14:30.4357858Z Entering 'libs/clap'
+2025-07-07T18:14:30.4402260Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:30.4446296Z Entering 'libs/googletest'
+2025-07-07T18:14:30.4493666Z Entering 'libs/kfr'
+2025-07-07T18:14:30.4551552Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local 'http.https://github.com/.extraheader' 'AUTHORIZATION: basic ***' && git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2025-07-07T18:14:30.4773528Z Entering 'libs/boost-di'
+2025-07-07T18:14:30.4813617Z file:/home/runner/work/clap-jules/clap-jules/.git/modules/libs/boost-di/config	remote.origin.url
+2025-07-07T18:14:30.4835692Z Entering 'libs/clap'
+2025-07-07T18:14:30.4874784Z file:/home/runner/work/clap-jules/clap-jules/.git/modules/clap/config	remote.origin.url
+2025-07-07T18:14:30.4895678Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:30.4934953Z file:/home/runner/work/clap-jules/clap-jules/.git/modules/libs/clap-helpers/config	remote.origin.url
+2025-07-07T18:14:30.4955231Z Entering 'libs/googletest'
+2025-07-07T18:14:30.4994113Z file:/home/runner/work/clap-jules/clap-jules/.git/modules/googletest/config	remote.origin.url
+2025-07-07T18:14:30.5013833Z Entering 'libs/kfr'
+2025-07-07T18:14:30.5052464Z file:/home/runner/work/clap-jules/clap-jules/.git/modules/libs/kfr/config	remote.origin.url
+2025-07-07T18:14:30.5116271Z [command]/usr/bin/git submodule foreach --recursive git config --local --add 'url.https://github.com/.insteadOf' 'git@github.com:'
+2025-07-07T18:14:30.5334125Z Entering 'libs/boost-di'
+2025-07-07T18:14:30.5374226Z Entering 'libs/clap'
+2025-07-07T18:14:30.5411838Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:30.5449562Z Entering 'libs/googletest'
+2025-07-07T18:14:30.5487162Z Entering 'libs/kfr'
+2025-07-07T18:14:30.5537056Z [command]/usr/bin/git submodule foreach --recursive git config --local --add 'url.https://github.com/.insteadOf' 'org-47374565@github.com:'
+2025-07-07T18:14:30.5745497Z Entering 'libs/boost-di'
+2025-07-07T18:14:30.5785529Z Entering 'libs/clap'
+2025-07-07T18:14:30.5822605Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:30.5859563Z Entering 'libs/googletest'
+2025-07-07T18:14:30.5896535Z Entering 'libs/kfr'
+2025-07-07T18:14:30.5942313Z ##[endgroup]
+2025-07-07T18:14:30.5977867Z [command]/usr/bin/git log -1 --format=%H
+2025-07-07T18:14:30.6002974Z 8bc0ae0845ed3eb27d31b668458d1b753e5f0e02
+2025-07-07T18:14:30.6819473Z ##[group]Run actions/cache@v4
+2025-07-07T18:14:30.6819737Z with:
+2025-07-07T18:14:30.6819930Z   path: libs/brisk/
+
+2025-07-07T18:14:30.6820342Z   key: brisk-prebuilt-Linux-7bd607a752ed87aea800940feadcbbc344fba5e2644cfa7ba62d43229d017367
+2025-07-07T18:14:30.6820821Z   restore-keys: brisk-prebuilt-Linux-
+
+2025-07-07T18:14:30.6821080Z   enableCrossOsArchive: false
+2025-07-07T18:14:30.6821329Z   fail-on-cache-miss: false
+2025-07-07T18:14:30.6821540Z   lookup-only: false
+2025-07-07T18:14:30.6821726Z   save-always: false
+2025-07-07T18:14:30.6821902Z env:
+2025-07-07T18:14:30.6822069Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:30.6822294Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:30.6822500Z ##[endgroup]
+2025-07-07T18:14:31.0119679Z Cache hit for: brisk-prebuilt-Linux-7bd607a752ed87aea800940feadcbbc344fba5e2644cfa7ba62d43229d017367
+2025-07-07T18:14:31.1874280Z Received 1425 of 1425 (100.0%), 0.0 MBs/sec
+2025-07-07T18:14:31.1875375Z Cache Size: ~0 MB (1425 B)
+2025-07-07T18:14:31.1914832Z [command]/usr/bin/tar -xf /home/runner/work/_temp/accca9ef-1b02-49cb-95e2-c8537909b270/cache.tzst -P -C /home/runner/work/clap-jules/clap-jules --use-compress-program unzstd
+2025-07-07T18:14:31.1966751Z Cache restored successfully
+2025-07-07T18:14:31.2097508Z Cache restored from key: brisk-prebuilt-Linux-7bd607a752ed87aea800940feadcbbc344fba5e2644cfa7ba62d43229d017367
+2025-07-07T18:14:31.2227814Z ##[group]Run sudo apt-get update -y
+2025-07-07T18:14:31.2228180Z [36;1msudo apt-get update -y[0m
+2025-07-07T18:14:31.2228478Z [36;1mecho "Installing GUI dependencies..."[0m
+2025-07-07T18:14:31.2229101Z [36;1mfor attempt in 1 2 3; do[0m
+2025-07-07T18:14:31.2229414Z [36;1m  if sudo apt-get install -y --no-install-recommends \[0m
+2025-07-07T18:14:31.2229725Z [36;1m    libcairo2-dev \[0m
+2025-07-07T18:14:31.2229940Z [36;1m    libx11-dev \[0m
+2025-07-07T18:14:31.2230158Z [36;1m    libxcursor-dev \[0m
+2025-07-07T18:14:31.2230386Z [36;1m    libxrandr-dev \[0m
+2025-07-07T18:14:31.2230604Z [36;1m    libxinerama-dev \[0m
+2025-07-07T18:14:31.2230835Z [36;1m    libxi-dev \[0m
+2025-07-07T18:14:31.2231045Z [36;1m    libgl1-mesa-dev \[0m
+2025-07-07T18:14:31.2231261Z [36;1m    libglu1-mesa-dev \[0m
+2025-07-07T18:14:31.2231488Z [36;1m    libxxf86vm-dev \[0m
+2025-07-07T18:14:31.2231704Z [36;1m    libxfixes-dev \[0m
+2025-07-07T18:14:31.2231946Z [36;1m    pkg-config \[0m
+2025-07-07T18:14:31.2232174Z [36;1m    build-essential \[0m
+2025-07-07T18:14:31.2232387Z [36;1m    mesa-utils; then[0m
+2025-07-07T18:14:31.2232649Z [36;1m    echo "GUI dependencies installed successfully"[0m
+2025-07-07T18:14:31.2232932Z [36;1m    break[0m
+2025-07-07T18:14:31.2233109Z [36;1m  else[0m
+2025-07-07T18:14:31.2233334Z [36;1m    echo "Attempt $attempt failed, retrying..."[0m
+2025-07-07T18:14:31.2233607Z [36;1m    sleep 2[0m
+2025-07-07T18:14:31.2233784Z [36;1m  fi[0m
+2025-07-07T18:14:31.2233954Z [36;1mdone[0m
+2025-07-07T18:14:31.2328813Z shell: /usr/bin/bash -e {0}
+2025-07-07T18:14:31.2329150Z env:
+2025-07-07T18:14:31.2329350Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:31.2329602Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:31.2329836Z ##[endgroup]
+2025-07-07T18:14:31.3099137Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2025-07-07T18:14:31.3444972Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2025-07-07T18:14:31.3448156Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2025-07-07T18:14:31.3459503Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2025-07-07T18:14:31.3516588Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2025-07-07T18:14:31.3544917Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2025-07-07T18:14:31.3598337Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2025-07-07T18:14:31.5304949Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [9168 B]
+2025-07-07T18:14:31.5572941Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [25.3 kB]
+2025-07-07T18:14:31.5734666Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1221 kB]
+2025-07-07T18:14:31.5735548Z Get:22 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [38.6 kB]
+2025-07-07T18:14:31.5832296Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [251 kB]
+2025-07-07T18:14:31.5861482Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [162 kB]
+2025-07-07T18:14:31.5882043Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1103 kB]
+2025-07-07T18:14:31.5958317Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [281 kB]
+2025-07-07T18:14:31.5985993Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [377 kB]
+2025-07-07T18:14:31.6020511Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1391 kB]
+2025-07-07T18:14:31.6099704Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [298 kB]
+2025-07-07T18:14:31.6131361Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Components [212 B]
+2025-07-07T18:14:31.6142127Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [22.8 kB]
+2025-07-07T18:14:31.6606460Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [5456 B]
+2025-07-07T18:14:31.6617229Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2025-07-07T18:14:31.6630903Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [7084 B]
+2025-07-07T18:14:31.6646579Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [16.3 kB]
+2025-07-07T18:14:31.6656326Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-backports/restricted amd64 Components [216 B]
+2025-07-07T18:14:31.6672896Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Components [212 B]
+2025-07-07T18:14:31.6896892Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [970 kB]
+2025-07-07T18:14:31.6951206Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [173 kB]
+2025-07-07T18:14:31.6972408Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.6 kB]
+2025-07-07T18:14:31.6984998Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [869 kB]
+2025-07-07T18:14:31.7039068Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [191 kB]
+2025-07-07T18:14:31.7063307Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [52.3 kB]
+2025-07-07T18:14:31.7079925Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1347 kB]
+2025-07-07T18:14:31.7154878Z Get:34 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [290 kB]
+2025-07-07T18:14:31.7607078Z Get:35 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Components [212 B]
+2025-07-07T18:14:31.7623295Z Get:36 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [18.5 kB]
+2025-07-07T18:14:31.7634899Z Get:37 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [4288 B]
+2025-07-07T18:14:31.7648879Z Get:38 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Components [212 B]
+2025-07-07T18:14:38.6433069Z Fetched 9529 kB in 1s (7662 kB/s)
+2025-07-07T18:14:39.3448787Z Reading package lists...
+2025-07-07T18:14:39.3549386Z Installing GUI dependencies...
+2025-07-07T18:14:39.3770403Z Reading package lists...
+2025-07-07T18:14:39.5698312Z Building dependency tree...
+2025-07-07T18:14:39.5706417Z Reading state information...
+2025-07-07T18:14:39.7399540Z pkg-config is already the newest version (1.8.1-2build1).
+2025-07-07T18:14:39.7400189Z The following additional packages will be installed:
+2025-07-07T18:14:39.7400910Z   bsdextrautils bsdutils eject fdisk libblkid-dev libblkid1 libbrotli-dev
+2025-07-07T18:14:39.7401752Z   libbz2-dev libcairo-script-interpreter2 libdecor-0-0 libegl-dev libegl-mesa0
+2025-07-07T18:14:39.7402697Z   libegl1 libfdisk1 libfontconfig-dev libfreetype-dev libgirepository-2.0-0
+2025-07-07T18:14:39.7403578Z   libgl-dev libgles-dev libgles1 libgles2 libglib2.0-dev libglib2.0-dev-bin
+2025-07-07T18:14:39.7404323Z   libglu1-mesa libglvnd-core-dev libglvnd-dev libglx-dev libice-dev
+2025-07-07T18:14:39.7405124Z   libmount-dev libmount1 libopengl-dev libopengl0 libpixman-1-dev libpng-dev
+2025-07-07T18:14:39.7405946Z   libpthread-stubs0-dev libselinux1-dev libsepol-dev libsm-dev libsmartcols1
+2025-07-07T18:14:39.7406731Z   libuuid1 libxau-dev libxcb-render0-dev libxcb-shm0-dev libxcb-xkb1
+2025-07-07T18:14:39.7407492Z   libxcb1-dev libxdmcp-dev libxext-dev libxkbcommon-x11-0 libxrender-dev
+2025-07-07T18:14:39.7408235Z   mesa-utils-bin mount util-linux uuid-dev uuid-runtime x11proto-core-dev
+2025-07-07T18:14:39.7409037Z   x11proto-dev xorg-sgml-doctools xtrans-dev
+2025-07-07T18:14:39.7414650Z Suggested packages:
+2025-07-07T18:14:39.7415085Z   libcairo2-doc freetype2-doc gir1.2-glib-2.0-dev libglib2.0-doc
+2025-07-07T18:14:39.7415999Z   libgdk-pixbuf2.0-bin libxml2-utils libice-doc libsm-doc libx11-doc
+2025-07-07T18:14:39.7416682Z   libxcb-doc libxext-doc nfs-common util-linux-extra util-linux-locales
+2025-07-07T18:14:39.7417167Z Recommended packages:
+2025-07-07T18:14:39.7417546Z   bzip2-doc default-libdecor-0-plugin-1 | libdecor-0-plugin-1 libpng-tools
+2025-07-07T18:14:39.7785885Z The following NEW packages will be installed:
+2025-07-07T18:14:39.7789082Z   build-essential libblkid-dev libbrotli-dev libbz2-dev
+2025-07-07T18:14:39.7789889Z   libcairo-script-interpreter2 libcairo2-dev libdecor-0-0 libegl-dev
+2025-07-07T18:14:39.7790820Z   libegl-mesa0 libegl1 libfontconfig-dev libfreetype-dev libgirepository-2.0-0
+2025-07-07T18:14:39.7791739Z   libgl-dev libgl1-mesa-dev libgles-dev libgles1 libgles2 libglib2.0-dev
+2025-07-07T18:14:39.7792583Z   libglib2.0-dev-bin libglu1-mesa libglu1-mesa-dev libglvnd-core-dev
+2025-07-07T18:14:39.7793463Z   libglvnd-dev libglx-dev libice-dev libmount-dev libopengl-dev libopengl0
+2025-07-07T18:14:39.7796485Z   libpixman-1-dev libpng-dev libpthread-stubs0-dev libselinux1-dev
+2025-07-07T18:14:39.7797405Z   libsepol-dev libsm-dev libx11-dev libxau-dev libxcb-render0-dev
+2025-07-07T18:14:39.7798246Z   libxcb-shm0-dev libxcb-xkb1 libxcb1-dev libxcursor-dev libxdmcp-dev
+2025-07-07T18:14:39.7799318Z   libxext-dev libxfixes-dev libxi-dev libxinerama-dev libxkbcommon-x11-0
+2025-07-07T18:14:39.7805023Z   libxrandr-dev libxrender-dev libxxf86vm-dev mesa-utils mesa-utils-bin
+2025-07-07T18:14:39.7805680Z   uuid-dev x11proto-core-dev x11proto-dev xorg-sgml-doctools xtrans-dev
+2025-07-07T18:14:39.7813249Z The following packages will be upgraded:
+2025-07-07T18:14:39.7819971Z   bsdextrautils bsdutils eject fdisk libblkid1 libfdisk1 libmount1
+2025-07-07T18:14:39.7824391Z   libsmartcols1 libuuid1 mount util-linux uuid-runtime
+2025-07-07T18:14:39.8025068Z 12 upgraded, 58 newly installed, 0 to remove and 40 not upgraded.
+2025-07-07T18:14:39.8025546Z Need to get 10.9 MB of archives.
+2025-07-07T18:14:39.8026047Z After this operation, 37.5 MB of additional disk space will be used.
+2025-07-07T18:14:39.8026876Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2025-07-07T18:14:39.8564577Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 bsdutils amd64 1:2.39.3-9ubuntu6.3 [95.9 kB]
+2025-07-07T18:14:39.8938002Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 util-linux amd64 2.39.3-9ubuntu6.3 [1128 kB]
+2025-07-07T18:14:39.9639297Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 mount amd64 2.39.3-9ubuntu6.3 [118 kB]
+2025-07-07T18:14:39.9995631Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libsmartcols1 amd64 2.39.3-9ubuntu6.3 [65.4 kB]
+2025-07-07T18:14:40.0346578Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libuuid1 amd64 2.39.3-9ubuntu6.3 [35.8 kB]
+2025-07-07T18:14:40.0693549Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 uuid-runtime amd64 2.39.3-9ubuntu6.3 [33.1 kB]
+2025-07-07T18:14:40.1081560Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libblkid1 amd64 2.39.3-9ubuntu6.3 [123 kB]
+2025-07-07T18:14:40.1860859Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libmount1 amd64 2.39.3-9ubuntu6.3 [134 kB]
+2025-07-07T18:14:40.2206959Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 eject amd64 2.39.3-9ubuntu6.3 [26.3 kB]
+2025-07-07T18:14:40.2552536Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libfdisk1 amd64 2.39.3-9ubuntu6.3 [146 kB]
+2025-07-07T18:14:40.2919092Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 bsdextrautils amd64 2.39.3-9ubuntu6.3 [73.7 kB]
+2025-07-07T18:14:40.3652226Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 build-essential amd64 12.10ubuntu1 [4928 B]
+2025-07-07T18:14:40.4063605Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 fdisk amd64 2.39.3-9ubuntu6.3 [122 kB]
+2025-07-07T18:14:40.4416370Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libbrotli-dev amd64 1.1.0-2build2 [353 kB]
+2025-07-07T18:14:40.4792406Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libbz2-dev amd64 1.0.8-5.1build0.1 [33.6 kB]
+2025-07-07T18:14:40.5151587Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libcairo-script-interpreter2 amd64 1.18.0-3build1 [60.3 kB]
+2025-07-07T18:14:40.5519163Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libpng-dev amd64 1.6.43-5build1 [264 kB]
+2025-07-07T18:14:40.5920643Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libfreetype-dev amd64 2.13.2+dfsg-1build3 [575 kB]
+2025-07-07T18:14:40.6815901Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 uuid-dev amd64 2.39.3-9ubuntu6.3 [33.5 kB]
+2025-07-07T18:14:40.7163431Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libfontconfig-dev amd64 2.15.0-1.1ubuntu2 [161 kB]
+2025-07-07T18:14:40.7534699Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libglib2.0-dev-bin amd64 2.80.0-6ubuntu3.4 [138 kB]
+2025-07-07T18:14:40.7897285Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libblkid-dev amd64 2.39.3-9ubuntu6.3 [204 kB]
+2025-07-07T18:14:40.8313361Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libsepol-dev amd64 3.5-2build1 [384 kB]
+2025-07-07T18:14:40.8785050Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libselinux1-dev amd64 3.5-2ubuntu2.1 [164 kB]
+2025-07-07T18:14:40.9129930Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libmount-dev amd64 2.39.3-9ubuntu6.3 [14.9 kB]
+2025-07-07T18:14:40.9471754Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgirepository-2.0-0 amd64 2.80.0-6ubuntu3.4 [73.6 kB]
+2025-07-07T18:14:40.9834752Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libglib2.0-dev amd64 2.80.0-6ubuntu3.4 [1860 kB]
+2025-07-07T18:14:41.0675335Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libpixman-1-dev amd64 0.42.2-1build1 [296 kB]
+2025-07-07T18:14:41.1046849Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xorg-sgml-doctools all 1:1.11-1.1 [10.9 kB]
+2025-07-07T18:14:41.1382357Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 x11proto-dev all 2023.2-1 [602 kB]
+2025-07-07T18:14:41.2112883Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 x11proto-core-dev all 2023.2-1 [2444 B]
+2025-07-07T18:14:41.2450938Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libice-dev amd64 2:1.0.10-1build3 [51.0 kB]
+2025-07-07T18:14:41.2793888Z Get:34 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libsm-dev amd64 2:1.2.3-1build3 [17.8 kB]
+2025-07-07T18:14:41.3132610Z Get:35 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxau-dev amd64 1:1.0.9-1build6 [9570 B]
+2025-07-07T18:14:41.3465308Z Get:36 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxdmcp-dev amd64 1:1.1.3-0ubuntu6 [26.5 kB]
+2025-07-07T18:14:41.3812194Z Get:37 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xtrans-dev all 1.4.0-1 [68.9 kB]
+2025-07-07T18:14:41.4240290Z Get:38 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libpthread-stubs0-dev amd64 0.4-1build3 [4746 B]
+2025-07-07T18:14:41.5083224Z Get:39 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxcb1-dev amd64 1.15-1ubuntu2 [85.8 kB]
+2025-07-07T18:14:41.5439960Z Get:40 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libx11-dev amd64 2:1.8.7-1build1 [732 kB]
+2025-07-07T18:14:41.6230695Z Get:41 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxcb-render0-dev amd64 1.15-1ubuntu2 [19.6 kB]
+2025-07-07T18:14:41.6564964Z Get:42 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxcb-shm0-dev amd64 1.15-1ubuntu2 [8246 B]
+2025-07-07T18:14:41.6903490Z Get:43 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxext-dev amd64 2:1.3.4-1build2 [83.5 kB]
+2025-07-07T18:14:41.7241517Z Get:44 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxrender-dev amd64 1:0.9.10-1.1build1 [26.3 kB]
+2025-07-07T18:14:41.7576584Z Get:45 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libcairo2-dev amd64 1.18.0-3build1 [41.1 kB]
+2025-07-07T18:14:41.7922985Z Get:46 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libdecor-0-0 amd64 0.2.2-1build2 [16.5 kB]
+2025-07-07T18:14:41.8261726Z Get:47 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libegl-mesa0 amd64 24.2.8-1ubuntu1~24.04.1 [129 kB]
+2025-07-07T18:14:41.8604796Z Get:48 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libegl1 amd64 1.7.0-1build1 [28.7 kB]
+2025-07-07T18:14:41.8951111Z Get:49 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libglx-dev amd64 1.7.0-1build1 [14.2 kB]
+2025-07-07T18:14:41.9316399Z Get:50 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libgl-dev amd64 1.7.0-1build1 [102 kB]
+2025-07-07T18:14:41.9683180Z Get:51 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libegl-dev amd64 1.7.0-1build1 [18.2 kB]
+2025-07-07T18:14:42.0026121Z Get:52 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libgles1 amd64 1.7.0-1build1 [11.6 kB]
+2025-07-07T18:14:42.0367364Z Get:53 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libgles2 amd64 1.7.0-1build1 [17.1 kB]
+2025-07-07T18:14:42.0710550Z Get:54 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libgles-dev amd64 1.7.0-1build1 [50.5 kB]
+2025-07-07T18:14:42.1062333Z Get:55 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libopengl0 amd64 1.7.0-1build1 [32.8 kB]
+2025-07-07T18:14:42.1412788Z Get:56 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libglu1-mesa amd64 9.0.2-1.1build1 [152 kB]
+2025-07-07T18:14:42.1863817Z Get:57 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libopengl-dev amd64 1.7.0-1build1 [3454 B]
+2025-07-07T18:14:42.2607922Z Get:58 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libglu1-mesa-dev amd64 9.0.2-1.1build1 [237 kB]
+2025-07-07T18:14:42.3037037Z Get:59 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxcb-xkb1 amd64 1.15-1ubuntu2 [32.3 kB]
+2025-07-07T18:14:42.3387558Z Get:60 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxfixes-dev amd64 1:6.0.0-2build1 [12.1 kB]
+2025-07-07T18:14:42.3733293Z Get:61 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxcursor-dev amd64 1:1.2.1-1build1 [31.8 kB]
+2025-07-07T18:14:42.4071024Z Get:62 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxi-dev amd64 2:1.8.1-1build1 [194 kB]
+2025-07-07T18:14:42.4465966Z Get:63 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxinerama-dev amd64 2:1.1.4-3build1 [7988 B]
+2025-07-07T18:14:42.4816119Z Get:64 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxkbcommon-x11-0 amd64 1.6.0-1build1 [14.5 kB]
+2025-07-07T18:14:42.5153210Z Get:65 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxrandr-dev amd64 2:1.5.2-2build1 [26.4 kB]
+2025-07-07T18:14:42.5494209Z Get:66 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libxxf86vm-dev amd64 1:1.1.4-1build4 [13.8 kB]
+2025-07-07T18:14:42.5837635Z Get:67 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 mesa-utils-bin amd64 9.0.0-2 [164 kB]
+2025-07-07T18:14:42.6274415Z Get:68 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libglvnd-core-dev amd64 1.7.0-1build1 [13.6 kB]
+2025-07-07T18:14:42.6623346Z Get:69 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libglvnd-dev amd64 1.7.0-1build1 [3198 B]
+2025-07-07T18:14:42.6980696Z Get:70 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgl1-mesa-dev amd64 24.2.8-1ubuntu1~24.04.1 [19.2 kB]
+2025-07-07T18:14:42.7367110Z Get:71 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 mesa-utils amd64 9.0.0-2 [1051 kB]
+2025-07-07T18:14:43.1330593Z Fetched 10.9 MB in 3s (3656 kB/s)
+2025-07-07T18:14:43.1811988Z (Reading database ... 
+2025-07-07T18:14:43.1812496Z (Reading database ... 5%
+2025-07-07T18:14:43.1812835Z (Reading database ... 10%
+2025-07-07T18:14:43.1813120Z (Reading database ... 15%
+2025-07-07T18:14:43.1813392Z (Reading database ... 20%
+2025-07-07T18:14:43.1813664Z (Reading database ... 25%
+2025-07-07T18:14:43.1814215Z (Reading database ... 30%
+2025-07-07T18:14:43.1814648Z (Reading database ... 35%
+2025-07-07T18:14:43.1814913Z (Reading database ... 40%
+2025-07-07T18:14:43.1815172Z (Reading database ... 45%
+2025-07-07T18:14:43.1815433Z (Reading database ... 50%
+2025-07-07T18:14:43.1917772Z (Reading database ... 55%
+2025-07-07T18:14:43.2297643Z (Reading database ... 60%
+2025-07-07T18:14:43.2593445Z (Reading database ... 65%
+2025-07-07T18:14:43.2872220Z (Reading database ... 70%
+2025-07-07T18:14:43.3170356Z (Reading database ... 75%
+2025-07-07T18:14:43.3807811Z (Reading database ... 80%
+2025-07-07T18:14:43.4236941Z (Reading database ... 85%
+2025-07-07T18:14:43.4814502Z (Reading database ... 90%
+2025-07-07T18:14:43.5205657Z (Reading database ... 95%
+2025-07-07T18:14:43.5206138Z (Reading database ... 100%
+2025-07-07T18:14:43.5206728Z (Reading database ... 219395 files and directories currently installed.)
+2025-07-07T18:14:43.5254564Z Preparing to unpack .../bsdutils_1%3a2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:43.5320284Z Unpacking bsdutils (1:2.39.3-9ubuntu6.3) over (1:2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:43.5849724Z Setting up bsdutils (1:2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:43.6204304Z (Reading database ... 
+2025-07-07T18:14:43.6204788Z (Reading database ... 5%
+2025-07-07T18:14:43.6205241Z (Reading database ... 10%
+2025-07-07T18:14:43.6205664Z (Reading database ... 15%
+2025-07-07T18:14:43.6206020Z (Reading database ... 20%
+2025-07-07T18:14:43.6206285Z (Reading database ... 25%
+2025-07-07T18:14:43.6206538Z (Reading database ... 30%
+2025-07-07T18:14:43.6206796Z (Reading database ... 35%
+2025-07-07T18:14:43.6207169Z (Reading database ... 40%
+2025-07-07T18:14:43.6207422Z (Reading database ... 45%
+2025-07-07T18:14:43.6207681Z (Reading database ... 50%
+2025-07-07T18:14:43.6225803Z (Reading database ... 55%
+2025-07-07T18:14:43.6272865Z (Reading database ... 60%
+2025-07-07T18:14:43.6291120Z (Reading database ... 65%
+2025-07-07T18:14:43.6322266Z (Reading database ... 70%
+2025-07-07T18:14:43.6343856Z (Reading database ... 75%
+2025-07-07T18:14:43.6588092Z (Reading database ... 80%
+2025-07-07T18:14:43.6651463Z (Reading database ... 85%
+2025-07-07T18:14:43.6910640Z (Reading database ... 90%
+2025-07-07T18:14:43.7008508Z (Reading database ... 95%
+2025-07-07T18:14:43.7009117Z (Reading database ... 100%
+2025-07-07T18:14:43.7009634Z (Reading database ... 219395 files and directories currently installed.)
+2025-07-07T18:14:43.7055589Z Preparing to unpack .../util-linux_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:43.7228473Z Unpacking util-linux (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:43.8612671Z Setting up util-linux (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:44.5719853Z fstrim.service is a disabled or a static unit not running, not starting it.
+2025-07-07T18:14:44.6076711Z (Reading database ... 
+2025-07-07T18:14:44.6077227Z (Reading database ... 5%
+2025-07-07T18:14:44.6077657Z (Reading database ... 10%
+2025-07-07T18:14:44.6077995Z (Reading database ... 15%
+2025-07-07T18:14:44.6078260Z (Reading database ... 20%
+2025-07-07T18:14:44.6078740Z (Reading database ... 25%
+2025-07-07T18:14:44.6079032Z (Reading database ... 30%
+2025-07-07T18:14:44.6079294Z (Reading database ... 35%
+2025-07-07T18:14:44.6079561Z (Reading database ... 40%
+2025-07-07T18:14:44.6079818Z (Reading database ... 45%
+2025-07-07T18:14:44.6080080Z (Reading database ... 50%
+2025-07-07T18:14:44.6096545Z (Reading database ... 55%
+2025-07-07T18:14:44.6137355Z (Reading database ... 60%
+2025-07-07T18:14:44.6154566Z (Reading database ... 65%
+2025-07-07T18:14:44.6182305Z (Reading database ... 70%
+2025-07-07T18:14:44.6200943Z (Reading database ... 75%
+2025-07-07T18:14:44.6431733Z (Reading database ... 80%
+2025-07-07T18:14:44.6496657Z (Reading database ... 85%
+2025-07-07T18:14:44.6755346Z (Reading database ... 90%
+2025-07-07T18:14:44.6853594Z (Reading database ... 95%
+2025-07-07T18:14:44.6853975Z (Reading database ... 100%
+2025-07-07T18:14:44.6854396Z (Reading database ... 219395 files and directories currently installed.)
+2025-07-07T18:14:44.6900213Z Preparing to unpack .../mount_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:44.6934575Z Unpacking mount (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:44.7391237Z Preparing to unpack .../libsmartcols1_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:44.7432627Z Unpacking libsmartcols1:amd64 (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:44.7869121Z Setting up libsmartcols1:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:44.8237513Z (Reading database ... 
+2025-07-07T18:14:44.8238045Z (Reading database ... 5%
+2025-07-07T18:14:44.8238393Z (Reading database ... 10%
+2025-07-07T18:14:44.8238837Z (Reading database ... 15%
+2025-07-07T18:14:44.8239109Z (Reading database ... 20%
+2025-07-07T18:14:44.8239368Z (Reading database ... 25%
+2025-07-07T18:14:44.8239626Z (Reading database ... 30%
+2025-07-07T18:14:44.8239885Z (Reading database ... 35%
+2025-07-07T18:14:44.8240141Z (Reading database ... 40%
+2025-07-07T18:14:44.8240401Z (Reading database ... 45%
+2025-07-07T18:14:44.8240665Z (Reading database ... 50%
+2025-07-07T18:14:44.8258163Z (Reading database ... 55%
+2025-07-07T18:14:44.8303616Z (Reading database ... 60%
+2025-07-07T18:14:44.8321388Z (Reading database ... 65%
+2025-07-07T18:14:44.8350897Z (Reading database ... 70%
+2025-07-07T18:14:44.8370458Z (Reading database ... 75%
+2025-07-07T18:14:44.8607765Z (Reading database ... 80%
+2025-07-07T18:14:44.8670418Z (Reading database ... 85%
+2025-07-07T18:14:44.8905590Z (Reading database ... 90%
+2025-07-07T18:14:44.8999002Z (Reading database ... 95%
+2025-07-07T18:14:44.8999484Z (Reading database ... 100%
+2025-07-07T18:14:44.9000103Z (Reading database ... 219395 files and directories currently installed.)
+2025-07-07T18:14:44.9045516Z Preparing to unpack .../libuuid1_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:44.9119335Z Unpacking libuuid1:amd64 (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:44.9554693Z Setting up libuuid1:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:44.9999535Z (Reading database ... 
+2025-07-07T18:14:45.0000098Z (Reading database ... 5%
+2025-07-07T18:14:45.0000633Z (Reading database ... 10%
+2025-07-07T18:14:45.0001041Z (Reading database ... 15%
+2025-07-07T18:14:45.0001341Z (Reading database ... 20%
+2025-07-07T18:14:45.0001636Z (Reading database ... 25%
+2025-07-07T18:14:45.0001924Z (Reading database ... 30%
+2025-07-07T18:14:45.0002202Z (Reading database ... 35%
+2025-07-07T18:14:45.0002485Z (Reading database ... 40%
+2025-07-07T18:14:45.0002774Z (Reading database ... 45%
+2025-07-07T18:14:45.0003053Z (Reading database ... 50%
+2025-07-07T18:14:45.0021052Z (Reading database ... 55%
+2025-07-07T18:14:45.0067402Z (Reading database ... 60%
+2025-07-07T18:14:45.0085374Z (Reading database ... 65%
+2025-07-07T18:14:45.0115527Z (Reading database ... 70%
+2025-07-07T18:14:45.0135432Z (Reading database ... 75%
+2025-07-07T18:14:45.0376866Z (Reading database ... 80%
+2025-07-07T18:14:45.0438382Z (Reading database ... 85%
+2025-07-07T18:14:45.0683681Z (Reading database ... 90%
+2025-07-07T18:14:45.0777937Z (Reading database ... 95%
+2025-07-07T18:14:45.0778480Z (Reading database ... 100%
+2025-07-07T18:14:45.0779313Z (Reading database ... 219395 files and directories currently installed.)
+2025-07-07T18:14:45.0823577Z Preparing to unpack .../uuid-runtime_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.0944939Z Unpacking uuid-runtime (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:45.1435166Z Preparing to unpack .../libblkid1_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.1466367Z Unpacking libblkid1:amd64 (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:45.1899463Z Setting up libblkid1:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:45.2257366Z (Reading database ... 
+2025-07-07T18:14:45.2257900Z (Reading database ... 5%
+2025-07-07T18:14:45.2258238Z (Reading database ... 10%
+2025-07-07T18:14:45.2258692Z (Reading database ... 15%
+2025-07-07T18:14:45.2259041Z (Reading database ... 20%
+2025-07-07T18:14:45.2259322Z (Reading database ... 25%
+2025-07-07T18:14:45.2259588Z (Reading database ... 30%
+2025-07-07T18:14:45.2260413Z (Reading database ... 35%
+2025-07-07T18:14:45.2260864Z (Reading database ... 40%
+2025-07-07T18:14:45.2261131Z (Reading database ... 45%
+2025-07-07T18:14:45.2261395Z (Reading database ... 50%
+2025-07-07T18:14:45.2276636Z (Reading database ... 55%
+2025-07-07T18:14:45.2325089Z (Reading database ... 60%
+2025-07-07T18:14:45.2343907Z (Reading database ... 65%
+2025-07-07T18:14:45.2375066Z (Reading database ... 70%
+2025-07-07T18:14:45.2395180Z (Reading database ... 75%
+2025-07-07T18:14:45.2631794Z (Reading database ... 80%
+2025-07-07T18:14:45.2691801Z (Reading database ... 85%
+2025-07-07T18:14:45.2934550Z (Reading database ... 90%
+2025-07-07T18:14:45.3024524Z (Reading database ... 95%
+2025-07-07T18:14:45.3024958Z (Reading database ... 100%
+2025-07-07T18:14:45.3025527Z (Reading database ... 219395 files and directories currently installed.)
+2025-07-07T18:14:45.3069268Z Preparing to unpack .../libmount1_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.3099836Z Unpacking libmount1:amd64 (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:45.3541637Z Setting up libmount1:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:45.3917485Z (Reading database ... 
+2025-07-07T18:14:45.3917976Z (Reading database ... 5%
+2025-07-07T18:14:45.3918262Z (Reading database ... 10%
+2025-07-07T18:14:45.3918733Z (Reading database ... 15%
+2025-07-07T18:14:45.3919028Z (Reading database ... 20%
+2025-07-07T18:14:45.3919291Z (Reading database ... 25%
+2025-07-07T18:14:45.3919553Z (Reading database ... 30%
+2025-07-07T18:14:45.3919820Z (Reading database ... 35%
+2025-07-07T18:14:45.3920077Z (Reading database ... 40%
+2025-07-07T18:14:45.3920337Z (Reading database ... 45%
+2025-07-07T18:14:45.3920599Z (Reading database ... 50%
+2025-07-07T18:14:45.3937189Z (Reading database ... 55%
+2025-07-07T18:14:45.3986038Z (Reading database ... 60%
+2025-07-07T18:14:45.4004682Z (Reading database ... 65%
+2025-07-07T18:14:45.4036827Z (Reading database ... 70%
+2025-07-07T18:14:45.4058459Z (Reading database ... 75%
+2025-07-07T18:14:45.4320806Z (Reading database ... 80%
+2025-07-07T18:14:45.4388408Z (Reading database ... 85%
+2025-07-07T18:14:45.4640253Z (Reading database ... 90%
+2025-07-07T18:14:45.4733651Z (Reading database ... 95%
+2025-07-07T18:14:45.4734006Z (Reading database ... 100%
+2025-07-07T18:14:45.4734403Z (Reading database ... 219395 files and directories currently installed.)
+2025-07-07T18:14:45.4779129Z Preparing to unpack .../00-eject_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.4808202Z Unpacking eject (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:45.5201124Z Preparing to unpack .../01-libfdisk1_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.5228241Z Unpacking libfdisk1:amd64 (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:45.5646592Z Preparing to unpack .../02-bsdextrautils_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.5712995Z Unpacking bsdextrautils (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:45.6034312Z Selecting previously unselected package build-essential.
+2025-07-07T18:14:45.6183976Z Preparing to unpack .../03-build-essential_12.10ubuntu1_amd64.deb ...
+2025-07-07T18:14:45.6195325Z Unpacking build-essential (12.10ubuntu1) ...
+2025-07-07T18:14:45.6569746Z Preparing to unpack .../04-fdisk_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.6611483Z Unpacking fdisk (2.39.3-9ubuntu6.3) over (2.39.3-9ubuntu6.2) ...
+2025-07-07T18:14:45.6963656Z Selecting previously unselected package libbrotli-dev:amd64.
+2025-07-07T18:14:45.7112280Z Preparing to unpack .../05-libbrotli-dev_1.1.0-2build2_amd64.deb ...
+2025-07-07T18:14:45.7121917Z Unpacking libbrotli-dev:amd64 (1.1.0-2build2) ...
+2025-07-07T18:14:45.7434655Z Selecting previously unselected package libbz2-dev:amd64.
+2025-07-07T18:14:45.7577735Z Preparing to unpack .../06-libbz2-dev_1.0.8-5.1build0.1_amd64.deb ...
+2025-07-07T18:14:45.7587323Z Unpacking libbz2-dev:amd64 (1.0.8-5.1build0.1) ...
+2025-07-07T18:14:45.7859509Z Selecting previously unselected package libcairo-script-interpreter2:amd64.
+2025-07-07T18:14:45.8000592Z Preparing to unpack .../07-libcairo-script-interpreter2_1.18.0-3build1_amd64.deb ...
+2025-07-07T18:14:45.8010971Z Unpacking libcairo-script-interpreter2:amd64 (1.18.0-3build1) ...
+2025-07-07T18:14:45.8252096Z Selecting previously unselected package libpng-dev:amd64.
+2025-07-07T18:14:45.8391709Z Preparing to unpack .../08-libpng-dev_1.6.43-5build1_amd64.deb ...
+2025-07-07T18:14:45.8403721Z Unpacking libpng-dev:amd64 (1.6.43-5build1) ...
+2025-07-07T18:14:45.8715620Z Selecting previously unselected package libfreetype-dev:amd64.
+2025-07-07T18:14:45.8856593Z Preparing to unpack .../09-libfreetype-dev_2.13.2+dfsg-1build3_amd64.deb ...
+2025-07-07T18:14:45.8866342Z Unpacking libfreetype-dev:amd64 (2.13.2+dfsg-1build3) ...
+2025-07-07T18:14:45.9273611Z Selecting previously unselected package uuid-dev:amd64.
+2025-07-07T18:14:45.9412718Z Preparing to unpack .../10-uuid-dev_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:45.9424322Z Unpacking uuid-dev:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:45.9683594Z Selecting previously unselected package libfontconfig-dev:amd64.
+2025-07-07T18:14:45.9823302Z Preparing to unpack .../11-libfontconfig-dev_2.15.0-1.1ubuntu2_amd64.deb ...
+2025-07-07T18:14:45.9832418Z Unpacking libfontconfig-dev:amd64 (2.15.0-1.1ubuntu2) ...
+2025-07-07T18:14:46.0105984Z Selecting previously unselected package libglib2.0-dev-bin.
+2025-07-07T18:14:46.0246220Z Preparing to unpack .../12-libglib2.0-dev-bin_2.80.0-6ubuntu3.4_amd64.deb ...
+2025-07-07T18:14:46.0276754Z Unpacking libglib2.0-dev-bin (2.80.0-6ubuntu3.4) ...
+2025-07-07T18:14:46.0627740Z Selecting previously unselected package libblkid-dev:amd64.
+2025-07-07T18:14:46.0768065Z Preparing to unpack .../13-libblkid-dev_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:46.0780183Z Unpacking libblkid-dev:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:46.1084326Z Selecting previously unselected package libsepol-dev:amd64.
+2025-07-07T18:14:46.1225233Z Preparing to unpack .../14-libsepol-dev_3.5-2build1_amd64.deb ...
+2025-07-07T18:14:46.1234722Z Unpacking libsepol-dev:amd64 (3.5-2build1) ...
+2025-07-07T18:14:46.1611093Z Selecting previously unselected package libselinux1-dev:amd64.
+2025-07-07T18:14:46.1752343Z Preparing to unpack .../15-libselinux1-dev_3.5-2ubuntu2.1_amd64.deb ...
+2025-07-07T18:14:46.1763948Z Unpacking libselinux1-dev:amd64 (3.5-2ubuntu2.1) ...
+2025-07-07T18:14:46.2289941Z Selecting previously unselected package libmount-dev:amd64.
+2025-07-07T18:14:46.2426398Z Preparing to unpack .../16-libmount-dev_2.39.3-9ubuntu6.3_amd64.deb ...
+2025-07-07T18:14:46.2436682Z Unpacking libmount-dev:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:46.2681311Z Selecting previously unselected package libgirepository-2.0-0:amd64.
+2025-07-07T18:14:46.2822191Z Preparing to unpack .../17-libgirepository-2.0-0_2.80.0-6ubuntu3.4_amd64.deb ...
+2025-07-07T18:14:46.2832866Z Unpacking libgirepository-2.0-0:amd64 (2.80.0-6ubuntu3.4) ...
+2025-07-07T18:14:46.3071947Z Selecting previously unselected package libglib2.0-dev:amd64.
+2025-07-07T18:14:46.3207576Z Preparing to unpack .../18-libglib2.0-dev_2.80.0-6ubuntu3.4_amd64.deb ...
+2025-07-07T18:14:46.3220353Z Unpacking libglib2.0-dev:amd64 (2.80.0-6ubuntu3.4) ...
+2025-07-07T18:14:46.4344745Z Selecting previously unselected package libpixman-1-dev:amd64.
+2025-07-07T18:14:46.4484291Z Preparing to unpack .../19-libpixman-1-dev_0.42.2-1build1_amd64.deb ...
+2025-07-07T18:14:46.4496685Z Unpacking libpixman-1-dev:amd64 (0.42.2-1build1) ...
+2025-07-07T18:14:46.4767900Z Selecting previously unselected package xorg-sgml-doctools.
+2025-07-07T18:14:46.4904668Z Preparing to unpack .../20-xorg-sgml-doctools_1%3a1.11-1.1_all.deb ...
+2025-07-07T18:14:46.4914078Z Unpacking xorg-sgml-doctools (1:1.11-1.1) ...
+2025-07-07T18:14:46.5172649Z Selecting previously unselected package x11proto-dev.
+2025-07-07T18:14:46.5307768Z Preparing to unpack .../21-x11proto-dev_2023.2-1_all.deb ...
+2025-07-07T18:14:46.5317528Z Unpacking x11proto-dev (2023.2-1) ...
+2025-07-07T18:14:46.5875560Z Selecting previously unselected package x11proto-core-dev.
+2025-07-07T18:14:46.6016106Z Preparing to unpack .../22-x11proto-core-dev_2023.2-1_all.deb ...
+2025-07-07T18:14:46.6026244Z Unpacking x11proto-core-dev (2023.2-1) ...
+2025-07-07T18:14:46.6238965Z Selecting previously unselected package libice-dev:amd64.
+2025-07-07T18:14:46.6376882Z Preparing to unpack .../23-libice-dev_2%3a1.0.10-1build3_amd64.deb ...
+2025-07-07T18:14:46.6387757Z Unpacking libice-dev:amd64 (2:1.0.10-1build3) ...
+2025-07-07T18:14:46.6639256Z Selecting previously unselected package libsm-dev:amd64.
+2025-07-07T18:14:46.6777786Z Preparing to unpack .../24-libsm-dev_2%3a1.2.3-1build3_amd64.deb ...
+2025-07-07T18:14:46.6788192Z Unpacking libsm-dev:amd64 (2:1.2.3-1build3) ...
+2025-07-07T18:14:46.7013109Z Selecting previously unselected package libxau-dev:amd64.
+2025-07-07T18:14:46.7151391Z Preparing to unpack .../25-libxau-dev_1%3a1.0.9-1build6_amd64.deb ...
+2025-07-07T18:14:46.7161751Z Unpacking libxau-dev:amd64 (1:1.0.9-1build6) ...
+2025-07-07T18:14:46.7391153Z Selecting previously unselected package libxdmcp-dev:amd64.
+2025-07-07T18:14:46.7528853Z Preparing to unpack .../26-libxdmcp-dev_1%3a1.1.3-0ubuntu6_amd64.deb ...
+2025-07-07T18:14:46.7538265Z Unpacking libxdmcp-dev:amd64 (1:1.1.3-0ubuntu6) ...
+2025-07-07T18:14:46.7769285Z Selecting previously unselected package xtrans-dev.
+2025-07-07T18:14:46.7913201Z Preparing to unpack .../27-xtrans-dev_1.4.0-1_all.deb ...
+2025-07-07T18:14:46.7932701Z Unpacking xtrans-dev (1.4.0-1) ...
+2025-07-07T18:14:46.8286316Z Selecting previously unselected package libpthread-stubs0-dev:amd64.
+2025-07-07T18:14:46.8426196Z Preparing to unpack .../28-libpthread-stubs0-dev_0.4-1build3_amd64.deb ...
+2025-07-07T18:14:46.8439118Z Unpacking libpthread-stubs0-dev:amd64 (0.4-1build3) ...
+2025-07-07T18:14:46.8681313Z Selecting previously unselected package libxcb1-dev:amd64.
+2025-07-07T18:14:46.8818401Z Preparing to unpack .../29-libxcb1-dev_1.15-1ubuntu2_amd64.deb ...
+2025-07-07T18:14:46.8829223Z Unpacking libxcb1-dev:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:46.9074390Z Selecting previously unselected package libx11-dev:amd64.
+2025-07-07T18:14:46.9211781Z Preparing to unpack .../30-libx11-dev_2%3a1.8.7-1build1_amd64.deb ...
+2025-07-07T18:14:46.9225333Z Unpacking libx11-dev:amd64 (2:1.8.7-1build1) ...
+2025-07-07T18:14:46.9588500Z Selecting previously unselected package libxcb-render0-dev:amd64.
+2025-07-07T18:14:46.9727993Z Preparing to unpack .../31-libxcb-render0-dev_1.15-1ubuntu2_amd64.deb ...
+2025-07-07T18:14:46.9737433Z Unpacking libxcb-render0-dev:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:46.9961336Z Selecting previously unselected package libxcb-shm0-dev:amd64.
+2025-07-07T18:14:47.0099122Z Preparing to unpack .../32-libxcb-shm0-dev_1.15-1ubuntu2_amd64.deb ...
+2025-07-07T18:14:47.0110569Z Unpacking libxcb-shm0-dev:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:47.0329362Z Selecting previously unselected package libxext-dev:amd64.
+2025-07-07T18:14:47.0466236Z Preparing to unpack .../33-libxext-dev_2%3a1.3.4-1build2_amd64.deb ...
+2025-07-07T18:14:47.0473530Z Unpacking libxext-dev:amd64 (2:1.3.4-1build2) ...
+2025-07-07T18:14:47.0806352Z Selecting previously unselected package libxrender-dev:amd64.
+2025-07-07T18:14:47.0944004Z Preparing to unpack .../34-libxrender-dev_1%3a0.9.10-1.1build1_amd64.deb ...
+2025-07-07T18:14:47.0953989Z Unpacking libxrender-dev:amd64 (1:0.9.10-1.1build1) ...
+2025-07-07T18:14:47.1168189Z Selecting previously unselected package libcairo2-dev:amd64.
+2025-07-07T18:14:47.1304603Z Preparing to unpack .../35-libcairo2-dev_1.18.0-3build1_amd64.deb ...
+2025-07-07T18:14:47.1317726Z Unpacking libcairo2-dev:amd64 (1.18.0-3build1) ...
+2025-07-07T18:14:47.1598998Z Selecting previously unselected package libdecor-0-0:amd64.
+2025-07-07T18:14:47.1735642Z Preparing to unpack .../36-libdecor-0-0_0.2.2-1build2_amd64.deb ...
+2025-07-07T18:14:47.1747355Z Unpacking libdecor-0-0:amd64 (0.2.2-1build2) ...
+2025-07-07T18:14:47.1993691Z Selecting previously unselected package libegl-mesa0:amd64.
+2025-07-07T18:14:47.2129598Z Preparing to unpack .../37-libegl-mesa0_24.2.8-1ubuntu1~24.04.1_amd64.deb ...
+2025-07-07T18:14:47.2142324Z Unpacking libegl-mesa0:amd64 (24.2.8-1ubuntu1~24.04.1) ...
+2025-07-07T18:14:47.2408801Z Selecting previously unselected package libegl1:amd64.
+2025-07-07T18:14:47.2545204Z Preparing to unpack .../38-libegl1_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.2558069Z Unpacking libegl1:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.2786429Z Selecting previously unselected package libglx-dev:amd64.
+2025-07-07T18:14:47.2926133Z Preparing to unpack .../39-libglx-dev_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.2935766Z Unpacking libglx-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.3155696Z Selecting previously unselected package libgl-dev:amd64.
+2025-07-07T18:14:47.3293222Z Preparing to unpack .../40-libgl-dev_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.3303785Z Unpacking libgl-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.3571270Z Selecting previously unselected package libegl-dev:amd64.
+2025-07-07T18:14:47.3710725Z Preparing to unpack .../41-libegl-dev_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.3719202Z Unpacking libegl-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.3996654Z Selecting previously unselected package libgles1:amd64.
+2025-07-07T18:14:47.4136020Z Preparing to unpack .../42-libgles1_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.4149489Z Unpacking libgles1:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.4415940Z Selecting previously unselected package libgles2:amd64.
+2025-07-07T18:14:47.4559789Z Preparing to unpack .../43-libgles2_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.4571164Z Unpacking libgles2:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.4805624Z Selecting previously unselected package libgles-dev:amd64.
+2025-07-07T18:14:47.4944243Z Preparing to unpack .../44-libgles-dev_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.4955114Z Unpacking libgles-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.5270215Z Selecting previously unselected package libopengl0:amd64.
+2025-07-07T18:14:47.5409470Z Preparing to unpack .../45-libopengl0_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.5420353Z Unpacking libopengl0:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.5715308Z Selecting previously unselected package libglu1-mesa:amd64.
+2025-07-07T18:14:47.5854005Z Preparing to unpack .../46-libglu1-mesa_9.0.2-1.1build1_amd64.deb ...
+2025-07-07T18:14:47.5864159Z Unpacking libglu1-mesa:amd64 (9.0.2-1.1build1) ...
+2025-07-07T18:14:47.6114206Z Selecting previously unselected package libopengl-dev:amd64.
+2025-07-07T18:14:47.6253098Z Preparing to unpack .../47-libopengl-dev_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.6262084Z Unpacking libopengl-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:47.6488007Z Selecting previously unselected package libglu1-mesa-dev:amd64.
+2025-07-07T18:14:47.6627516Z Preparing to unpack .../48-libglu1-mesa-dev_9.0.2-1.1build1_amd64.deb ...
+2025-07-07T18:14:47.6636894Z Unpacking libglu1-mesa-dev:amd64 (9.0.2-1.1build1) ...
+2025-07-07T18:14:47.6930240Z Selecting previously unselected package libxcb-xkb1:amd64.
+2025-07-07T18:14:47.7068227Z Preparing to unpack .../49-libxcb-xkb1_1.15-1ubuntu2_amd64.deb ...
+2025-07-07T18:14:47.7081344Z Unpacking libxcb-xkb1:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:47.7306419Z Selecting previously unselected package libxfixes-dev:amd64.
+2025-07-07T18:14:47.7443403Z Preparing to unpack .../50-libxfixes-dev_1%3a6.0.0-2build1_amd64.deb ...
+2025-07-07T18:14:47.7454628Z Unpacking libxfixes-dev:amd64 (1:6.0.0-2build1) ...
+2025-07-07T18:14:47.7714713Z Selecting previously unselected package libxcursor-dev:amd64.
+2025-07-07T18:14:47.7856179Z Preparing to unpack .../51-libxcursor-dev_1%3a1.2.1-1build1_amd64.deb ...
+2025-07-07T18:14:47.7865542Z Unpacking libxcursor-dev:amd64 (1:1.2.1-1build1) ...
+2025-07-07T18:14:47.8163656Z Selecting previously unselected package libxi-dev:amd64.
+2025-07-07T18:14:47.8304029Z Preparing to unpack .../52-libxi-dev_2%3a1.8.1-1build1_amd64.deb ...
+2025-07-07T18:14:47.8315725Z Unpacking libxi-dev:amd64 (2:1.8.1-1build1) ...
+2025-07-07T18:14:47.8676502Z Selecting previously unselected package libxinerama-dev:amd64.
+2025-07-07T18:14:47.8815820Z Preparing to unpack .../53-libxinerama-dev_2%3a1.1.4-3build1_amd64.deb ...
+2025-07-07T18:14:47.8826112Z Unpacking libxinerama-dev:amd64 (2:1.1.4-3build1) ...
+2025-07-07T18:14:47.9107485Z Selecting previously unselected package libxkbcommon-x11-0:amd64.
+2025-07-07T18:14:47.9254161Z Preparing to unpack .../54-libxkbcommon-x11-0_1.6.0-1build1_amd64.deb ...
+2025-07-07T18:14:47.9263789Z Unpacking libxkbcommon-x11-0:amd64 (1.6.0-1build1) ...
+2025-07-07T18:14:47.9474625Z Selecting previously unselected package libxrandr-dev:amd64.
+2025-07-07T18:14:47.9612000Z Preparing to unpack .../55-libxrandr-dev_2%3a1.5.2-2build1_amd64.deb ...
+2025-07-07T18:14:47.9622944Z Unpacking libxrandr-dev:amd64 (2:1.5.2-2build1) ...
+2025-07-07T18:14:48.0003346Z Selecting previously unselected package libxxf86vm-dev:amd64.
+2025-07-07T18:14:48.0141038Z Preparing to unpack .../56-libxxf86vm-dev_1%3a1.1.4-1build4_amd64.deb ...
+2025-07-07T18:14:48.0150723Z Unpacking libxxf86vm-dev:amd64 (1:1.1.4-1build4) ...
+2025-07-07T18:14:48.0400228Z Selecting previously unselected package mesa-utils-bin:amd64.
+2025-07-07T18:14:48.0549228Z Preparing to unpack .../57-mesa-utils-bin_9.0.0-2_amd64.deb ...
+2025-07-07T18:14:48.0560371Z Unpacking mesa-utils-bin:amd64 (9.0.0-2) ...
+2025-07-07T18:14:48.0874731Z Selecting previously unselected package libglvnd-core-dev:amd64.
+2025-07-07T18:14:48.1019094Z Preparing to unpack .../58-libglvnd-core-dev_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:48.1029354Z Unpacking libglvnd-core-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:48.1269229Z Selecting previously unselected package libglvnd-dev:amd64.
+2025-07-07T18:14:48.1408161Z Preparing to unpack .../59-libglvnd-dev_1.7.0-1build1_amd64.deb ...
+2025-07-07T18:14:48.1419022Z Unpacking libglvnd-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:48.1643067Z Selecting previously unselected package libgl1-mesa-dev:amd64.
+2025-07-07T18:14:48.1781554Z Preparing to unpack .../60-libgl1-mesa-dev_24.2.8-1ubuntu1~24.04.1_amd64.deb ...
+2025-07-07T18:14:48.1792210Z Unpacking libgl1-mesa-dev:amd64 (24.2.8-1ubuntu1~24.04.1) ...
+2025-07-07T18:14:48.2031160Z Selecting previously unselected package mesa-utils.
+2025-07-07T18:14:48.2170269Z Preparing to unpack .../61-mesa-utils_9.0.0-2_amd64.deb ...
+2025-07-07T18:14:48.2180117Z Unpacking mesa-utils (9.0.0-2) ...
+2025-07-07T18:14:48.2855074Z Setting up libcairo-script-interpreter2:amd64 (1.18.0-3build1) ...
+2025-07-07T18:14:48.2883275Z Setting up libglib2.0-dev-bin (2.80.0-6ubuntu3.4) ...
+2025-07-07T18:14:48.4293982Z Setting up libpixman-1-dev:amd64 (0.42.2-1build1) ...
+2025-07-07T18:14:48.4323083Z Setting up bsdextrautils (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:48.4351606Z Setting up libglvnd-core-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:48.4377832Z Setting up libgirepository-2.0-0:amd64 (2.80.0-6ubuntu3.4) ...
+2025-07-07T18:14:48.4405662Z Setting up libpng-dev:amd64 (1.6.43-5build1) ...
+2025-07-07T18:14:48.4431439Z Setting up libpthread-stubs0-dev:amd64 (0.4-1build3) ...
+2025-07-07T18:14:48.4454794Z Setting up libopengl0:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:48.4485747Z Setting up libxcb-xkb1:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:48.4514814Z Setting up eject (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:48.4542282Z Setting up xtrans-dev (1.4.0-1) ...
+2025-07-07T18:14:48.4575088Z Setting up libegl-mesa0:amd64 (24.2.8-1ubuntu1~24.04.1) ...
+2025-07-07T18:14:48.4599332Z Setting up libgles2:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:48.4624401Z Setting up uuid-dev:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:48.4650658Z Setting up libgles1:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:48.4679259Z Setting up libxkbcommon-x11-0:amd64 (1.6.0-1build1) ...
+2025-07-07T18:14:48.4708701Z Setting up libsepol-dev:amd64 (3.5-2build1) ...
+2025-07-07T18:14:48.4731759Z Setting up libfdisk1:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:48.4755748Z Setting up mount (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:48.4779998Z Setting up uuid-runtime (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:49.2760378Z uuidd.service is a disabled or a static unit not running, not starting it.
+2025-07-07T18:14:49.2924562Z Setting up libegl1:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:49.2952820Z Setting up libdecor-0-0:amd64 (0.2.2-1build2) ...
+2025-07-07T18:14:49.2989455Z Setting up build-essential (12.10ubuntu1) ...
+2025-07-07T18:14:49.3026862Z Setting up xorg-sgml-doctools (1:1.11-1.1) ...
+2025-07-07T18:14:49.3053452Z Setting up libglu1-mesa:amd64 (9.0.2-1.1build1) ...
+2025-07-07T18:14:49.3084080Z Setting up libopengl-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:49.3139724Z Setting up libbrotli-dev:amd64 (1.1.0-2build2) ...
+2025-07-07T18:14:49.3171938Z Setting up libbz2-dev:amd64 (1.0.8-5.1build0.1) ...
+2025-07-07T18:14:49.3200614Z Setting up libblkid-dev:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:49.3233854Z Setting up libselinux1-dev:amd64 (3.5-2ubuntu2.1) ...
+2025-07-07T18:14:49.3261817Z Setting up fdisk (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:49.3296394Z Setting up libfreetype-dev:amd64 (2.13.2+dfsg-1build3) ...
+2025-07-07T18:14:49.3328383Z Setting up mesa-utils-bin:amd64 (9.0.0-2) ...
+2025-07-07T18:14:49.3356790Z Setting up libmount-dev:amd64 (2.39.3-9ubuntu6.3) ...
+2025-07-07T18:14:49.3385212Z Setting up libfontconfig-dev:amd64 (2.15.0-1.1ubuntu2) ...
+2025-07-07T18:14:49.3417748Z Setting up libglib2.0-dev:amd64 (2.80.0-6ubuntu3.4) ...
+2025-07-07T18:14:49.3448018Z Setting up mesa-utils (9.0.0-2) ...
+2025-07-07T18:14:49.3609324Z Processing triggers for sgml-base (1.31) ...
+2025-07-07T18:14:49.3742223Z Setting up x11proto-dev (2023.2-1) ...
+2025-07-07T18:14:49.3771851Z Setting up libxau-dev:amd64 (1:1.0.9-1build6) ...
+2025-07-07T18:14:49.3797884Z Setting up libice-dev:amd64 (2:1.0.10-1build3) ...
+2025-07-07T18:14:49.3838313Z Setting up libsm-dev:amd64 (2:1.2.3-1build3) ...
+2025-07-07T18:14:49.3867558Z Processing triggers for libc-bin (2.39-0ubuntu8.4) ...
+2025-07-07T18:14:49.6050359Z Processing triggers for man-db (2.12.0-4build2) ...
+2025-07-07T18:14:56.7467937Z Setting up libxdmcp-dev:amd64 (1:1.1.3-0ubuntu6) ...
+2025-07-07T18:14:56.7499499Z Processing triggers for libglib2.0-0t64:amd64 (2.80.0-6ubuntu3.4) ...
+2025-07-07T18:14:56.7587046Z Setting up x11proto-core-dev (2023.2-1) ...
+2025-07-07T18:14:56.7661796Z Setting up libxcb1-dev:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:56.7697171Z Setting up libx11-dev:amd64 (2:1.8.7-1build1) ...
+2025-07-07T18:14:56.7724799Z Setting up libxfixes-dev:amd64 (1:6.0.0-2build1) ...
+2025-07-07T18:14:56.7747657Z Setting up libxcb-shm0-dev:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:56.7789678Z Setting up libxcb-render0-dev:amd64 (1.15-1ubuntu2) ...
+2025-07-07T18:14:56.7812016Z Setting up libxext-dev:amd64 (2:1.3.4-1build2) ...
+2025-07-07T18:14:56.7840911Z Setting up libglx-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:56.7874380Z Setting up libxi-dev:amd64 (2:1.8.1-1build1) ...
+2025-07-07T18:14:56.7901030Z Setting up libxrender-dev:amd64 (1:0.9.10-1.1build1) ...
+2025-07-07T18:14:56.7927188Z Setting up libgl-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:56.7961473Z Setting up libegl-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:56.7985217Z Setting up libxcursor-dev:amd64 (1:1.2.1-1build1) ...
+2025-07-07T18:14:56.8010259Z Setting up libxxf86vm-dev:amd64 (1:1.1.4-1build4) ...
+2025-07-07T18:14:56.8043917Z Setting up libxrandr-dev:amd64 (2:1.5.2-2build1) ...
+2025-07-07T18:14:56.8072285Z Setting up libglu1-mesa-dev:amd64 (9.0.2-1.1build1) ...
+2025-07-07T18:14:56.8102124Z Setting up libxinerama-dev:amd64 (2:1.1.4-3build1) ...
+2025-07-07T18:14:56.8136381Z Setting up libcairo2-dev:amd64 (1.18.0-3build1) ...
+2025-07-07T18:14:56.8164244Z Setting up libgles-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:56.8193492Z Setting up libglvnd-dev:amd64 (1.7.0-1build1) ...
+2025-07-07T18:14:56.8220635Z Setting up libgl1-mesa-dev:amd64 (24.2.8-1ubuntu1~24.04.1) ...
+2025-07-07T18:14:57.4496061Z 
+2025-07-07T18:14:57.4496491Z Running kernel seems to be up-to-date.
+2025-07-07T18:14:57.4496864Z 
+2025-07-07T18:14:57.4496977Z Restarting services...
+2025-07-07T18:14:57.5166703Z  /etc/needrestart/restart.d/systemd-manager
+2025-07-07T18:14:57.8556258Z  systemctl restart packagekit.service polkit.service rsyslog.service systemd-journald.service systemd-networkd.service systemd-resolved.service systemd-udevd.service udisks2.service
+2025-07-07T18:14:58.0626084Z 
+2025-07-07T18:14:58.0626820Z Service restarts being deferred:
+2025-07-07T18:14:58.0627491Z  systemctl restart ModemManager.service
+2025-07-07T18:14:58.0628128Z  systemctl restart getty@tty1.service
+2025-07-07T18:14:58.0629232Z  systemctl restart serial-getty@ttyS0.service
+2025-07-07T18:14:58.0629928Z  systemctl restart systemd-logind.service
+2025-07-07T18:14:58.0630387Z 
+2025-07-07T18:14:58.0630648Z No containers need to be restarted.
+2025-07-07T18:14:58.0631025Z 
+2025-07-07T18:14:58.0631286Z User sessions running outdated binaries:
+2025-07-07T18:14:58.0631965Z  runner @ user manager service: systemd[940]
+2025-07-07T18:14:58.0716843Z 
+2025-07-07T18:14:58.0720642Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2025-07-07T18:14:58.9943947Z GUI dependencies installed successfully
+2025-07-07T18:14:58.9979388Z ##[group]Run cmake . -B build
+2025-07-07T18:14:58.9979718Z [36;1mcmake . -B build[0m
+2025-07-07T18:14:59.0041166Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2025-07-07T18:14:59.0041491Z env:
+2025-07-07T18:14:59.0041683Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:59.0041921Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:59.0042139Z ##[endgroup]
+2025-07-07T18:14:59.1843523Z -- The CXX compiler identification is GNU 13.3.0
+2025-07-07T18:14:59.2046303Z -- Detecting CXX compiler ABI info
+2025-07-07T18:14:59.2956668Z -- Detecting CXX compiler ABI info - done
+2025-07-07T18:14:59.3131816Z -- Check for working CXX compiler: /usr/bin/c++ - skipped
+2025-07-07T18:14:59.3138118Z -- Detecting CXX compile features
+2025-07-07T18:14:59.3146194Z -- Detecting CXX compile features - done
+2025-07-07T18:14:59.3282557Z -- Could NOT find clap (missing: clap_DIR)
+2025-07-07T18:14:59.3283057Z -- Found CLAP headers in /home/runner/work/clap-jules/clap-jules/libs/clap/include
+2025-07-07T18:14:59.3289588Z -- CLAP version: 1.2.6
+2025-07-07T18:14:59.4181145Z -- The C compiler identification is GNU 13.3.0
+2025-07-07T18:14:59.4269793Z -- Detecting C compiler ABI info
+2025-07-07T18:14:59.4829997Z -- Detecting C compiler ABI info - done
+2025-07-07T18:14:59.5005059Z -- Check for working C compiler: /usr/bin/cc - skipped
+2025-07-07T18:14:59.5008487Z -- Detecting C compile features
+2025-07-07T18:14:59.5013440Z -- Detecting C compile features - done
+2025-07-07T18:14:59.5165994Z -- Found clap-helpers, adding as subdirectory
+2025-07-07T18:14:59.5225148Z CMake Warning (dev) at libs/clap-helpers/CMakeLists.txt:101 (install):
+2025-07-07T18:14:59.5225964Z   Policy CMP0177 is not set: install() DESTINATION paths are normalized.  Run
+2025-07-07T18:14:59.5226575Z   "cmake --help-policy CMP0177" for policy details.  Use the cmake_policy
+2025-07-07T18:14:59.5227039Z   command to set the policy and suppress this warning.
+2025-07-07T18:14:59.5227524Z This warning is for project developers.  Use -Wno-dev to suppress it.
+2025-07-07T18:14:59.5227833Z 
+2025-07-07T18:14:59.5227964Z -- Found boost-di, adding include directory
+2025-07-07T18:14:59.5228265Z -- Found KFR, adding as subdirectory
+2025-07-07T18:14:59.5247623Z -- Detecting target architecture
+2025-07-07T18:15:00.3174456Z -- Default CPU architecture for KFR is sse2 (set KFR_ARCH to override)
+2025-07-07T18:15:00.3175354Z -- Runtime dispatch is enabled for architectures: sse2;sse41;avx;avx2;avx512 (set KFR_ARCHS to change, set KFR_ENABLE_MULTIARCH=OFF to disable)
+2025-07-07T18:15:00.3245748Z -- Found Brisk, creating static library
+2025-07-07T18:15:00.3483976Z -- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1")
+2025-07-07T18:15:00.3491628Z -- Checking for module 'x11'
+2025-07-07T18:15:00.3592037Z --   Found x11, version 1.8.7
+2025-07-07T18:15:00.3836890Z -- Checking for module 'cairo'
+2025-07-07T18:15:00.3938362Z --   Found cairo, version 1.18.0
+2025-07-07T18:15:00.4244446Z -- Brisk: Linux X11/Cairo support enabled
+2025-07-07T18:15:00.4246714Z -- CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.
+2025-07-07T18:15:00.4866670Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+2025-07-07T18:15:00.5547026Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+2025-07-07T18:15:00.5557045Z -- Found Threads: TRUE
+2025-07-07T18:15:00.5676462Z -- Configuring done (1.5s)
+2025-07-07T18:15:00.6008289Z -- Generating done (0.0s)
+2025-07-07T18:15:00.6013418Z -- Build files have been written to: /home/runner/work/clap-jules/clap-jules/build
+2025-07-07T18:15:00.6105143Z ##[group]Run cmake --build build --config Release
+2025-07-07T18:15:00.6105514Z [36;1mcmake --build build --config Release[0m
+2025-07-07T18:15:00.6164599Z shell: /usr/bin/bash -e {0}
+2025-07-07T18:15:00.6164844Z env:
+2025-07-07T18:15:00.6165040Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:15:00.6165281Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:15:00.6165502Z ##[endgroup]
+2025-07-07T18:15:00.6421037Z [  2%] Building CXX object CMakeFiles/brisk.dir/libs/brisk/src/brisk.cpp.o
+2025-07-07T18:15:00.6839680Z In file included from /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:1:
+2025-07-07T18:15:00.6847127Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:59:22: error: ‘std::function’ has not been declared
+2025-07-07T18:15:00.6848001Z    59 |     void SetCallback(std::function<void(double)> callback) {
+2025-07-07T18:15:00.6848399Z       |                      ^~~
+2025-07-07T18:15:00.6849500Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:59:35: error: expected ‘,’ or ‘...’ before ‘<’ token
+2025-07-07T18:15:00.6850278Z    59 |     void SetCallback(std::function<void(double)> callback) {
+2025-07-07T18:15:00.6850697Z       |                                   ^
+2025-07-07T18:15:00.6851666Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:67:10: error: ‘function’ in namespace ‘std’ does not name a template type
+2025-07-07T18:15:00.6852496Z    67 |     std::function<void(double)> callback_;
+2025-07-07T18:15:00.6852823Z       |          ^~~~~~~~
+2025-07-07T18:15:00.6853921Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:1:1: note: ‘std::function’ is defined in header ‘<functional>’; did you forget to ‘#include <functional>’?
+2025-07-07T18:15:00.6854808Z   +++ |+#include <functional>
+2025-07-07T18:15:00.6855089Z     1 | #pragma once
+2025-07-07T18:15:00.6855930Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h: In member function ‘void brisk::Knob::SetValue(double)’:
+2025-07-07T18:15:00.6857106Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:51:31: error: ‘max’ is not a member of ‘std’
+2025-07-07T18:15:00.6858011Z    51 |         current_value_ = std::max(min_value_, std::min(max_value_, value));
+2025-07-07T18:15:00.6858827Z       |                               ^~~
+2025-07-07T18:15:00.6859804Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:51:52: error: ‘min’ is not a member of ‘std’
+2025-07-07T18:15:00.6860498Z    51 |         current_value_ = std::max(min_value_, std::min(max_value_, value));
+2025-07-07T18:15:00.6860860Z       |                                                    ^~~
+2025-07-07T18:15:00.6861573Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h: In member function ‘void brisk::Knob::SetCallback(int)’:
+2025-07-07T18:15:00.6862493Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:60:9: error: ‘callback_’ was not declared in this scope
+2025-07-07T18:15:00.6863046Z    60 |         callback_ = callback;
+2025-07-07T18:15:00.6863291Z       |         ^~~~~~~~~
+2025-07-07T18:15:00.6868484Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:60:21: error: ‘callback’ was not declared in this scope; did you mean ‘SetCallback’?
+2025-07-07T18:15:00.6869358Z    60 |         callback_ = callback;
+2025-07-07T18:15:00.6869596Z       |                     ^~~~~~~~
+2025-07-07T18:15:00.6869827Z       |                     SetCallback
+2025-07-07T18:15:00.8141977Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp: At global scope:
+2025-07-07T18:15:00.8145501Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:10:6: error: ‘bool brisk::Application::initialized_’ is not a static data member of ‘class brisk::Application’
+2025-07-07T18:15:00.8147389Z    10 | bool Application::initialized_ = false;
+2025-07-07T18:15:00.8148049Z       |      ^~~~~~~~~~~
+2025-07-07T18:15:00.8150661Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:12:6: error: redefinition of ‘static void brisk::Application::Initialize()’
+2025-07-07T18:15:00.8152108Z    12 | void Application::Initialize() {
+2025-07-07T18:15:00.8152642Z       |      ^~~~~~~~~~~
+2025-07-07T18:15:00.8153958Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:10:17: note: ‘static void brisk::Application::Initialize()’ previously defined here
+2025-07-07T18:15:00.8155324Z    10 |     static void Initialize() {
+2025-07-07T18:15:00.8155809Z       |                 ^~~~~~~~~~
+2025-07-07T18:15:00.8157274Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:17:6: error: redefinition of ‘static void brisk::Application::Shutdown()’
+2025-07-07T18:15:00.8158456Z    17 | void Application::Shutdown() {
+2025-07-07T18:15:00.8159105Z       |      ^~~~~~~~~~~
+2025-07-07T18:15:00.8160436Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:14:17: note: ‘static void brisk::Application::Shutdown()’ previously defined here
+2025-07-07T18:15:00.8161279Z    14 |     static void Shutdown() {
+2025-07-07T18:15:00.8161583Z       |                 ^~~~~~~~
+2025-07-07T18:15:00.8162450Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:22:6: error: no declaration matches ‘bool brisk::Application::IsInitialized()’
+2025-07-07T18:15:00.8163088Z    22 | bool Application::IsInitialized() {
+2025-07-07T18:15:00.8163349Z       |      ^~~~~~~~~~~
+2025-07-07T18:15:00.8164102Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:22:6: note: no functions named ‘bool brisk::Application::IsInitialized()’
+2025-07-07T18:15:00.8165093Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:8:7: note: ‘class brisk::Application’ defined here
+2025-07-07T18:15:00.8165721Z     8 | class Application {
+2025-07-07T18:15:00.8165943Z       |       ^~~~~~~~~~~
+2025-07-07T18:15:00.8166555Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:28:1: error: redefinition of ‘brisk::Window::Window(void*)’
+2025-07-07T18:15:00.8167449Z    28 | Window::Window(void* parent_handle)
+2025-07-07T18:15:00.8167709Z       | ^~~~~~
+2025-07-07T18:15:00.8168378Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:21:5: note: ‘brisk::Window::Window(void*)’ previously defined here
+2025-07-07T18:15:00.8169369Z    21 |     Window(void* parent_handle) : parent_handle_(parent_handle) {
+2025-07-07T18:15:00.8169684Z       |     ^~~~~~
+2025-07-07T18:15:00.8170359Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:35:17: error: definition of implicitly-declared ‘brisk::Window::~Window()’
+2025-07-07T18:15:00.8170926Z    35 | Window::~Window() {
+2025-07-07T18:15:00.8171140Z       |                 ^
+2025-07-07T18:15:00.8171826Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:39:6: error: no declaration matches ‘void brisk::Window::InitializePlatform()’
+2025-07-07T18:15:00.8172413Z    39 | void Window::InitializePlatform() {
+2025-07-07T18:15:00.8172651Z       |      ^~~~~~
+2025-07-07T18:15:00.8173297Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:39:6: note: no functions named ‘void brisk::Window::InitializePlatform()’
+2025-07-07T18:15:00.8174252Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:19:7: note: ‘class brisk::Window’ defined here
+2025-07-07T18:15:00.8174842Z    19 | class Window {
+2025-07-07T18:15:00.8175068Z       |       ^~~~~~
+2025-07-07T18:15:00.8175730Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:89:6: error: no declaration matches ‘void brisk::Window::CleanupPlatform()’
+2025-07-07T18:15:00.8176519Z    89 | void Window::CleanupPlatform() {
+2025-07-07T18:15:00.8176757Z       |      ^~~~~~
+2025-07-07T18:15:00.8177376Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:89:6: note: no functions named ‘void brisk::Window::CleanupPlatform()’
+2025-07-07T18:15:00.8178310Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:19:7: note: ‘class brisk::Window’ defined here
+2025-07-07T18:15:00.8179213Z    19 | class Window {
+2025-07-07T18:15:00.8179406Z       |       ^~~~~~
+2025-07-07T18:15:00.8180061Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:113:6: error: redefinition of ‘void brisk::Window::SetVisible(bool)’
+2025-07-07T18:15:00.8180630Z   113 | void Window::SetVisible(bool visible) {
+2025-07-07T18:15:00.8180884Z       |      ^~~~~~
+2025-07-07T18:15:00.8181551Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:25:10: note: ‘void brisk::Window::SetVisible(bool)’ previously defined here
+2025-07-07T18:15:00.8182168Z    25 |     void SetVisible(bool visible) {
+2025-07-07T18:15:00.8182413Z       |          ^~~~~~~~~~
+2025-07-07T18:15:00.8183151Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:129:7: error: redefinition of ‘void* brisk::Window::GetHandle() const’
+2025-07-07T18:15:00.8183723Z   129 | void* Window::GetHandle() const {
+2025-07-07T18:15:00.8183963Z       |       ^~~~~~
+2025-07-07T18:15:00.8184648Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:30:11: note: ‘void* brisk::Window::GetHandle() const’ previously defined here
+2025-07-07T18:15:00.8185229Z    30 |     void* GetHandle() const {
+2025-07-07T18:15:00.8185464Z       |           ^~~~~~~~~
+2025-07-07T18:15:00.8186132Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:133:6: error: no declaration matches ‘void brisk::Window::SetSize(int, int)’
+2025-07-07T18:15:00.8186729Z   133 | void Window::SetSize(int width, int height) {
+2025-07-07T18:15:00.8186995Z       |      ^~~~~~
+2025-07-07T18:15:00.8188045Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:133:6: note: no functions named ‘void brisk::Window::SetSize(int, int)’
+2025-07-07T18:15:00.8189839Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:19:7: note: ‘class brisk::Window’ defined here
+2025-07-07T18:15:00.8190680Z    19 | class Window {
+2025-07-07T18:15:00.8190919Z       |       ^~~~~~
+2025-07-07T18:15:00.8192022Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:150:6: error: no declaration matches ‘void brisk::Window::BeginDraw()’
+2025-07-07T18:15:00.8192858Z   150 | void Window::BeginDraw() {
+2025-07-07T18:15:00.8193087Z       |      ^~~~~~
+2025-07-07T18:15:00.8194023Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:150:6: note: no functions named ‘void brisk::Window::BeginDraw()’
+2025-07-07T18:15:00.8195594Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:19:7: note: ‘class brisk::Window’ defined here
+2025-07-07T18:15:00.8196334Z    19 | class Window {
+2025-07-07T18:15:00.8196670Z       |       ^~~~~~
+2025-07-07T18:15:00.8197431Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:158:6: error: no declaration matches ‘void brisk::Window::EndDraw()’
+2025-07-07T18:15:00.8197981Z   158 | void Window::EndDraw() {
+2025-07-07T18:15:00.8198196Z       |      ^~~~~~
+2025-07-07T18:15:00.8199308Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:158:6: note: no functions named ‘void brisk::Window::EndDraw()’
+2025-07-07T18:15:00.8200773Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:19:7: note: ‘class brisk::Window’ defined here
+2025-07-07T18:15:00.8201563Z    19 | class Window {
+2025-07-07T18:15:00.8201846Z       |       ^~~~~~
+2025-07-07T18:15:00.8203064Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:165:6: error: no declaration matches ‘void brisk::Window::DrawKnob(int, int, int, double, double, double)’
+2025-07-07T18:15:00.8204372Z   165 | void Window::DrawKnob(int x, int y, int radius, double value, double min_val, double max_val) {
+2025-07-07T18:15:00.8205226Z       |      ^~~~~~
+2025-07-07T18:15:00.8206467Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:165:6: note: no functions named ‘void brisk::Window::DrawKnob(int, int, int, double, double, double)’
+2025-07-07T18:15:00.8208169Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:19:7: note: ‘class brisk::Window’ defined here
+2025-07-07T18:15:00.8209301Z    19 | class Window {
+2025-07-07T18:15:00.8209508Z       |       ^~~~~~
+2025-07-07T18:15:00.8210255Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:204:6: error: no declaration matches ‘void brisk::Window::DrawText(int, int, const char*)’
+2025-07-07T18:15:00.8210913Z   204 | void Window::DrawText(int x, int y, const char* text) {
+2025-07-07T18:15:00.8211194Z       |      ^~~~~~
+2025-07-07T18:15:00.8212031Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:204:6: note: no functions named ‘void brisk::Window::DrawText(int, int, const char*)’
+2025-07-07T18:15:00.8213673Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:19:7: note: ‘class brisk::Window’ defined here
+2025-07-07T18:15:00.8214412Z    19 | class Window {
+2025-07-07T18:15:00.8214600Z       |       ^~~~~~
+2025-07-07T18:15:00.8215215Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:214:6: error: redefinition of ‘void brisk::Window::Render()’
+2025-07-07T18:15:00.8215739Z   214 | void Window::Render() {
+2025-07-07T18:15:00.8215948Z       |      ^~~~~~
+2025-07-07T18:15:00.8216596Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:34:10: note: ‘void brisk::Window::Render()’ previously defined here
+2025-07-07T18:15:00.8217148Z    34 |     void Render() {
+2025-07-07T18:15:00.8217352Z       |          ^~~~~~
+2025-07-07T18:15:00.8218000Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:275:1: error: redefinition of ‘brisk::Knob::Knob(double, double, double)’
+2025-07-07T18:15:00.8218888Z   275 | Knob::Knob(double min_val, double max_val, double initial_val)
+2025-07-07T18:15:00.8219199Z       | ^~~~
+2025-07-07T18:15:00.8219884Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:45:5: note: ‘brisk::Knob::Knob(double, double, double)’ previously defined here
+2025-07-07T18:15:00.8220536Z    45 |     Knob(double min_val, double max_val, double initial_val)
+2025-07-07T18:15:00.8220824Z       |     ^~~~
+2025-07-07T18:15:00.8221452Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:279:6: error: redefinition of ‘void brisk::Knob::SetValue(double)’
+2025-07-07T18:15:00.8222007Z   279 | void Knob::SetValue(double value) {
+2025-07-07T18:15:00.8222253Z       |      ^~~~
+2025-07-07T18:15:00.8222915Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:50:10: note: ‘void brisk::Knob::SetValue(double)’ previously defined here
+2025-07-07T18:15:00.8223490Z    50 |     void SetValue(double value) {
+2025-07-07T18:15:00.8223733Z       |          ^~~~~~~~
+2025-07-07T18:15:00.8224374Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:287:8: error: redefinition of ‘double brisk::Knob::GetValue() const’
+2025-07-07T18:15:00.8224913Z   287 | double Knob::GetValue() const {
+2025-07-07T18:15:00.8225143Z       |        ^~~~
+2025-07-07T18:15:00.8225806Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:55:12: note: ‘double brisk::Knob::GetValue() const’ previously defined here
+2025-07-07T18:15:00.8226403Z    55 |     double GetValue() const {
+2025-07-07T18:15:00.8226634Z       |            ^~~~~~~~
+2025-07-07T18:15:00.8227480Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:291:6: error: no declaration matches ‘void brisk::Knob::SetCallback(std::function<void(double)>)’
+2025-07-07T18:15:00.8228165Z   291 | void Knob::SetCallback(std::function<void(double)> callback) {
+2025-07-07T18:15:00.8228473Z       |      ^~~~
+2025-07-07T18:15:00.8229286Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:59:10: note: candidate is: ‘void brisk::Knob::SetCallback(int)’
+2025-07-07T18:15:00.8230082Z    59 |     void SetCallback(std::function<void(double)> callback) {
+2025-07-07T18:15:00.8230372Z       |          ^~~~~~~~~~~
+2025-07-07T18:15:00.8230980Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:43:7: note: ‘class brisk::Knob’ defined here
+2025-07-07T18:15:00.8231474Z    43 | class Knob {
+2025-07-07T18:15:00.8231657Z       |       ^~~~
+2025-07-07T18:15:00.8232453Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:295:6: error: no declaration matches ‘void brisk::Knob::SetPosition(int, int)’
+2025-07-07T18:15:00.8233050Z   295 | void Knob::SetPosition(int x, int y) {
+2025-07-07T18:15:00.8233294Z       |      ^~~~
+2025-07-07T18:15:00.8233910Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:295:6: note: no functions named ‘void brisk::Knob::SetPosition(int, int)’
+2025-07-07T18:15:00.8234829Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:43:7: note: ‘class brisk::Knob’ defined here
+2025-07-07T18:15:00.8235324Z    43 | class Knob {
+2025-07-07T18:15:00.8235502Z       |       ^~~~
+2025-07-07T18:15:00.8236118Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:301:6: error: no declaration matches ‘void brisk::Knob::SetRadius(int)’
+2025-07-07T18:15:00.8236666Z   301 | void Knob::SetRadius(int radius) {
+2025-07-07T18:15:00.8236902Z       |      ^~~~
+2025-07-07T18:15:00.8237496Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:301:6: note: no functions named ‘void brisk::Knob::SetRadius(int)’
+2025-07-07T18:15:00.8238385Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:43:7: note: ‘class brisk::Knob’ defined here
+2025-07-07T18:15:00.8239102Z    43 | class Knob {
+2025-07-07T18:15:00.8239282Z       |       ^~~~
+2025-07-07T18:15:00.8239933Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:306:6: error: no declaration matches ‘void brisk::Knob::Draw(brisk::Window*)’
+2025-07-07T18:15:00.8240510Z   306 | void Knob::Draw(Window* window) {
+2025-07-07T18:15:00.8240743Z       |      ^~~~
+2025-07-07T18:15:00.8241349Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:306:6: note: no functions named ‘void brisk::Knob::Draw(brisk::Window*)’
+2025-07-07T18:15:00.8242261Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:43:7: note: ‘class brisk::Knob’ defined here
+2025-07-07T18:15:00.8242745Z    43 | class Knob {
+2025-07-07T18:15:00.8242928Z       |       ^~~~
+2025-07-07T18:15:00.8243564Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:313:6: error: no declaration matches ‘bool brisk::Knob::NeedsRedraw() const’
+2025-07-07T18:15:00.8244124Z   313 | bool Knob::NeedsRedraw() const {
+2025-07-07T18:15:00.8244359Z       |      ^~~~
+2025-07-07T18:15:00.8244990Z /home/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:313:6: note: no functions named ‘bool brisk::Knob::NeedsRedraw() const’
+2025-07-07T18:15:00.8245888Z /home/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:43:7: note: ‘class brisk::Knob’ defined here
+2025-07-07T18:15:00.8246382Z    43 | class Knob {
+2025-07-07T18:15:00.8246556Z       |       ^~~~
+2025-07-07T18:15:00.8246945Z gmake[2]: *** [CMakeFiles/brisk.dir/build.make:79: CMakeFiles/brisk.dir/libs/brisk/src/brisk.cpp.o] Error 1
+2025-07-07T18:15:00.8247458Z gmake[1]: *** [CMakeFiles/Makefile2:289: CMakeFiles/brisk.dir/all] Error 2
+2025-07-07T18:15:00.8247799Z gmake: *** [Makefile:146: all] Error 2
+2025-07-07T18:15:00.8257508Z ##[error]Process completed with exit code 2.
+2025-07-07T18:15:00.8356596Z Post job cleanup.
+2025-07-07T18:15:00.9305819Z [command]/usr/bin/git version
+2025-07-07T18:15:00.9351195Z git version 2.49.0
+2025-07-07T18:15:00.9394348Z Temporarily overriding HOME='/home/runner/work/_temp/416dfaba-13a1-4f83-8efe-578d949b15cd' before making global git config changes
+2025-07-07T18:15:00.9395513Z Adding repository directory to the temporary git global config as a safe directory
+2025-07-07T18:15:00.9399966Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/clap-jules/clap-jules
+2025-07-07T18:15:00.9435079Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-07-07T18:15:00.9523569Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-07-07T18:15:00.9696361Z Entering 'libs/boost-di'
+2025-07-07T18:15:00.9742237Z Entering 'libs/clap'
+2025-07-07T18:15:00.9787703Z Entering 'libs/clap-helpers'
+2025-07-07T18:15:00.9831111Z Entering 'libs/googletest'
+2025-07-07T18:15:00.9875091Z Entering 'libs/kfr'
+2025-07-07T18:15:00.9937005Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-07-07T18:15:00.9959955Z http.https://github.com/.extraheader
+2025-07-07T18:15:00.9971530Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-07-07T18:15:01.0003406Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-07-07T18:15:01.0218884Z Entering 'libs/boost-di'
+2025-07-07T18:15:01.0243307Z http.https://github.com/.extraheader
+2025-07-07T18:15:01.0280178Z Entering 'libs/clap'
+2025-07-07T18:15:01.0305118Z http.https://github.com/.extraheader
+2025-07-07T18:15:01.0338996Z Entering 'libs/clap-helpers'
+2025-07-07T18:15:01.0363574Z http.https://github.com/.extraheader
+2025-07-07T18:15:01.0397234Z Entering 'libs/googletest'
+2025-07-07T18:15:01.0422013Z http.https://github.com/.extraheader
+2025-07-07T18:15:01.0457927Z Entering 'libs/kfr'
+2025-07-07T18:15:01.0483751Z http.https://github.com/.extraheader
+2025-07-07T18:15:01.0645691Z Cleaning up orphan processes
