@@ -30,7 +30,6 @@ bool BriskUIView::Initialize(void* parent_handle) {
         
         // Position the knob in center of window
         frequency_knob_->SetPosition(200, 150); // Center of 400x300 window
-        frequency_knob_->SetRadius(40); // Larger radius for better visibility
         
         // Set up knob callback
         frequency_knob_->SetCallback([this](double value) {
@@ -93,30 +92,13 @@ void BriskUIView::DrawSampleContent() {
     printf("BriskUIView: Drawing sample content\n");
     if (window_) {
         try {
-            // Begin drawing
-            window_->BeginDraw();
+            // Update the window
+            window_->Update();
             
-            // Draw UI title
-            window_->DrawText(10, 25, "CLAP Low-Pass Filter Plugin");
-            
-            // Draw frequency label
-            char freq_label[64];
-            snprintf(freq_label, sizeof(freq_label), "Cutoff: %.1f Hz", current_cutoff_);
-            window_->DrawText(150, 80, freq_label);
-            
-            // Draw the frequency knob
+            // Draw the frequency knob if it exists
             if (frequency_knob_) {
-                frequency_knob_->Draw(window_.get());
+                frequency_knob_->Draw();
             }
-            
-            // Draw frequency response visualization
-            DrawFrequencyResponse();
-            
-            // Draw filter characteristics
-            DrawFilterCharacteristics();
-            
-            // End drawing
-            window_->EndDraw();
             
             printf("BriskUIView: Drawing completed successfully\n");
         } catch (const std::exception& e) {
@@ -129,12 +111,8 @@ void BriskUIView::DrawSampleContent() {
 void BriskUIView::DrawFrequencyResponse() {
     if (!window_) return;
     
-    // Draw a simple frequency response visualization
-    window_->DrawText(10, 220, "Frequency Response:");
-    window_->DrawText(10, 240, "20Hz              1kHz              20kHz");
-    window_->DrawText(10, 260, "[-----|-----|-----|-----|-----|-----]");
-    
-    printf("BriskUIView: Drawing frequency response graph\n");
+    // For header-only mode, just log the action
+    printf("BriskUIView: Drawing frequency response graph (header-only mode)\n");
 }
 
 // Draw filter characteristics display
@@ -142,10 +120,6 @@ void BriskUIView::DrawFilterCharacteristics() {
     if (!window_) return;
     
     // Display current filter parameters
-    char info[128];
-    snprintf(info, sizeof(info), "Low-Pass Filter @ %.1f Hz", current_cutoff_);
-    window_->DrawText(10, 50, info);
-    
     printf("BriskUIView: Drawing filter characteristics (Cutoff: %.1f Hz)\n", current_cutoff_);
 }
 

@@ -127,8 +127,30 @@ jobs:
           # スクリプト実行権限付与
           chmod +x scripts/build-plugin.sh
           chmod +x scripts/test-clap-host.sh
+          chmod +x scripts/brisk/setup-brisk.sh
           
           echo "✓ Build scripts ready"
+
+      # Brisk prebuilt binary setup
+      - name: Setup Brisk Prebuilt Binaries
+        run: |
+          echo "=== Setting up Brisk prebuilt binaries ==="
+          
+          # Run Brisk setup script
+          ./scripts/brisk/setup-brisk.sh
+          
+          # Verify Brisk setup
+          if [ -d "libs/brisk/include" ]; then
+            echo "✓ Brisk headers available"
+            ls -la libs/brisk/include/brisk/ 2>/dev/null || echo "  No brisk headers found"
+          fi
+          
+          if [ -d "libs/brisk/lib" ]; then
+            echo "✓ Brisk libraries available"
+            ls -la libs/brisk/lib/ 2>/dev/null || echo "  No brisk libraries found"
+          fi
+          
+          echo "✓ Brisk setup completed"
 
       # 環境検証
       - name: Verify Complete Environment

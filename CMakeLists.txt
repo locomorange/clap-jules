@@ -58,40 +58,36 @@ else()
     message(WARNING "KFR not found")
 endif()
 
-# Add Brisk library
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk/brisk.h")
-    set(BRISK_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+# Add Brisk library (prebuilt binaries)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include/brisk")
+    message(STATUS "Found Brisk, attempting to configure...")
     
-    # Platform-specific dependencies
-    if (UNIX AND NOT APPLE)
-        # Linux: X11 and Cairo for graphics
-        message(STATUS "Found Brisk, creating static library for Linux")
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(X11 REQUIRED x11)
-        pkg_check_modules(CAIRO REQUIRED cairo)
+    # Use the BriskConfig.cmake created by setup script
+    set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk" ${CMAKE_PREFIX_PATH})
+    find_package(Brisk QUIET CONFIG PATHS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk" NO_DEFAULT_PATH)
+    
+    if(Brisk_FOUND OR TARGET brisk)
+        message(STATUS "Brisk: Configuration successful")
+    else()
+        # Fallback: create target manually
+        message(STATUS "Brisk: Using fallback configuration")
         
-        # Create brisk static library (Linux only)
-        add_library(brisk STATIC libs/brisk/src/brisk.cpp)
-        target_include_directories(brisk PUBLIC ${BRISK_INCLUDE_DIR})
-        
-        # Enable position independent code for static library
-        set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
-        
-        target_link_libraries(brisk PUBLIC ${X11_LIBRARIES} ${CAIRO_LIBRARIES})
-        target_include_directories(brisk PUBLIC ${X11_INCLUDE_DIRS} ${CAIRO_INCLUDE_DIRS})
-        target_compile_options(brisk PUBLIC ${X11_CFLAGS_OTHER} ${CAIRO_CFLAGS_OTHER})
-        
-        message(STATUS "Brisk: Linux X11/Cairo support enabled")
-    elseif(WIN32)
-        # Windows: GDI+ or Direct2D (placeholder for now)
-        message(STATUS "Brisk: Windows support not yet implemented")
-    elseif(APPLE)
-        # macOS: Core Graphics (placeholder for now)
-        message(STATUS "Brisk: macOS support not yet implemented")
+        # Check if we have implementation file for header-only mode
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/src/brisk.cpp")
+            # Header-only mode with implementation
+            add_library(brisk STATIC libs/brisk/src/brisk.cpp)
+            target_include_directories(brisk PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+            set_target_properties(brisk PROPERTIES POSITION_INDEPENDENT_CODE ON)
+            message(STATUS "Brisk: Created static library with header-only implementation")
+        else()
+            # Pure interface mode
+            add_library(brisk INTERFACE)
+            target_include_directories(brisk INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+            message(STATUS "Brisk: Created interface library")
+        endif()
     endif()
-    
 else()
-    message(WARNING "Brisk not found")
+    message(WARNING "Brisk not found - run scripts/brisk/setup-brisk.sh to install prebuilt binaries")
 endif()
 
 # Add your plugin target here
