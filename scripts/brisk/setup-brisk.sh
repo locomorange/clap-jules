@@ -5,28 +5,23 @@ echo "=== Brisk Prebuilt Binary Setup ==="
 echo "Following https://docs.brisklib.com/getting_started/prebuilt_binaries/"
 
 # Brisk download configuration
-BRISK_VERSION="v1.0"  # Use a stable version instead of latest
+BRISK_VERSION="v0.10.0"  # Use actual available version
 BRISK_BASE_URL="https://github.com/brisklib/brisk/releases/download"
+BRISK_DEPS_HASH="944e23be"  # Dependencies hash from actual releases
 
 # Detect platform and architecture
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if [[ $(uname -m) == "x86_64" ]]; then
-        PLATFORM="Linux-x86_64"
+        PLATFORM_SUFFIX="x64-linux"
     else
         echo "Unsupported Linux architecture: $(uname -m)"
         exit 1
     fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ $(uname -m) == "x86_64" ]]; then
-        PLATFORM="macOS-x86_64"
-    elif [[ $(uname -m) == "arm64" ]]; then
-        PLATFORM="macOS-arm64"
-    else
-        echo "Unsupported macOS architecture: $(uname -m)"
-        exit 1
-    fi
+    # macOS uses universal binary
+    PLATFORM_SUFFIX="uni-osx"
 elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
-    PLATFORM="Windows-x86_64"
+    PLATFORM_SUFFIX="x64-windows-static-md"
 else
     echo "Unsupported platform: $OSTYPE"
     exit 1
@@ -35,7 +30,7 @@ fi
 BRISK_DIR="${CMAKE_CURRENT_SOURCE_DIR:-$(pwd)}/libs/brisk"
 BRISK_CACHE_DIR="${BRISK_DIR}/.cache"
 
-echo "Platform: $PLATFORM"
+echo "Platform: $PLATFORM_SUFFIX"
 echo "Brisk directory: $BRISK_DIR"
 
 # Create directories
@@ -43,11 +38,11 @@ mkdir -p "$BRISK_DIR"
 mkdir -p "$BRISK_CACHE_DIR"
 
 # Download URLs according to Brisk prebuilt binary naming convention
-BRISK_PREBUILT_URL="${BRISK_BASE_URL}/${BRISK_VERSION}/Brisk-Prebuilt-${PLATFORM}.tar.gz"
-BRISK_DEPS_URL="${BRISK_BASE_URL}/${BRISK_VERSION}/Brisk-Dependencies-${PLATFORM}.tar.gz"
+BRISK_PREBUILT_URL="${BRISK_BASE_URL}/${BRISK_VERSION}/Brisk-Prebuilt-${BRISK_VERSION}-${PLATFORM_SUFFIX}.tar.xz"
+BRISK_DEPS_URL="${BRISK_BASE_URL}/${BRISK_VERSION}/Brisk-Dependencies-${BRISK_DEPS_HASH}-${PLATFORM_SUFFIX}.tar.xz"
 
-BRISK_PREBUILT_FILE="${BRISK_CACHE_DIR}/Brisk-Prebuilt-${PLATFORM}.tar.gz"
-BRISK_DEPS_FILE="${BRISK_CACHE_DIR}/Brisk-Dependencies-${PLATFORM}.tar.gz"
+BRISK_PREBUILT_FILE="${BRISK_CACHE_DIR}/Brisk-Prebuilt-${BRISK_VERSION}-${PLATFORM_SUFFIX}.tar.xz"
+BRISK_DEPS_FILE="${BRISK_CACHE_DIR}/Brisk-Dependencies-${BRISK_DEPS_HASH}-${PLATFORM_SUFFIX}.tar.xz"
 
 # Function to download and cache files
 download_if_needed() {
@@ -79,7 +74,7 @@ download_if_needed() {
 }
 
 # Download prebuilt binaries
-echo "Downloading Brisk prebuilt binaries for $PLATFORM..."
+echo "Downloading Brisk prebuilt binaries for $PLATFORM_SUFFIX..."
 
 PREBUILT_AVAILABLE=true
 DEPS_AVAILABLE=true
@@ -98,11 +93,11 @@ if [ "$PREBUILT_AVAILABLE" = true ] && [ "$DEPS_AVAILABLE" = true ]; then
     
     # Extract Brisk-Prebuilt
     cd "$BRISK_DIR"
-    tar -xzf "$BRISK_PREBUILT_FILE" --strip-components=1
+    tar -xJf "$BRISK_PREBUILT_FILE" --strip-components=1
     echo "✓ Extracted Brisk-Prebuilt"
     
     # Extract Brisk-Dependencies
-    tar -xzf "$BRISK_DEPS_FILE" --strip-components=1
+    tar -xJf "$BRISK_DEPS_FILE" --strip-components=1
     echo "✓ Extracted Brisk-Dependencies"
     
     # Verify extraction
@@ -283,12 +278,12 @@ echo "=== Brisk setup completed ==="
 if [ "$PREBUILT_AVAILABLE" = true ]; then
     echo ""
     echo "🎉 Brisk prebuilt binaries successfully installed!"
-    echo "   Platform: $PLATFORM"
+    echo "   Platform: $PLATFORM_SUFFIX"
     echo "   Version: $BRISK_VERSION"
     echo "   Mode: Full prebuilt library"
 else
     echo ""
-    echo "⚠️  Brisk prebuilt binaries not available for $PLATFORM"
+    echo "⚠️  Brisk prebuilt binaries not available for $PLATFORM_SUFFIX"
     echo "   Fallback: Header-only interface created"
     echo "   Note: Full UI functionality may be limited"
 fi
