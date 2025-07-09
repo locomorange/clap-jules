@@ -4,7 +4,10 @@
 #include <memory>
 #include <functional>
 
-#include "brisk/brisk.h"
+#include "brisk/core/Brisk.h"
+#include "brisk/gui/Gui.hpp"
+#include "brisk/window/Window.hpp"
+#include "brisk/window/WindowApplication.hpp"
 
 namespace plugin {
 

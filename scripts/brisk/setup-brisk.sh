@@ -9,10 +9,6 @@ BRISK_VERSION="v0.10.0"  # Use actual available version
 BRISK_BASE_URL="https://github.com/brisklib/brisk/releases/download"
 BRISK_DEPS_HASH="944e23be"  # Dependencies hash from actual releases
 
-# Alternative version for fallback
-BRISK_VERSION_ALT="v0.9.0"
-BRISK_DEPS_HASH_ALT="abc12345"
-
 # Detect platform and architecture
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if [[ $(uname -m) == "x86_64" ]]; then
@@ -56,22 +52,17 @@ download_if_needed() {
     
     if [ ! -f "$file" ]; then
         echo "Downloading $name from $url..."
-        # Use curl with explicit error handling
-        if curl -L -f -o "$file" "$url" 2>/dev/null; then
-            # Check if downloaded file is actually a valid archive
-            # XZ compressed files are valid tar.xz archives
+        if curl -L -f -o "$file" "$url"; then
             if file "$file" | grep -q -E "(gzip|Zip|tar archive|XZ compressed data|compressed)"; then
                 echo "✓ Downloaded $name"
                 return 0
             else
-                echo "⚠️  Downloaded file is not a valid archive ($(file "$file" | cut -d: -f2-))"
-                echo "    File size: $(ls -lh "$file" | awk '{print $5}')"
-                # Don't remove the file, let's try to extract it anyway
-                echo "    Attempting to extract despite file type detection issue..."
-                return 0
+                echo "❌ Downloaded file is not a valid archive"
+                rm -f "$file"
+                return 1
             fi
         else
-            echo "⚠️  Failed to download $name from $url"
+            echo "❌ Failed to download $name from $url"
             return 1
         fi
     else
@@ -83,19 +74,6 @@ download_if_needed() {
 # Function to verify Brisk installation
 verify_brisk_installation() {
     echo "=== Verifying Brisk installation ==="
-    
-    # Check for pack_resource tool
-    local pack_resource_tool="$BRISK_DIR/installed/x64-linux/tools/pack-resource/pack_resource"
-    if [ -f "$pack_resource_tool" ]; then
-        echo "✓ Found pack_resource tool at: $pack_resource_tool"
-        chmod +x "$pack_resource_tool"
-        
-        # Add to PATH for CMAKE to find it
-        export PATH="$BRISK_DIR/installed/x64-linux/tools/pack-resource:$PATH"
-        echo "✓ Added pack_resource to PATH"
-    else
-        echo "⚠️  pack_resource tool not found at expected location"
-    fi
     
     # Check for other essential tools
     local tools_dir="$BRISK_DIR/installed/x64-linux/tools"
@@ -117,130 +95,58 @@ verify_brisk_installation() {
 # Download prebuilt binaries
 echo "Downloading Brisk prebuilt binaries for $PLATFORM_SUFFIX..."
 
-PREBUILT_AVAILABLE=true
-DEPS_AVAILABLE=true
-
 if ! download_if_needed "$BRISK_PREBUILT_URL" "$BRISK_PREBUILT_FILE" "Brisk-Prebuilt"; then
-    PREBUILT_AVAILABLE=false
+    echo "❌ Failed to download Brisk prebuilt binaries"
+    exit 1
 fi
 
 if ! download_if_needed "$BRISK_DEPS_URL" "$BRISK_DEPS_FILE" "Brisk-Dependencies"; then
-    DEPS_AVAILABLE=false
+    echo "❌ Failed to download Brisk dependencies"
+    exit 1
 fi
 
-# Extract if downloads were successful
-if [ "$PREBUILT_AVAILABLE" = true ] && [ "$DEPS_AVAILABLE" = true ]; then
-    echo "Extracting Brisk binaries..."
-    
-    # Extract Brisk-Prebuilt
-    cd "$BRISK_DIR"
-    echo "Extracting Brisk-Prebuilt from $BRISK_PREBUILT_FILE..."
-    if tar -xJf "$BRISK_PREBUILT_FILE" --strip-components=1; then
-        echo "✓ Extracted Brisk-Prebuilt"
-    else
-        echo "⚠️  Failed to extract Brisk-Prebuilt, trying alternative extraction method..."
-        # Try without strip-components
-        if tar -xJf "$BRISK_PREBUILT_FILE"; then
-            echo "✓ Extracted Brisk-Prebuilt (alternative method)"
-        else
-            echo "⚠️  Failed to extract Brisk-Prebuilt, falling back to header-only mode"
-            PREBUILT_AVAILABLE=false
-        fi
-    fi
-    
-    # Extract Brisk-Dependencies (only if prebuilt extraction succeeded)
-    if [ "$PREBUILT_AVAILABLE" = true ]; then
-        echo "Extracting Brisk-Dependencies from $BRISK_DEPS_FILE..."
-        if tar -xJf "$BRISK_DEPS_FILE" --strip-components=1; then
-            echo "✓ Extracted Brisk-Dependencies"
-        else
-            echo "⚠️  Failed to extract Brisk-Dependencies, trying alternative extraction method..."
-            # Try without strip-components
-            if tar -xJf "$BRISK_DEPS_FILE"; then
-                echo "✓ Extracted Brisk-Dependencies (alternative method)"
-            else
-                echo "⚠️  Failed to extract Brisk-Dependencies, falling back to header-only mode"
-                PREBUILT_AVAILABLE=false
-            fi
-        fi
-    fi
-    
-    # Verify extraction
-    if [ -d "include" ] && [ -d "lib" ]; then
-        echo "✓ Brisk prebuilt binaries successfully installed"
-        echo "  - Include directory: $BRISK_DIR/include"
-        echo "  - Library directory: $BRISK_DIR/lib"
-        
-        # List available headers and libraries for verification
-        if [ -d "include/brisk" ]; then
-            echo "  - Available headers: $(ls include/brisk/*.h* 2>/dev/null | wc -l) files"
-        fi
-        if [ -d "lib" ]; then
-            echo "  - Available libraries: $(ls lib/*brisk* 2>/dev/null | wc -l) files"
-        fi
-        
-        # Setup vcpkg for Brisk if dependencies are available
-        verify_brisk_installation
-    else
-        echo "⚠️  Extraction seems incomplete, falling back to header-only mode"
-        PREBUILT_AVAILABLE=false
-    fi
-elif [ "$DEPS_AVAILABLE" = true ]; then
-    echo "Extracting Brisk dependencies only..."
-    
-    # Extract only dependencies
-    cd "$BRISK_DIR"
-    echo "Extracting Brisk-Dependencies from $BRISK_DEPS_FILE..."
-    if tar -xJf "$BRISK_DEPS_FILE" --strip-components=1; then
-        echo "✓ Extracted Brisk-Dependencies"
-    else
-        echo "⚠️  Failed to extract Brisk-Dependencies, trying alternative extraction method..."
-        # Try without strip-components
-        if tar -xJf "$BRISK_DEPS_FILE"; then
-            echo "✓ Extracted Brisk-Dependencies (alternative method)"
-        else
-            echo "⚠️  Failed to extract Brisk-Dependencies, falling back to header-only mode"
-            DEPS_AVAILABLE=false
-        fi
-    fi        # Verify extraction
-        if [ -d "include" ]; then
-            echo "✓ Brisk dependencies successfully installed (headers only)"
-            echo "  - Include directory: $BRISK_DIR/include"
-            
-            # List available headers for verification
-            if [ -d "include/brisk" ]; then
-                echo "  - Available headers: $(ls include/brisk/*.h* 2>/dev/null | wc -l) files"
-            fi
-            PREBUILT_AVAILABLE=false  # No prebuilt libraries, but headers are available
-            
-            # Verify Brisk installation
-            verify_brisk_installation
-        else
-            echo "⚠️  Dependencies extraction seems incomplete, falling back to header-only mode"
-            PREBUILT_AVAILABLE=false
-            DEPS_AVAILABLE=false
-        fi
+# Extract binaries
+echo "Extracting Brisk binaries..."
+
+cd "$BRISK_DIR"
+echo "Extracting Brisk-Prebuilt from $BRISK_PREBUILT_FILE..."
+if ! tar -xJf "$BRISK_PREBUILT_FILE" --strip-components=1; then
+    echo "❌ Failed to extract Brisk-Prebuilt"
+    exit 1
 fi
+echo "✓ Extracted Brisk-Prebuilt"
+
+echo "Extracting Brisk-Dependencies from $BRISK_DEPS_FILE..."
+if ! tar -xJf "$BRISK_DEPS_FILE" --strip-components=1; then
+    echo "❌ Failed to extract Brisk-Dependencies"
+    exit 1
+fi
+echo "✓ Extracted Brisk-Dependencies"
+
+# Verify extraction
+if [ ! -d "include" ] || [ ! -d "lib" ]; then
+    echo "❌ Brisk installation verification failed: missing include or lib directories"
+    exit 1
+fi
+
+echo "✓ Brisk prebuilt binaries successfully installed"
+echo "  - Include directory: $BRISK_DIR/include"
+echo "  - Library directory: $BRISK_DIR/lib"
+
+# List available headers and libraries for verification
+if [ -d "include/brisk" ]; then
+    echo "  - Available headers: $(find include/brisk -name "*.h*" | wc -l) files"
+fi
+if [ -d "lib" ]; then
+    echo "  - Available libraries: $(ls lib/*brisk* 2>/dev/null | wc -l) files"
+fi
+
+verify_brisk_installation
 
 echo "=== Brisk setup completed ==="
 
-# Print summary
-if [ "$PREBUILT_AVAILABLE" = true ]; then
-    echo ""
-    echo "🎉 Brisk prebuilt binaries successfully installed!"
-    echo "   Platform: $PLATFORM_SUFFIX"
-    echo "   Version: $BRISK_VERSION"
-    echo "   Mode: Full prebuilt library"
-elif [ "$DEPS_AVAILABLE" = true ]; then
-    echo ""
-    echo "✅ Brisk dependencies successfully installed!"
-    echo "   Platform: $PLATFORM_SUFFIX"
-    echo "   Version: $BRISK_VERSION"
-    echo "   Mode: Dependencies with header-only fallback"
-    echo "   Note: Prebuilt libraries not available, but headers are installed"
-else
-    echo ""
-    echo "⚠️  Brisk prebuilt binaries not available for $PLATFORM_SUFFIX"
-    echo "   Fallback: Header-only interface created"
-    echo "   Note: Full UI functionality may be limited"
-fi
+echo ""
+echo "🎉 Brisk prebuilt binaries successfully installed!"
+echo "   Platform: $PLATFORM_SUFFIX"
+echo "   Version: $BRISK_VERSION"
+echo "   Mode: Full prebuilt library"

@@ -1,5 +1,8 @@
 #include "brisk_ui_view.h"
-#include <brisk/brisk.h>
+#include <brisk/core/Brisk.h>
+#include <brisk/gui/Gui.hpp>
+#include <brisk/window/Window.hpp>
+#include <brisk/window/WindowApplication.hpp>
 #include <exception>
 #include <cstdio>
 

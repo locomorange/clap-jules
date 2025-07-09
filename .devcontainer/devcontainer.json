@@ -19,5 +19,5 @@
       "version": "lts"
     }
   },
-  "postCreateCommand": "curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash && sudo mv ./bin/act /usr/local/bin/act && act -W .github/workflows/copilot-setup-steps.yml"
+  "postCreateCommand": "curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash && sudo mv ./bin/act /usr/local/bin/act && act -W .github/workflows/copilot-setup-steps.yml -j copilot-setup-steps -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest"
 }

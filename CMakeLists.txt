@@ -3,44 +3,26 @@ cmake_minimum_required(VERSION 3.22)
 # Set BRISK_DIR for consistent referencing
 set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
 
-# Initialize Brisk CMake setup according to documentation
-if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
-    # Set vcpkg toolchain if available - MUST be done before project()
-    if (EXISTS "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
-        set(CMAKE_TOOLCHAIN_FILE "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
-        message(STATUS "Brisk: Using vcpkg toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
-    endif()
+# Set vcpkg toolchain for Brisk prebuilt binaries - MUST be done before project()
+if (EXISTS "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+    # Set vcpkg variables for Brisk prebuilt binaries
+    set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/installed" CACHE STRING "")
+    set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "")
+    set(VCPKG_HOST_TRIPLET "x64-linux" CACHE STRING "")
+    message(STATUS "Brisk: Using vcpkg toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+    message(STATUS "Brisk: VCPKG_INSTALLED_DIR: ${VCPKG_INSTALLED_DIR}")
+    message(STATUS "Brisk: VCPKG_TARGET_TRIPLET: ${VCPKG_TARGET_TRIPLET}")
+else()
+    message(WARNING "Brisk vcpkg toolchain not found at ${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
 endif()
 
-project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
+project(MyClapPlugin VERSION 0.0.1 LANGUAGES C CXX)
 
-# Continue with Brisk setup after project()
-if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
-    # Add vcpkg installed path to CMAKE_PREFIX_PATH
-    if (EXISTS "${BRISK_DIR}/installed/x64-linux")
-        set(CMAKE_PREFIX_PATH "${BRISK_DIR}/installed/x64-linux" ${CMAKE_PREFIX_PATH})
-        message(STATUS "Brisk: Added vcpkg installed path to CMAKE_PREFIX_PATH")
-    endif()
-    
-    # Add Brisk lib/cmake to CMAKE_PREFIX_PATH
-    set(CMAKE_PREFIX_PATH "${BRISK_DIR}/lib/cmake/brisk" ${CMAKE_PREFIX_PATH})
-    message(STATUS "Brisk: Added Brisk cmake path to CMAKE_PREFIX_PATH")
-    
-    # Add pack_resource tool to PATH so Brisk can find it
-    if (EXISTS "${BRISK_DIR}/installed/x64-linux/tools/pack-resource/pack_resource")
-        set(ENV{PATH} "${BRISK_DIR}/installed/x64-linux/tools/pack-resource:$ENV{PATH}")
-        message(STATUS "Added pack_resource to PATH: ${BRISK_DIR}/installed/x64-linux/tools/pack-resource")
-    endif()
-endif()
+
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-
-# Restore original CMAKE_TOOLCHAIN_FILE after Brisk configuration
-if(DEFINED ORIGINAL_CMAKE_TOOLCHAIN_FILE)
-    set(CMAKE_TOOLCHAIN_FILE "${ORIGINAL_CMAKE_TOOLCHAIN_FILE}")
-    message(STATUS "Restored original CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
-endif()
 
 # Try to find CLAP automatically, then try to find it in a fixed location.
 # This is useful for development, but you may want to remove it for production.
