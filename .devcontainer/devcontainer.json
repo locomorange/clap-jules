@@ -1,6 +1,23 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "image": "ubuntu:latest",
   "features": {
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
-  }
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": "true",
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000",
+      "upgradePackages": "true"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  "postCreateCommand": "curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash && sudo mv ./bin/act /usr/local/bin/act && act -W .github/workflows/copilot-setup-steps.yml -j copilot-setup-steps -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest"
 }
