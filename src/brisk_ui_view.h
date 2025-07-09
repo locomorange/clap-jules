@@ -4,10 +4,13 @@
 #include <memory>
 #include <functional>
 
-#include "brisk/core/Brisk.h"
-#include "brisk/gui/Gui.hpp"
-#include "brisk/window/Window.hpp"
-#include "brisk/window/WindowApplication.hpp"
+// Brisk integration headers
+#include <brisk/core/Rc.hpp>
+#include <brisk/core/App.hpp>
+#include <brisk/window/Window.hpp>
+#include <brisk/window/WindowApplication.hpp>
+#include <brisk/widgets/Widgets.hpp>
+#include <brisk/widgets/Knob.hpp>
 
 namespace plugin {
 
@@ -15,7 +18,10 @@ namespace plugin {
 class BriskUIView {
 public:
     explicit BriskUIView(std::shared_ptr<PluginViewModel> viewmodel)
-        : viewmodel_(viewmodel), window_(nullptr), frequency_knob_(nullptr) {}
+        : viewmodel_(viewmodel), 
+          parent_handle_(nullptr),
+          visible_(false),
+          current_cutoff_(1000.0) {}
     
     // Initialize the UI window
     bool Initialize(void* parent_handle);
@@ -49,11 +55,11 @@ public:
     
 private:
     std::shared_ptr<PluginViewModel> viewmodel_;
-    std::unique_ptr<brisk::Window> window_;
-    std::unique_ptr<brisk::Knob> frequency_knob_;
-    void* parent_handle_ = nullptr;
-    bool visible_ = false;
-    double current_cutoff_ = 1000.0;
+    Brisk::Rc<Brisk::Window> window_;
+    Brisk::Rc<Brisk::Knob> frequency_knob_;
+    void* parent_handle_;
+    bool visible_;
+    double current_cutoff_;
     static bool brisk_initialized_; // Static flag to track brisk initialization
 };
 

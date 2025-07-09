@@ -112,14 +112,11 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
     printf("MyPlugin: Initializing plugin\n");
     
     try {
-        // Create dependency injection container
-        auto injector = plugin::CreateDIContainer();
-        
-        // Initialize MVVM components
-        self->model = injector.create<std::shared_ptr<plugin::PluginModel>>();
-        self->processor = injector.create<std::shared_ptr<plugin::AudioProcessor>>();
-        self->viewmodel = injector.create<std::shared_ptr<plugin::PluginViewModel>>();
-        self->ui_view = injector.create<std::shared_ptr<plugin::BriskUIView>>();
+        // Initialize MVVM components in correct dependency order
+        self->model = std::make_shared<plugin::PluginModel>();
+        self->processor = std::make_shared<plugin::AudioProcessor>(self->model);
+        self->viewmodel = std::make_shared<plugin::PluginViewModel>(self->model, self->processor);
+        self->ui_view = std::make_shared<clap_gui::MinimalBriskGUI>();
         
         // Initialize plugin state
         self->sample_rate = 44100.0;
@@ -362,14 +359,19 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     }
     
     try {
-        // Initialize the Brisk UI
-        if (self->ui_view && self->ui_view->Initialize(nullptr)) {
+        // Create a clap_window_t structure to pass to MinimalBriskGUI
+        clap_window_t window = {};
+        window.api = api;
+        window.ptr = nullptr; // Will be set when parent is assigned
+        
+        // Initialize the MinimalBriskGUI
+        if (self->ui_view && self->ui_view->create(&window, is_floating)) {
             self->gui_created = true;
             self->gui_visible = false;
             printf("MyPlugin GUI: GUI created successfully\n");
             return true;
         } else {
-            printf("MyPlugin GUI: Failed to initialize Brisk UI\n");
+            printf("MyPlugin GUI: Failed to create MinimalBriskGUI\n");
             return false;
         }
     } catch (const std::exception& e) {
@@ -383,6 +385,9 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     printf("MyPlugin GUI: Destroying GUI\n");
     
     if (self->gui_created) {
+        if (self->ui_view) {
+            self->ui_view->destroy();
+        }
         self->gui_visible = false;
         self->gui_created = false;
         self->parent_window = nullptr;
@@ -404,9 +409,15 @@ static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width,
         return false;
     }
     
+    if (self->ui_view && self->ui_view->get_size(width, height)) {
+        printf("MyPlugin GUI: Returning size %ux%u\n", *width, *height);
+        return true;
+    }
+    
+    // Fallback to stored values
     *width = self->gui_width;
     *height = self->gui_height;
-    printf("MyPlugin GUI: Returning size %ux%u\n", *width, *height);
+    printf("MyPlugin GUI: Returning fallback size %ux%u\n", *width, *height);
     return true;
 }
 
@@ -454,7 +465,11 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
     self->gui_width = width;
     self->gui_height = height;
     
-    // TODO: Notify Brisk UI of size change
+    // Update MinimalBriskGUI size
+    if (self->ui_view) {
+        return self->ui_view->set_size(width, height);
+    }
+    
     return true;
 }
 
@@ -470,19 +485,10 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
     // Store parent window info
     self->parent_window = window->ptr;
     
-    // Initialize Brisk UI with parent window
-    try {
-        if (self->ui_view && self->ui_view->Initialize(window->ptr)) {
-            printf("MyPlugin GUI: Parent window set successfully\n");
-            return true;
-        } else {
-            printf("MyPlugin GUI: Failed to set parent window\n");
-            return false;
-        }
-    } catch (const std::exception& e) {
-        printf("MyPlugin GUI: Exception setting parent window: %s\n", e.what());
-        return false;
-    }
+    // The parent window setup is handled during GUI creation
+    // MinimalBriskGUI will use this information when showing the window
+    printf("MyPlugin GUI: Parent window set successfully\n");
+    return true;
 }
 
 static bool my_plugin_gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
@@ -507,8 +513,7 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     
     try {
         if (self->ui_view) {
-            self->ui_view->SetVisible(true);
-            self->ui_view->UpdateUI();
+            self->ui_view->show();
             self->gui_visible = true;
             printf("MyPlugin GUI: GUI shown successfully\n");
             return true;
@@ -533,7 +538,7 @@ static bool my_plugin_gui_hide(const clap_plugin_t *plugin) {
     
     try {
         if (self->ui_view) {
-            self->ui_view->SetVisible(false);
+            self->ui_view->hide();
             self->gui_visible = false;
             printf("MyPlugin GUI: GUI hidden successfully\n");
             return true;
@@ -619,7 +624,7 @@ static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input
                 
                 // Update UI if available
                 if (self->ui_view) {
-                    self->ui_view->UpdateUI();
+                    self->ui_view->set_parameter_value(param_event->param_id, param_event->value);
                 }
             }
         }

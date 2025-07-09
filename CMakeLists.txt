@@ -10,9 +10,12 @@ if (EXISTS "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
     set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/installed" CACHE STRING "")
     set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "")
     set(VCPKG_HOST_TRIPLET "x64-linux" CACHE STRING "")
+    # Disable vcpkg manifest mode to avoid dependency conflicts
+    set(VCPKG_MANIFEST_MODE OFF CACHE BOOL "")
     message(STATUS "Brisk: Using vcpkg toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
     message(STATUS "Brisk: VCPKG_INSTALLED_DIR: ${VCPKG_INSTALLED_DIR}")
     message(STATUS "Brisk: VCPKG_TARGET_TRIPLET: ${VCPKG_TARGET_TRIPLET}")
+    message(STATUS "Brisk: VCPKG_MANIFEST_MODE: OFF")
 else()
     message(WARNING "Brisk vcpkg toolchain not found at ${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
 endif()
@@ -81,6 +84,7 @@ endif()
 # Add Brisk library using proper CMake configuration
 if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
     message(STATUS "Found Brisk CMake configuration, loading...")
+    
     find_package(Brisk REQUIRED CONFIG PATHS "${BRISK_DIR}/lib/cmake/brisk" NO_DEFAULT_PATH)
     
     if(Brisk_FOUND)
@@ -88,19 +92,20 @@ if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
         set(BRISK_FOUND TRUE)
     endif()
 else()
-    message(WARNING "Brisk not found - run scripts/brisk/setup-brisk.sh to install prebuilt binaries")
+    message(WARNING "Brisk CMake configuration not found - UI will use placeholder implementation")
     set(BRISK_FOUND FALSE)
 endif()
 
-# Add your plugin target here
+# Add your plugin target here - Plugin itself must be SHARED
 add_library(my_clap_plugin SHARED 
     my_plugin.cpp
     src/plugin_model.h
     src/audio_processor.h  
     src/plugin_viewmodel.h
-    src/brisk_ui_view.h
-    src/brisk_ui_view.cpp
+    src/minimal_brisk_gui.h
+    src/minimal_brisk_gui.cpp
 )
+
 target_link_libraries(my_clap_plugin PRIVATE clap)
 
 # Add include directories for our source files
@@ -116,16 +121,33 @@ if (TARGET kfr)
     target_link_libraries(my_clap_plugin PRIVATE kfr)
 endif()
 
-# Link Brisk if available
+# Link Brisk if available - GCC 12+ optimized static linking
 if (BRISK_FOUND)
+    # Link Brisk libraries with proper static linking approach
     target_link_libraries(my_clap_plugin PRIVATE 
-        Brisk::Widgets 
-        Brisk::Gui 
         Brisk::Core
-        Brisk::Graphics
-        Brisk::Window
+        Brisk::Window  
+        Brisk::Gui
+        Brisk::Widgets
     )
-    message(STATUS "Linking Brisk libraries to my_clap_plugin")
+    target_compile_definitions(my_clap_plugin PRIVATE BRISK_FOUND=1)
+    
+    # GCC 12+ specific flags for better static library integration
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0")
+        target_link_options(my_clap_plugin PRIVATE 
+            -Wl,--allow-multiple-definition
+            -Wl,--start-group
+        )
+    endif()
+    
+    message(STATUS "Linking Brisk libraries to plugin target with GUI support (GCC 12+ optimized)")
+else()
+    # Fallback: add Brisk include directory manually if the library files exist
+    if (EXISTS "${BRISK_DIR}/include/brisk/core/App.hpp")
+        target_include_directories(my_clap_plugin PRIVATE "${BRISK_DIR}/include")
+        target_compile_definitions(my_clap_plugin PRIVATE BRISK_FOUND=1)
+        message(STATUS "Adding Brisk include directory manually: ${BRISK_DIR}/include")
+    endif()
 endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
@@ -136,13 +158,14 @@ endif()
 set_target_properties(my_clap_plugin PROPERTIES OUTPUT_NAME "MyFirstClapPlugin")
 
 # Additional Brisk setup for plugin if available
-if (BRISK_FOUND)
-    # Note: brisk_setup_executable is typically for standalone applications
-    # For a plugin, we may need different setup, but let's try this if the function exists
-    if(COMMAND brisk_setup_executable)
-        brisk_setup_executable(my_clap_plugin)
-    endif()
-endif()
+# Disabled for now as brisk_setup_executable is for standalone applications
+# if (BRISK_FOUND)
+#     # Note: brisk_setup_executable is typically for standalone applications
+#     # For a plugin, we may need different setup, but let's try this if the function exists
+#     if(COMMAND brisk_setup_executable)
+#         brisk_setup_executable(my_clap_plugin)
+#     endif()
+# endif()
 
 
 # Install the plugin (optional, but good practice)
@@ -166,7 +189,8 @@ target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
 
 add_executable(integration_tests 
     test/test_integration.cpp
-    src/brisk_ui_view.cpp
+    test/test_minimal_brisk_gui.cpp
+    src/minimal_brisk_gui.cpp
 )
 target_link_libraries(integration_tests PRIVATE gtest gtest_main my_clap_plugin)
 
@@ -201,6 +225,8 @@ if (BRISK_FOUND)
         Brisk::Graphics
         Brisk::Window
     )
+    target_compile_definitions(my_plugin_tests PRIVATE BRISK_FOUND=1)
+    target_compile_definitions(integration_tests PRIVATE BRISK_FOUND=1)
     message(STATUS "Linking Brisk libraries to test targets")
 endif()
 
