@@ -16,17 +16,21 @@ case "$OS_TYPE" in
     "linux"|"macos")
         # Set vcpkg toolchain - 重要！
         export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-        export VCPKG_TARGET_TRIPLET="x64-linux"
+        if [ "$OS_TYPE" = "linux" ]; then
+            export VCPKG_TARGET_TRIPLET="x64-linux"
+        elif [ "$OS_TYPE" = "macos" ]; then
+            export VCPKG_TARGET_TRIPLET="arm64-osx"
+        fi
         
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
         echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
         
         # Verify vcpkg packages are installed
-        if [ -d "$VCPKG_ROOT/installed/x64-linux" ]; then
+        if [ -d "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET" ]; then
             echo "Checking installed vcpkg packages..."
-            ls -la "$VCPKG_ROOT/installed/x64-linux/include/" | grep -E "(rtmidi|rtaudio)" || echo "RtMidi/RtAudio headers not found"
-            find "$VCPKG_ROOT/installed/x64-linux" -name "RtMidi.h" 2>/dev/null | head -3 || echo "RtMidi.h not found"
+            ls -la "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET/" | grep -E "(include|lib)" || echo "include/lib directories not found"
+            find "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET" -name "RtMidi.h" 2>/dev/null | head -3 || echo "RtMidi.h not found"
         fi
         
         # Check available presets
@@ -55,7 +59,8 @@ case "$OS_TYPE" in
             if cmake . -B builds/vcpkg-build -G Ninja \
                 -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
                 -DCMAKE_BUILD_TYPE=Release \
-                -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET"; then
+                -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON; then
                 if cmake --build builds/vcpkg-build --config Release; then
                     BUILD_SUCCESS=true
                     echo "✓ Manual vcpkg build succeeded"

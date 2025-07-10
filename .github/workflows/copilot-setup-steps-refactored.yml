@@ -82,6 +82,17 @@ jobs:
           echo "Cache disabled - building CLAP Host from source"
           
           if [ -d "clap-host-repo" ]; then
+            # VCPKG環境変数の設定確認
+            export VCPKG_ROOT="$(pwd)/vcpkg"
+            echo "VCPKG_ROOT: $VCPKG_ROOT"
+            
+            # vcpkgのインストール確認
+            if [ -d "$VCPKG_ROOT/installed/x64-linux/include" ]; then
+              echo "Checking vcpkg installed packages..."
+              ls -la "$VCPKG_ROOT/installed/x64-linux/" || echo "x64-linux directory not found"
+              find "$VCPKG_ROOT/installed/x64-linux/include" -name "RtMidi.h" 2>/dev/null | head -1 || echo "RtMidi.h not found"
+            fi
+            
             ./scripts/ci/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}" || echo "CLAP Host build failed - this is expected in setup mode"
             
             # ビルド成果物を専用ディレクトリに保存（キャッシュ用）
