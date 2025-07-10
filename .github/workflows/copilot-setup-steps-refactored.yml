@@ -66,6 +66,14 @@ jobs:
           restore-keys: |
             clap-host-copilot-setup-${{ runner.os }}-
 
+      # CLAP_HOST_PATH環境変数設定（キャッシュヒット時）
+      - name: Set CLAP_HOST_PATH for Cached Build
+        if: steps.clap-host-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
+          echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/clap-host-repo"
+
       # CLAP Hostリポジトリ準備
       - name: Prepare CLAP Host Repository
         if: steps.clap-host-cache.outputs.cache-hit != 'true'
