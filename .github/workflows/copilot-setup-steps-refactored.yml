@@ -95,82 +95,29 @@ jobs:
             echo "CLAP Host repository not prepared - skipping build"
           fi
 
-      # CLAP Host状態の確認と環境変数設定
-      - name: Verify CLAP Host Status
-        shell: bash
-        run: |
-          echo "=== CLAP Host Status ==="
-          if [ "${{ steps.clap-host-cache.outputs.cache-hit }}" = "true" ]; then
-            echo "✓ CLAP Host restored from cache"
-          else
-            echo "✓ CLAP Host prepared and build attempted"
-          fi
-          
-          # 実行可能ファイルの確認
-          echo "Checking for CLAP Host executables..."
-          if [ -d "clap-host-builds" ]; then
-            find clap-host-builds -name "clap-host*" -type f 2>/dev/null || echo "No cached executables found"
-          fi
-          if [ -d "clap-host-repo/builds" ]; then
-            find clap-host-repo/builds -name "clap-host*" -type f 2>/dev/null || echo "No repo executables found"
-          fi
-          
-          # CLAP_HOST_PATH環境変数を設定
-          if [ -d "clap-host-repo" ]; then
-            echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
-            echo "CLAP Host repository available at: $(pwd)/clap-host-repo"
-          else
-            echo "Warning: CLAP Host repository not found"
-          fi
-
-      # CLAP Hostビルド（キャッシュヒット時はスキップ）
-      - name: Build CLAP Host (Optional)
-        if: steps.clap-host-cache.outputs.cache-hit != 'true'
-        shell: bash
-        continue-on-error: true
-        run: |
-          echo "=== Building CLAP Host for Copilot Setup ==="
-          echo "This is optional and may fail without affecting environment setup"
-          
-          if [ -d "clap-host-repo" ]; then
-            ./scripts/ci/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT:-$(pwd)/vcpkg}" || echo "CLAP Host build failed - this is expected in setup mode"
-          else
-            echo "CLAP Host repository not prepared - skipping build"
-          fi
-
-      # CLAP Host状態の確認と環境変数設定
-      - name: Verify CLAP Host Status
-        shell: bash
-        run: |
-          if [ "${{ steps.clap-host-cache.outputs.cache-hit }}" = "true" ]; then
-            echo "✓ CLAP Host build cache hit - using cached artifacts"
-          else
-            echo "CLAP Host cache miss - repository prepared and build attempted"
-          fi
-          
-          # CLAP_HOST_PATH環境変数を設定
-          if [ -d "clap-host-repo" ]; then
-            echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
-            echo "CLAP Host available at: $(pwd)/clap-host-repo"
-            ls -la clap-host-repo/ | head -5 || echo "Directory listing failed"
-          else
-            echo "Warning: CLAP Host repository not found"
-          fi
-              ls -la clap-host-repo/ | head -5
-            else
-              echo "Warning: Cache hit but clap-host-repo directory not found"
-            fi
-          else
-            echo "CLAP Host cache miss - repository prepared and build attempted"
-            if [ -d "clap-host-repo" ]; then
-              echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
-            fi
-          fi
-
       # スクリプト実行権限設定
       - name: Setup Build Scripts
         shell: bash
         run: |
+          echo "=== Setting up build scripts ==="
+          
+          # CLAP_HOST_PATH環境変数を設定（キャッシュ状態に関係なく）
+          if [ -d "clap-host-repo" ]; then
+            echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
+          fi
+          
+          # スクリプト実行権限付与
+          chmod +x scripts/build-plugin.sh 2>/dev/null || echo "scripts/build-plugin.sh not found"
+          chmod +x scripts/test-clap-host.sh 2>/dev/null || echo "scripts/test-clap-host.sh not found"
+          chmod +x scripts/ci/*.sh
+          
+          echo "✓ Build scripts ready"
+
+      # 環境検証
+      - name: Verify Complete Environment
+        shell: bash
+        run: |
+          ./scripts/ci/verify-environment.sh
           echo "=== Setting up build scripts ==="
           
           # スクリプト実行権限付与
