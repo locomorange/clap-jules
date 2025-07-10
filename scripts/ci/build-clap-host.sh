@@ -42,7 +42,9 @@ case "$OS_TYPE" in
         
         # 1. Try ninja-vcpkg preset first (推奨)
         echo "Trying ninja-vcpkg preset build (recommended)"
-        if cmake --preset=ninja-vcpkg 2>/dev/null; then
+        # Set UsePkgConfig=OFF to avoid pkg-config path resolution issues
+        export CMAKE_ARGS="-DUsePkgConfig=OFF"
+        if cmake --preset=ninja-vcpkg -DUsePkgConfig=OFF 2>/dev/null; then
             if cmake --build --preset=ninja-vcpkg 2>/dev/null; then
                 BUILD_SUCCESS=true
                 echo "✓ ninja-vcpkg preset build succeeded"
@@ -60,8 +62,12 @@ case "$OS_TYPE" in
                 -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON; then
-                if cmake --build builds/vcpkg-build --config Release; then
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                -DUsePkgConfig=OFF \
+                2>&1 | tee "../screenshots/cmake-vcpkg-configure-log-$OS_TYPE.txt"; then
+                echo "vcpkg configuration successful"
+                if cmake --build builds/vcpkg-build --config Release \
+                    2>&1 | tee "../screenshots/cmake-vcpkg-build-log-$OS_TYPE.txt"; then
                     BUILD_SUCCESS=true
                     echo "✓ Manual vcpkg build succeeded"
                 else
