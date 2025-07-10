@@ -161,60 +161,52 @@ jobs:
         name: MyFirstClapPlugin-${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}-${{ github.sha }}
         path: plugin-artifacts/
 
-    # 検証のためキャッシュを一時的に無効化
-    # - name: Cache CLAP Host Build
-    #   uses: actions/cache@v4
-    #   id: clap-host-cache
-    #   with:
-    #     path: |
-    #       clap-host-repo/builds/
-    #       clap-host-repo/vcpkg_installed/
-    #       vcpkg/installed/
-    #     key: clap-host-${{ runner.os }}-qt6-${{ hashFiles('**/vcpkg.json', '**/CMakeLists.txt') }}
-    #     restore-keys: |
-    #       clap-host-${{ runner.os }}-qt6-
-    #       clap-host-${{ runner.os }}-
-
-    # - name: Skip build steps on cache hit
-    #   if: steps.clap-host-cache.outputs.cache-hit == 'true'
-    #   run: echo "CLAP Host build cache hit - skipping build steps"
+    - name: Cache CLAP Host Build
+      uses: actions/cache@v4
+      id: clap-host-cache
+      with:
+        path: |
+          clap-host-repo/builds/
+          clap-host-repo/vcpkg_installed/
+          vcpkg/installed/
+        key: clap-host-${{ runner.os }}-qt6-${{ hashFiles('**/vcpkg.json', '**/CMakeLists.txt') }}
+        restore-keys: |
+          clap-host-${{ runner.os }}-qt6-
+          clap-host-${{ runner.os }}-
 
     - name: Setup CLAP Host Dependencies
-      # if: steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/ci/setup-dependencies.sh "$OS_TYPE"
 
     - name: Setup vcpkg
-      if: runner.os != 'Windows'
-      # if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/ci/setup-vcpkg.sh "$OS_TYPE"
 
     - name: Setup MSBuild (Windows)
-      if: runner.os == 'Windows'
-      # if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       uses: microsoft/setup-msbuild@v2
 
     - name: Install Qt
-      if: (runner.os == 'Linux' || runner.os == 'macOS')
+      if: (runner.os == 'Linux' || runner.os == 'macOS') && steps.clap-host-cache.outputs.cache-hit != 'true'
       uses: jurplel/install-qt-action@v4
       with:
         version: '6.5.0'
-        cached: false
+        cached: true
 
-    # 検証のためスクリーンショットキャッシュも一時的に無効化
-    # - name: Cache Screenshots for Comparison
-    #   uses: actions/cache@v4
-    #   continue-on-error: true
-    #   with:
-    #     path: previous-screenshots/
-    #     key: clap-host-screenshots-${{ matrix.os }}-${{ github.event.pull_request.number || github.ref }}
-    #     restore-keys: |
-    #       clap-host-screenshots-${{ matrix.os }}-
+    - name: Cache Screenshots for Comparison
+      uses: actions/cache@v4
+      continue-on-error: true
+      with:
+        path: previous-screenshots/
+        key: clap-host-screenshots-${{ matrix.os }}-${{ github.event.pull_request.number || github.ref }}
+        restore-keys: |
+          clap-host-screenshots-${{ matrix.os }}-
 
     - name: Verify Plugin Artifact
       shell: bash
@@ -222,31 +214,20 @@ jobs:
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/ci/verify-plugin-artifact.sh "$OS_TYPE"
 
-    - name: Checkout CLAP Host
-      # if: steps.clap-host-cache.outputs.cache-hit != 'true'
+    - name: Prepare CLAP Host
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        echo "Cloning clap-host repository..."
-        if [ ! -d "clap-host-repo" ] || [ ! -f "clap-host-repo/.git/config" ]; then
-          rm -rf clap-host-repo 2>/dev/null || true
-          git clone --recurse-submodules https://github.com/free-audio/clap-host.git clap-host-repo
-        else
-          echo "clap-host-repo already exists, updating..."
-          cd clap-host-repo
-          git pull --recurse-submodules || echo "Git pull failed, continuing with existing version"
-          cd ..
-        fi
+        ./scripts/ci/prepare-clap-host.sh
 
     - name: Build CLAP Host
-      # if: steps.clap-host-cache.outputs.cache-hit != 'true'
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         
-        # Ensure VCPKG_ROOT is set for non-Windows platforms
         if [ "$OS_TYPE" != "windows" ]; then
           export VCPKG_ROOT="${VCPKG_ROOT:-$(pwd)/vcpkg}"
-          echo "Using VCPKG_ROOT: $VCPKG_ROOT"
         fi
         
         ./scripts/ci/build-clap-host.sh "$OS_TYPE" "clap-host-repo" "${VCPKG_ROOT:-$(pwd)/vcpkg}"
@@ -256,22 +237,17 @@ jobs:
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         
-        # Set plugin file path for the test script
-        if [ -n "$PLUGIN_FILE_OVERRIDE" ]; then
-          export PLUGIN_FILE="$PLUGIN_FILE_OVERRIDE"
-        else
-          case "$OS_TYPE" in
-            "linux")
-              export PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
-              ;;
-            "windows")
-              export PLUGIN_FILE="$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap"
-              ;;
-            "macos")
-              export PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
-              ;;
-          esac
-        fi
+        case "$OS_TYPE" in
+          "linux")
+            export PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
+            ;;
+          "windows")
+            export PLUGIN_FILE="$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap"
+            ;;
+          "macos")
+            export PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
+            ;;
+        esac
         
         ./scripts/ci/test-clap-host.sh "$OS_TYPE" "clap-host-repo" "$PLUGIN_FILE" "30"
 
@@ -279,7 +255,6 @@ jobs:
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
       shell: bash
       run: |
-        # Check if screenshot environment variables are set by test-clap-host.sh
         if [ "${SCREENSHOT_CHANGED:-false}" = "true" ]; then
           ./scripts/ci/upload-screenshot.sh \
             "${{ secrets.GITHUB_TOKEN }}" \
@@ -288,8 +263,6 @@ jobs:
             "${{ github.run_id }}" \
             "${{ github.sha }}" \
             "${NEW_SCREENSHOT_HASH:-unknown}"
-        else
-          echo "Screenshot not changed or not available, skipping upload"
         fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

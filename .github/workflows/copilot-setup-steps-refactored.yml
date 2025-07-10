@@ -47,95 +47,57 @@ jobs:
         run: |
           ./scripts/ci/setup-vcpkg.sh linux
 
-      # Qt6環境構築（検証のためキャッシュ無効化）
+      # Qt6環境構築
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.5.0'
-          cached: false
+          cached: true
 
-      # CLAP Hostビルド成果物のキャッシュ（検証のため一時的に無効化）
-      # - name: Cache CLAP Host Build
-      #   uses: actions/cache@v4
-      #   id: clap-host-cache
-      #   with:
-      #     path: |
-      #       clap-host-repo/
-      #       clap-host-builds/
-      #     key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/ci/setup-vcpkg.sh', 'scripts/ci/build-clap-host.sh') }}-v3
-      #     restore-keys: |
-      #       clap-host-copilot-setup-${{ runner.os }}-
+      # CLAP Hostビルド成果物のキャッシュ
+      - name: Cache CLAP Host Build
+        uses: actions/cache@v4
+        id: clap-host-cache
+        with:
+          path: |
+            clap-host-repo/
+            clap-host-builds/
+          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/ci/setup-vcpkg.sh', 'scripts/ci/build-clap-host.sh') }}-v4
+          restore-keys: |
+            clap-host-copilot-setup-${{ runner.os }}-
 
-      # CLAP Hostリポジトリ準備（検証のため常に実行）
+      # CLAP Hostリポジトリ準備
       - name: Prepare CLAP Host Repository
-        # if: steps.clap-host-cache.outputs.cache-hit != 'true'
+        if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           ./scripts/ci/prepare-clap-host.sh
 
-      # CLAP Hostビルド（検証のため常に実行）
-      - name: Build CLAP Host (Always for Verification)
-        # if: steps.clap-host-cache.outputs.cache-hit != 'true'
+      # CLAP Hostビルド
+      - name: Build CLAP Host
+        if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          echo "=== Building CLAP Host for Copilot Setup ==="
-          echo "Cache disabled - building CLAP Host from source"
+          export VCPKG_ROOT="$(pwd)/vcpkg"
+          ./scripts/ci/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}"
           
-          if [ -d "clap-host-repo" ]; then
-            # VCPKG環境変数の設定確認
-            export VCPKG_ROOT="$(pwd)/vcpkg"
-            echo "VCPKG_ROOT: $VCPKG_ROOT"
-            
-            # vcpkgのインストール確認
-            if [ -d "$VCPKG_ROOT/installed/x64-linux/include" ]; then
-              echo "Checking vcpkg installed packages..."
-              ls -la "$VCPKG_ROOT/installed/x64-linux/" || echo "x64-linux directory not found"
-              find "$VCPKG_ROOT/installed/x64-linux/include" -name "RtMidi.h" 2>/dev/null | head -1 || echo "RtMidi.h not found"
-            fi
-            
-            ./scripts/ci/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}" || echo "CLAP Host build failed - this is expected in setup mode"
-            
-            # ビルド成果物を専用ディレクトリに保存（キャッシュ用）
-            mkdir -p clap-host-builds
-            if [ -d "clap-host-repo/builds" ]; then
-              cp -r clap-host-repo/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
-              echo "✓ Build artifacts ready for future use"
-            fi
-          else
-            echo "CLAP Host repository not prepared - skipping build"
+          # ビルド成果物を専用ディレクトリに保存
+          mkdir -p clap-host-builds
+          if [ -d "clap-host-repo/builds" ]; then
+            cp -r clap-host-repo/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
       # スクリプト実行権限設定
       - name: Setup Build Scripts
         shell: bash
         run: |
-          echo "=== Setting up build scripts ==="
-          
-          # CLAP_HOST_PATH環境変数を設定（キャッシュ状態に関係なく）
+          # CLAP_HOST_PATH環境変数を設定
           if [ -d "clap-host-repo" ]; then
             echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
           fi
           
           # スクリプト実行権限付与
-          chmod +x scripts/build-plugin.sh 2>/dev/null || echo "scripts/build-plugin.sh not found"
-          chmod +x scripts/test-clap-host.sh 2>/dev/null || echo "scripts/test-clap-host.sh not found"
           chmod +x scripts/ci/*.sh
-          
-          echo "✓ Build scripts ready"
-
-      # 環境検証
-      - name: Verify Complete Environment
-        shell: bash
-        run: |
-          ./scripts/ci/verify-environment.sh
-          echo "=== Setting up build scripts ==="
-          
-          # スクリプト実行権限付与
-          chmod +x scripts/build-plugin.sh 2>/dev/null || echo "scripts/build-plugin.sh not found"
-          chmod +x scripts/test-clap-host.sh 2>/dev/null || echo "scripts/test-clap-host.sh not found"
-          chmod +x scripts/ci/*.sh
-          
-          echo "✓ Build scripts ready"
 
       # 環境検証
       - name: Verify Complete Environment
@@ -148,29 +110,7 @@ jobs:
         shell: bash
         continue-on-error: true
         run: |
-          echo "=== Optional plugin build test ==="
-          echo "This step is for environment verification only and may fail without affecting setup"
-          
-          # プラグインビルド（失敗しても継続）
-          if [ -f "./scripts/build-plugin.sh" ]; then
-            echo "Using existing build script..."
-            ./scripts/build-plugin.sh || echo "Build script failed - this is expected in setup-only mode"
-          else
-            echo "Using CMake directly for plugin build test..."
-            if cmake . -B build; then
-              cmake --build build --config Release || echo "Build failed - this is expected in setup-only mode"
-            else
-              echo "CMake configure failed - this is expected in setup-only mode"
-            fi
-          fi
-          
-          # 成果物確認（オプション）
-          if [ -f "build/MyFirstClapPlugin.so" ]; then
-            echo "✓ Plugin built successfully (bonus!)"
-            ls -la build/MyFirstClapPlugin.so
-          else
-            echo "Plugin not built - this is normal for setup-only mode"
-          fi
+          ./scripts/ci/verify-plugin-build-optional.sh || ./scripts/build-plugin.sh
 
       # 環境情報サマリー
       - name: Environment Summary
