@@ -77,7 +77,6 @@ jobs:
       - name: Build CLAP Host (Cache Miss Only)
         if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
-        continue-on-error: true
         run: |
           echo "=== Building CLAP Host for Copilot Setup ==="
           echo "Cache miss - building CLAP Host from source"
