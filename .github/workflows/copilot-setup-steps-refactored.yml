@@ -8,7 +8,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/copilot-setup-steps-refactored.yml
-      - scripts/ci/**
+      - scripts/**
 
 env:
   CLAP_VALIDATOR_VERSION: '0.3.2'
@@ -33,19 +33,19 @@ jobs:
       - name: Setup Build Environment
         shell: bash
         run: |
-          ./scripts/ci/setup-dependencies.sh linux
+          ./scripts/setup-dependencies.sh linux
 
       # CLAP開発ツールのセットアップ
       - name: Setup CLAP Development Tools
         shell: bash
         run: |
-          ./scripts/ci/setup-clap-tools.sh linux "${{ env.CLAP_VALIDATOR_VERSION }}" "${{ env.CLAP_INFO_VERSION }}"
+          ./scripts/setup-clap-tools.sh linux "${{ env.CLAP_VALIDATOR_VERSION }}" "${{ env.CLAP_INFO_VERSION }}"
 
       # vcpkg環境構築
       - name: Setup vcpkg Package Manager
         shell: bash
         run: |
-          ./scripts/ci/setup-vcpkg.sh linux
+          ./scripts/setup-vcpkg.sh linux
 
       # Qt6環境構築
       - name: Install Qt6
@@ -62,7 +62,7 @@ jobs:
           path: |
             clap-host-repo/
             clap-host-builds/
-          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/ci/setup-vcpkg.sh', 'scripts/ci/build-clap-host.sh') }}-v4
+          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/setup-vcpkg.sh', 'scripts/build-clap-host.sh') }}-v4
           restore-keys: |
             clap-host-copilot-setup-${{ runner.os }}-
 
@@ -71,7 +71,7 @@ jobs:
         if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          ./scripts/ci/prepare-clap-host.sh
+          ./scripts/prepare-clap-host.sh
 
       # CLAP Hostビルド
       - name: Build CLAP Host
@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           export VCPKG_ROOT="$(pwd)/vcpkg"
-          ./scripts/ci/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}"
+          ./scripts/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}"
           
           # ビルド成果物を専用ディレクトリに保存
           mkdir -p clap-host-builds
@@ -87,33 +87,21 @@ jobs:
             cp -r clap-host-repo/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
-      # スクリプト実行権限設定
-      - name: Setup Build Scripts
-        shell: bash
-        run: |
-          # CLAP_HOST_PATH環境変数を設定
-          if [ -d "clap-host-repo" ]; then
-            echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
-          fi
-          
-          # スクリプト実行権限付与
-          chmod +x scripts/ci/*.sh
-
       # 環境検証
       - name: Verify Complete Environment
         shell: bash
         run: |
-          ./scripts/ci/verify-environment.sh
+          ./scripts/verify-environment.sh
 
       # オプションのテストビルド実行（失敗しても継続）
       - name: Test Plugin Build (Optional)
         shell: bash
         continue-on-error: true
         run: |
-          ./scripts/ci/verify-plugin-build-optional.sh || ./scripts/build-plugin.sh
+          ./scripts/verify-plugin-build-optional.sh || ./scripts/build-plugin.sh
 
       # 環境情報サマリー
       - name: Environment Summary
         shell: bash
         run: |
-          ./scripts/ci/environment-summary.sh
+          ./scripts/environment-summary.sh

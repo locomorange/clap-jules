@@ -40,7 +40,7 @@ jobs:
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/setup-dependencies.sh "$OS_TYPE"
+        ./scripts/setup-dependencies.sh "$OS_TYPE"
 
     - name: Configure CMake
       shell: bash
@@ -54,7 +54,7 @@ jobs:
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/verify-plugin-build.sh "$OS_TYPE"
+        ./scripts/verify-plugin-build.sh "$OS_TYPE"
 
     - name: Upload Plugin Artifacts
       uses: actions/upload-artifact@v4
@@ -92,7 +92,7 @@ jobs:
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/setup-dependencies.sh "$OS_TYPE"
+        ./scripts/setup-dependencies.sh "$OS_TYPE"
 
     - name: Configure and Build
       shell: bash
@@ -130,14 +130,14 @@ jobs:
       continue-on-error: true
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/setup-clap-tools.sh "$OS_TYPE" "${{ env.CLAP_VALIDATOR_VERSION }}" "${{ env.CLAP_INFO_VERSION }}"
+        ./scripts/setup-clap-tools.sh "$OS_TYPE" "${{ env.CLAP_VALIDATOR_VERSION }}" "${{ env.CLAP_INFO_VERSION }}"
 
     - name: Validate CLAP Plugin
       shell: bash
       continue-on-error: true
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/validate-clap-plugin.sh "$OS_TYPE"
+        ./scripts/validate-clap-plugin.sh "$OS_TYPE"
 
   clap-host-test:
     name: CLAP Host Integration Test on ${{ matrix.os }}
@@ -179,14 +179,14 @@ jobs:
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/setup-dependencies.sh "$OS_TYPE"
+        ./scripts/setup-dependencies.sh "$OS_TYPE"
 
     - name: Setup vcpkg
       if: runner.os != 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/setup-vcpkg.sh "$OS_TYPE"
+        ./scripts/setup-vcpkg.sh "$OS_TYPE"
 
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows' && steps.clap-host-cache.outputs.cache-hit != 'true'
@@ -212,13 +212,13 @@ jobs:
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/ci/verify-plugin-artifact.sh "$OS_TYPE"
+        ./scripts/verify-plugin-artifact.sh "$OS_TYPE"
 
     - name: Prepare CLAP Host
       if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        ./scripts/ci/prepare-clap-host.sh
+        ./scripts/prepare-clap-host.sh
 
     - name: Build CLAP Host
       if: steps.clap-host-cache.outputs.cache-hit != 'true'
@@ -230,7 +230,7 @@ jobs:
           export VCPKG_ROOT="${VCPKG_ROOT:-$(pwd)/vcpkg}"
         fi
         
-        ./scripts/ci/build-clap-host.sh "$OS_TYPE" "clap-host-repo" "${VCPKG_ROOT:-$(pwd)/vcpkg}"
+        ./scripts/build-clap-host.sh "$OS_TYPE" "clap-host-repo" "${VCPKG_ROOT:-$(pwd)/vcpkg}"
 
     - name: Test CLAP Host with Plugin and Take Screenshot
       shell: bash
@@ -249,7 +249,7 @@ jobs:
             ;;
         esac
         
-        ./scripts/ci/test-clap-host.sh "$OS_TYPE" "clap-host-repo" "$PLUGIN_FILE" "30"
+        ./scripts/test-clap-host.sh "$OS_TYPE" "clap-host-repo" "$PLUGIN_FILE" "30"
 
     - name: Upload Screenshot to Release and Comment on PR (Linux only)
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
