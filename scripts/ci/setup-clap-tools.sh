@@ -47,7 +47,7 @@ case "$OS_TYPE" in
         fi
         
         # Download clap-info
-        curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/v1.2.2/clap-info-mac-universal.zip" || echo "clap-info download failed"
+        curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${CLAP_INFO_VERSION}/clap-info-mac-universal.zip" || echo "clap-info download failed"
         if [ -f clap-info.zip ]; then
             unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
         fi
