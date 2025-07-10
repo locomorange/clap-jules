@@ -47,39 +47,39 @@ jobs:
         run: |
           ./scripts/ci/setup-vcpkg.sh linux
 
-      # Qt6環境構築
+      # Qt6環境構築（検証のためキャッシュ無効化）
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.5.0'
-          cached: true
+          cached: false
 
-      # CLAP Hostビルド成果物のキャッシュ
-      - name: Cache CLAP Host Build
-        uses: actions/cache@v4
-        id: clap-host-cache
-        with:
-          path: |
-            clap-host-repo/
-            clap-host-builds/
-          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/ci/setup-vcpkg.sh', 'scripts/ci/build-clap-host.sh') }}-v3
-          restore-keys: |
-            clap-host-copilot-setup-${{ runner.os }}-
+      # CLAP Hostビルド成果物のキャッシュ（検証のため一時的に無効化）
+      # - name: Cache CLAP Host Build
+      #   uses: actions/cache@v4
+      #   id: clap-host-cache
+      #   with:
+      #     path: |
+      #       clap-host-repo/
+      #       clap-host-builds/
+      #     key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/ci/setup-vcpkg.sh', 'scripts/ci/build-clap-host.sh') }}-v3
+      #     restore-keys: |
+      #       clap-host-copilot-setup-${{ runner.os }}-
 
-      # CLAP Hostリポジトリ準備（キャッシュミス時のみ）
+      # CLAP Hostリポジトリ準備（検証のため常に実行）
       - name: Prepare CLAP Host Repository
-        if: steps.clap-host-cache.outputs.cache-hit != 'true'
+        # if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           ./scripts/ci/prepare-clap-host.sh
 
-      # CLAP Hostビルド（キャッシュミス時のみ）
-      - name: Build CLAP Host (Cache Miss Only)
-        if: steps.clap-host-cache.outputs.cache-hit != 'true'
+      # CLAP Hostビルド（検証のため常に実行）
+      - name: Build CLAP Host (Always for Verification)
+        # if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           echo "=== Building CLAP Host for Copilot Setup ==="
-          echo "Cache miss - building CLAP Host from source"
+          echo "Cache disabled - building CLAP Host from source"
           
           if [ -d "clap-host-repo" ]; then
             ./scripts/ci/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}" || echo "CLAP Host build failed - this is expected in setup mode"
@@ -88,7 +88,7 @@ jobs:
             mkdir -p clap-host-builds
             if [ -d "clap-host-repo/builds" ]; then
               cp -r clap-host-repo/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
-              echo "✓ Build artifacts cached for future use"
+              echo "✓ Build artifacts ready for future use"
             fi
           else
             echo "CLAP Host repository not prepared - skipping build"
