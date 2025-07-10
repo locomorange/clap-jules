@@ -9,7 +9,7 @@ echo "=== Validating CLAP plugin on $OS_TYPE ==="
 
 # Debug: Show what was downloaded
 echo "Contents of $ARTIFACTS_DIR directory:"
-find "$ARTIFACTS_DIR" -type f -name "*.so" -o -name "*.clap" -o -name "*.dylib" 2>/dev/null || echo "No plugin files found"
+find "$ARTIFACTS_DIR" \( -name "*.so" -o -name "*.clap" -o -name "*.dylib" \) -type f 2>/dev/null || echo "No plugin files found"
 ls -la "$ARTIFACTS_DIR"/ 2>/dev/null || echo "$ARTIFACTS_DIR directory not found"
 
 # Determine plugin file path and tool commands based on OS

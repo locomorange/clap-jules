@@ -30,7 +30,7 @@ if [ "$CACHE_HIT" = "true" ]; then
         echo "Warning: Cached build directory not found"
     fi
     
-    return 0
+    exit 0
 fi
 
 echo "Building CLAP Host from source..."
