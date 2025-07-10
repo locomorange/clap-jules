@@ -1,11 +1,11 @@
 #!/bin/bash
-# setup-vcpkg.sh - Setup vcpkg package manager
+# setup-vcpkg.sh - Setup vcpkg package manager for CLAP Host build
 set -e
 
 OS_TYPE="$1"
 VCPKG_DIR="${2:-vcpkg}"
 
-echo "=== Setting up vcpkg for $OS_TYPE ==="
+echo "=== Setting up vcpkg for CLAP Host build on $OS_TYPE ==="
 
 # Clone or update vcpkg
 if [ ! -d "$VCPKG_DIR" ] || [ ! -f "$VCPKG_DIR/.git/config" ]; then
@@ -17,7 +17,7 @@ else
     cd "$VCPKG_DIR" && git pull && cd ..
 fi
 
-# Bootstrap vcpkg
+# Bootstrap vcpkg - 重要！
 echo "Bootstrapping vcpkg..."
 if [ "$OS_TYPE" = "windows" ]; then
     ./"$VCPKG_DIR"/bootstrap-vcpkg.bat
@@ -47,19 +47,34 @@ case "$OS_TYPE" in
         ;;
 esac
 
-echo "Installing RtMidi and RtAudio via vcpkg for $TRIPLET..."
+echo "Installing CLAP Host dependencies via vcpkg for $TRIPLET..."
 ./"$VCPKG_DIR"/vcpkg install rtmidi rtaudio --triplet="$TRIPLET"
 
-# Set environment variables
+# Verify installation
+echo "Verifying vcpkg package installation..."
+./"$VCPKG_DIR"/vcpkg list | grep -E "(rtmidi|rtaudio)" || echo "Warning: RtMidi/RtAudio not found in vcpkg list"
+
+# Set environment variables for CLAP Host build
 export VCPKG_ROOT="$(pwd)/$VCPKG_DIR"
 export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+export VCPKG_TARGET_TRIPLET="$TRIPLET"
 
 echo "VCPKG_ROOT=$VCPKG_ROOT" >> ${GITHUB_ENV:-/dev/null}
 echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE" >> ${GITHUB_ENV:-/dev/null}
+echo "VCPKG_TARGET_TRIPLET=$TRIPLET" >> ${GITHUB_ENV:-/dev/null}
 
 # Add to PATH for current session
 echo "$(pwd)/$VCPKG_DIR" >> ${GITHUB_PATH:-/dev/null}
 
-echo "✓ vcpkg setup completed"
+echo "✓ vcpkg setup completed for CLAP Host"
 echo "VCPKG_ROOT: $VCPKG_ROOT"
 echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+echo "VCPKG_TARGET_TRIPLET: $TRIPLET"
+
+# Show installed packages for debugging
+echo "Installed vcpkg packages:"
+./"$VCPKG_DIR"/vcpkg list || echo "Could not list packages"
+
+# Show include paths for debugging
+echo "RtMidi include path:"
+find "$VCPKG_ROOT/installed/$TRIPLET" -name "RtMidi.h" 2>/dev/null || echo "RtMidi.h not found"

@@ -14,45 +14,56 @@ mkdir -p ../screenshots
 
 case "$OS_TYPE" in
     "linux"|"macos")
-        # Set vcpkg toolchain
+        # Set vcpkg toolchain - 重要！
         export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+        export VCPKG_TARGET_TRIPLET="x64-linux"
         
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+        echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
+        
+        # Verify vcpkg packages are installed
+        if [ -d "$VCPKG_ROOT/installed/x64-linux" ]; then
+            echo "Checking installed vcpkg packages..."
+            ls -la "$VCPKG_ROOT/installed/x64-linux/include/" | grep -E "(rtmidi|rtaudio)" || echo "RtMidi/RtAudio headers not found"
+            find "$VCPKG_ROOT/installed/x64-linux" -name "RtMidi.h" 2>/dev/null | head -3 || echo "RtMidi.h not found"
+        fi
         
         # Check available presets
         echo "Available CMake presets:"
         cmake --list-presets 2>/dev/null || echo "No presets available"
         
-        # Try vcpkg-based build first
+        # Try vcpkg-based build strategies
         BUILD_SUCCESS=false
         
-        echo "Trying manual build with vcpkg toolchain"
-        if cmake . -B builds/vcpkg-build -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-            -DCMAKE_BUILD_TYPE=Release; then
-            if cmake --build builds/vcpkg-build --config Release; then
+        # 1. Try ninja-vcpkg preset first (推奨)
+        echo "Trying ninja-vcpkg preset build (recommended)"
+        if cmake --preset=ninja-vcpkg 2>/dev/null; then
+            if cmake --build --preset=ninja-vcpkg 2>/dev/null; then
                 BUILD_SUCCESS=true
-                echo "✓ Manual vcpkg build succeeded"
+                echo "✓ ninja-vcpkg preset build succeeded"
             else
-                echo "Manual vcpkg build failed"
+                echo "ninja-vcpkg preset build failed"
             fi
         else
-            echo "Manual vcpkg configure failed"
+            echo "ninja-vcpkg preset configure failed"
         fi
         
-        # Fallback to preset if vcpkg manual build failed
+        # 2. Manual vcpkg build as fallback
         if [ "$BUILD_SUCCESS" = "false" ]; then
-            echo "Trying preset-based build"
-            if cmake --preset=default 2>/dev/null; then
-                if cmake --build --preset=default 2>/dev/null; then
+            echo "Trying manual build with vcpkg toolchain"
+            if cmake . -B builds/vcpkg-build -G Ninja \
+                -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET"; then
+                if cmake --build builds/vcpkg-build --config Release; then
                     BUILD_SUCCESS=true
-                    echo "✓ Preset build succeeded"
+                    echo "✓ Manual vcpkg build succeeded"
                 else
-                    echo "Preset build failed"
+                    echo "Manual vcpkg build failed"
                 fi
             else
-                echo "Preset configure failed"
+                echo "Manual vcpkg configure failed"
             fi
         fi
         
