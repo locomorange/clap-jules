@@ -1,0 +1,27 @@
+# ninja log v7
+2	1169	1752220647732171166	host/clap-host_autogen/timestamp	e3c98a4666197eac
+2	1169	1752220647732171166	host/clap-host_autogen/mocs_compilation.cpp	e3c98a4666197eac
+2	1169	1752220647732171166	/home/runner/work/clap-jules/clap-jules/clap-host-repo/builds/vcpkg-build/host/clap-host_autogen/timestamp	e3c98a4666197eac
+2	1169	1752220647732171166	/home/runner/work/clap-jules/clap-jules/clap-host-repo/builds/vcpkg-build/host/clap-host_autogen/mocs_compilation.cpp	e3c98a4666197eac
+1170	4089	1752220647738171115	host/CMakeFiles/clap-host.dir/cmake_pch.hxx.gch	5e8e015ff3cf1a25
+4090	4542	1752220650658146627	host/CMakeFiles/clap-host.dir/audio-settings.cc.o	efe143aaaa1ff71
+4089	4692	1752220650657146635	host/CMakeFiles/clap-host.dir/about-dialog.cc.o	efbb6bd1d6410f29
+4093	5124	1752220650661146601	host/CMakeFiles/clap-host.dir/plugin-param.cc.o	f2bd3670b136cff1
+4089	5343	1752220650657146635	host/CMakeFiles/clap-host.dir/application.cc.o	1703ead2c14be6a7
+4090	5832	1752220650658146627	host/CMakeFiles/clap-host.dir/audio-settings-widget.cc.o	c6968085b308da2c
+4692	6135	1752220651260141578	host/CMakeFiles/clap-host.dir/plugin-quick-control-widget.cc.o	4a79049edd5974cd
+4089	6562	1752220650657146635	host/CMakeFiles/clap-host.dir/clap-host_autogen/mocs_compilation.cpp.o	b0e33ff8add98ccf
+5832	6611	1752220652400132162	host/CMakeFiles/clap-host.dir/main.cc.o	fe2d35af653fcf8a
+5124	6661	1752220651692137955	host/CMakeFiles/clap-host.dir/plugin-quick-controls-widget.cc.o	6e7ef6735cbdf667
+6562	7056	1752220653130129036	host/CMakeFiles/clap-host.dir/midi-settings.cc.o	c8a9f16aa87ae385
+7056	7624	1752220653624126921	host/CMakeFiles/clap-host.dir/plugin-host-settings.cc.o	6747d603a760f30d
+6611	7705	1752220653179128826	host/CMakeFiles/clap-host.dir/midi-settings-widget.cc.o	c513c3f286863959
+5343	7819	1752220651911136118	host/CMakeFiles/clap-host.dir/engine.cc.o	dbabffd76566cb76
+7624	8047	1752220654192124489	host/CMakeFiles/clap-host.dir/settings.cc.o	ab800500c5f165b0
+7819	8403	1752220654387123654	host/CMakeFiles/clap-host.dir/settings-widget.cc.o	5e20f1cd5fb35bea
+7705	8456	1752220654273124142	host/CMakeFiles/clap-host.dir/settings-dialog.cc.o	3191c32cfd679c0d
+8047	8487	1752220654615122678	host/CMakeFiles/clap-host.dir/tweaks-dialog.cc.o	7060e2d9a7501395
+6135	9005	1752220652703130864	host/CMakeFiles/clap-host.dir/main-window.cc.o	fae7495dccae6c5b
+6663	9314	1752220653231128603	host/CMakeFiles/clap-host.dir/plugin-parameters-widget.cc.o	4ae4dc25fe84b341
+4542	9904	1752220651110142836	host/CMakeFiles/clap-host.dir/plugin-host.cc.o	4f181127f9031ce6
+9904	10133	1752220656472114727	host/clap-host	7db83e538bd64fc0
