@@ -5,23 +5,15 @@ set -e
 echo "=== Environment Verification ==="
 
 echo "--- Build Tools ---"
-cmake --version
-ninja --version
-gcc --version
-pkg-config --version
+command -v cmake
+command -v ninja
+command -v gcc
+command -v g++
 
 echo "--- CLAP Tools ---"
-if [ -f "./clap-validator" ]; then
-    ./clap-validator --help | head -3
-else
-    echo "clap-validator not found"
-fi
-
-if [ -f "./clap-info" ]; then
-    ./clap-info --help | head -3
-else
-    echo "clap-info not found"
-fi
+export PATH=$PATH:/usr/local/bin:/opt/clap-tools
+command -v clap-validator || echo "clap-validator not found"
+command -v clap-info || echo "clap-info not found"
 
 echo "--- vcpkg ---"
 if [ -n "$VCPKG_ROOT" ]; then

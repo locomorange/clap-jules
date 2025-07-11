@@ -3,10 +3,20 @@
 set -e
 
 OS_TYPE="$1"
-CLAP_HOST_DIR="${2:-clap-host-repo}"
+CLAP_HOST_DIR_ARG="${2}"
 VCPKG_ROOT="${3:-$(pwd)/vcpkg}"
 
+# Devcontainer環境ではCLAP_HOST_DIRのデフォルトを変更
+if [ -n "$DEVCONTAINER" ] || [ -d "/opt/clap-host-template" ]; then
+    DEFAULT_CLAP_HOST_DIR="/opt/clap-host-template"
+else
+    DEFAULT_CLAP_HOST_DIR="clap-host-repo"
+fi
+
+CLAP_HOST_DIR="${CLAP_HOST_DIR_ARG:-$DEFAULT_CLAP_HOST_DIR}"
+
 echo "=== Building CLAP Host on $OS_TYPE ==="
+echo "CLAP_HOST_DIR: $CLAP_HOST_DIR"
 
 cd "$CLAP_HOST_DIR"
 
