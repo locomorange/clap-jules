@@ -39,9 +39,45 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add Brisk if available (simplified integration for demonstration)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/CMakeLists.txt")
+    message(STATUS "Found Brisk, preparing for future integration")
+    # For now, just include the basic headers to show integration readiness
+    # Full Brisk integration will be completed once dependency resolution is finished
+    # set(BRISK_STANDALONE OFF CACHE BOOL "Brisk is not standalone")
+    # set(BRISK_EXAMPLES OFF CACHE BOOL "Don't build Brisk examples")
+    # set(BRISK_TESTS OFF CACHE BOOL "Don't build Brisk tests")
+    # set(BRISK_WEBGPU OFF CACHE BOOL "Disable WebGPU backend")
+    # set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+    # add_subdirectory(libs/brisk)
+endif()
+
 # Add your plugin target here
 add_library(my_clap_plugin SHARED my_plugin.cpp)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Add X11 dependencies for GUI on Linux
+if (UNIX AND NOT APPLE)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(X11 REQUIRED x11)
+    target_link_libraries(my_clap_plugin PRIVATE ${X11_LIBRARIES})
+    target_include_directories(my_clap_plugin PRIVATE ${X11_INCLUDE_DIRS})
+    target_compile_definitions(my_clap_plugin PRIVATE HAS_X11_GUI=1)
+endif()
+
+# Add Brisk include path for future integration
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+    target_include_directories(my_clap_plugin PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+    target_compile_definitions(my_clap_plugin PRIVATE BRISK_INTEGRATION_READY=1)
+    message(STATUS "Brisk headers available for future integration")
+endif()
+
+# Link with Brisk if available (will be enabled once dependencies are resolved)
+# if (TARGET brisk-gui)
+#     target_link_libraries(my_clap_plugin PRIVATE brisk-gui brisk-widgets)
+#     target_compile_definitions(my_clap_plugin PRIVATE HAS_BRISK_GUI=1)
+#     message(STATUS "Brisk GUI libraries linked to plugin")
+# endif()
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -69,6 +105,12 @@ enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+
+# Add include directories for tests
+target_include_directories(my_plugin_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap/include")
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+    target_include_directories(my_plugin_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/include")
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)

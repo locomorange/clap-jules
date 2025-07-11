@@ -1,0 +1,34 @@
+# CLAP Plugin with Brisk GUI Integration
+
+## Build Status:
+[ 66%] Built target my_plugin_tests
+[ 83%] Built target gmock
+[100%] Built target gmock_main
+
+## Tests Status:
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =   0.01 sec
+
+## CLAP Validation:
+MyPlugin: clap_entry.deinit called
+
+## GUI Extension Info:
+               "implemented" : false
+            },
+            "clap.gui" : {
+               "api_supported" : [ "x11", "x11.floating" ],
+               "implemented" : true,
+               "preferred_api" : {
+                  "api" : "x11",
+                  "floating" : false
+               }
+            },
+            "clap.latency" : {
+
+## Plugin Loading Test:
+qt.qpa.xcb: could not connect to display :99
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+
+Available platform plugins are: wayland, wayland-egl, xcb, eglfs, offscreen, minimalegl, vkkhrdisplay, linuxfb, minimal, vnc.

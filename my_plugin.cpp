@@ -3,6 +3,247 @@
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
 
+#ifdef HAS_X11_GUI
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <clap/ext/gui.h>
+#endif
+
+#ifdef BRISK_INTEGRATION_READY
+// Brisk integration headers - ready for future implementation
+// These will be uncommented once Brisk dependencies are fully resolved
+// #include <brisk/gui/GuiApplication.hpp>
+// #include <brisk/gui/GuiWindow.hpp>
+// #include <brisk/widgets/Widgets.hpp>
+// #include <brisk/gui/Component.hpp>
+#endif
+
+#ifdef HAS_X11_GUI
+// --- GUI Extension Implementation ---
+static bool gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    if (strcmp(api, CLAP_WINDOW_API_X11) == 0) {
+        return true;
+    }
+    return false;
+}
+
+static bool gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
+    *api = CLAP_WINDOW_API_X11;
+    *is_floating = false;
+    return true;
+}
+
+static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (strcmp(api, CLAP_WINDOW_API_X11) != 0) {
+        return false;
+    }
+    
+    if (self->gui_created) {
+        return false;
+    }
+    
+    // Open X11 display
+    self->display = XOpenDisplay(NULL);
+    if (!self->display) {
+        printf("MyPlugin GUI: Failed to open X11 display\n");
+        return false;
+    }
+    
+    // Set default size
+    self->gui_width = 400;
+    self->gui_height = 300;
+    self->gui_created = true;
+    self->gui_visible = false;
+    
+    #ifdef BRISK_INTEGRATION_READY
+    // TODO: Initialize Brisk GUI components here once dependencies are resolved
+    // Example future integration:
+    // BriskGuiApplication app;
+    // BriskWindow window = app.createWindow();
+    // window.setSize(self->gui_width, self->gui_height);
+    printf("MyPlugin GUI: Brisk integration ready (awaiting dependency resolution)\n");
+    #endif
+    
+    printf("MyPlugin GUI: Created X11 GUI\n");
+    return true;
+}
+
+static void gui_destroy(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created) {
+        return;
+    }
+    
+    if (self->gui_visible) {
+        // Hide window first
+        if (self->window) {
+            XUnmapWindow(self->display, self->window);
+            XDestroyWindow(self->display, self->window);
+            self->window = 0;
+        }
+        self->gui_visible = false;
+    }
+    
+    if (self->display) {
+        XCloseDisplay(self->display);
+        self->display = NULL;
+    }
+    
+    self->gui_created = false;
+    printf("MyPlugin GUI: Destroyed X11 GUI\n");
+}
+
+static bool gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    printf("MyPlugin GUI: Set scale to %f\n", scale);
+    return true;
+}
+
+static bool gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created) {
+        return false;
+    }
+    
+    *width = self->gui_width;
+    *height = self->gui_height;
+    printf("MyPlugin GUI: Get size %u x %u\n", *width, *height);
+    return true;
+}
+
+static bool gui_can_resize(const clap_plugin_t *plugin) {
+    return true;
+}
+
+static bool gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) {
+    hints->can_resize_horizontally = true;
+    hints->can_resize_vertically = true;
+    hints->preserve_aspect_ratio = false;
+    return true;
+}
+
+static bool gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    // Enforce minimum size
+    if (*width < 200) *width = 200;
+    if (*height < 150) *height = 150;
+    
+    // Enforce maximum size
+    if (*width > 1200) *width = 1200;
+    if (*height > 800) *height = 800;
+    
+    printf("MyPlugin GUI: Adjust size to %u x %u\n", *width, *height);
+    return true;
+}
+
+static bool gui_set_size(const clap_plugin_t *plugin, uint32_t width, uint32_t height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created) {
+        return false;
+    }
+    
+    self->gui_width = width;
+    self->gui_height = height;
+    
+    if (self->gui_visible && self->window) {
+        XResizeWindow(self->display, self->window, width, height);
+    }
+    
+    printf("MyPlugin GUI: Set size to %u x %u\n", width, height);
+    return true;
+}
+
+static bool gui_set_parent(const clap_plugin_t *plugin, const clap_window_t *window) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created || strcmp(window->api, CLAP_WINDOW_API_X11) != 0) {
+        return false;
+    }
+    
+    Window parent = window->x11;
+    
+    // Create the plugin window as a child of the parent
+    int screen = DefaultScreen(self->display);
+    self->window = XCreateSimpleWindow(
+        self->display, parent,
+        0, 0, self->gui_width, self->gui_height,
+        0, BlackPixel(self->display, screen),
+        WhitePixel(self->display, screen)
+    );
+    
+    if (!self->window) {
+        printf("MyPlugin GUI: Failed to create X11 window\n");
+        return false;
+    }
+    
+    // Set window title
+    XStoreName(self->display, self->window, "My CLAP Plugin GUI");
+    
+    printf("MyPlugin GUI: Set parent window (X11)\n");
+    return true;
+}
+
+static bool gui_set_transient(const clap_plugin_t *plugin, const clap_window_t *window) {
+    printf("MyPlugin GUI: Set transient (not supported for embedded windows)\n");
+    return false;
+}
+
+static void gui_suggest_title(const clap_plugin_t *plugin, const char *title) {
+    printf("MyPlugin GUI: Suggested title: %s\n", title);
+}
+
+static bool gui_show(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created || !self->window) {
+        return false;
+    }
+    
+    XMapWindow(self->display, self->window);
+    XFlush(self->display);
+    self->gui_visible = true;
+    
+    printf("MyPlugin GUI: Shown\n");
+    return true;
+}
+
+static bool gui_hide(const clap_plugin_t *plugin) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    if (!self->gui_created || !self->window) {
+        return false;
+    }
+    
+    XUnmapWindow(self->display, self->window);
+    XFlush(self->display);
+    self->gui_visible = false;
+    
+    printf("MyPlugin GUI: Hidden\n");
+    return true;
+}
+
+static const clap_plugin_gui_t gui_extension = {
+    .is_api_supported = gui_is_api_supported,
+    .get_preferred_api = gui_get_preferred_api,
+    .create = gui_create,
+    .destroy = gui_destroy,
+    .set_scale = gui_set_scale,
+    .get_size = gui_get_size,
+    .can_resize = gui_can_resize,
+    .get_resize_hints = gui_get_resize_hints,
+    .adjust_size = gui_adjust_size,
+    .set_size = gui_set_size,
+    .set_parent = gui_set_parent,
+    .set_transient = gui_set_transient,
+    .suggest_title = gui_suggest_title,
+    .show = gui_show,
+    .hide = gui_hide,
+};
+#endif
+
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -17,7 +258,7 @@ static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio-effect", nullptr};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
@@ -118,6 +359,13 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
     // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
     // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
+    
+    #ifdef HAS_X11_GUI
+    if (strcmp(id, CLAP_EXT_GUI) == 0) {
+        return &gui_extension;
+    }
+    #endif
+    
     printf("MyPlugin: Host requesting extension: %s\n", id);
     return NULL; // No extensions supported in this basic example
 }
@@ -169,6 +417,16 @@ static const clap_plugin_t *my_factory_create_plugin(const struct clap_plugin_fa
     self->plugin.process = my_plugin_process;
     self->plugin.get_extension = my_plugin_get_extension;
     self->plugin.on_main_thread = my_plugin_on_main_thread;
+
+    #ifdef HAS_X11_GUI
+    // Initialize GUI fields
+    self->display = NULL;
+    self->window = 0;
+    self->gui_created = false;
+    self->gui_visible = false;
+    self->gui_width = 400;
+    self->gui_height = 300;
+    #endif
 
     printf("MyPlugin: Plugin instance created successfully.\n");
     return &self->plugin;
