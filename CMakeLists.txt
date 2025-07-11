@@ -63,12 +63,21 @@ install(TARGETS my_clap_plugin DESTINATION ${CLAP_INSTALL_DIR})
 
 message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.")
 
+# Flutter UI integration (optional)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/flutter_ui/CMakeLists.txt")
+    message(STATUS "Found Flutter UI, adding as subdirectory")
+    add_subdirectory(flutter_ui)
+    # Make CLAP plugin depend on Flutter build (optional)
+    # add_dependencies(my_clap_plugin flutter_build)
+endif()
+
 # Google Test integration
 add_subdirectory(libs/googletest)
 enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+target_include_directories(my_plugin_tests PRIVATE ${CLAP_PATH}/include)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
