@@ -1,10 +1,18 @@
 #pragma once
 
 #include <clap/clap.h>
+#include <memory>
 
-// Basic plugin structure
+// Forward declarations
+class PluginViewModel;
+class IGui; // Changed from PluginGUI
+
+// Enhanced plugin structure with MVVM support
 typedef struct {
     clap_plugin_t plugin;
+    std::shared_ptr<PluginViewModel> viewModel;
+    std::shared_ptr<IGui> gui; // Changed from PluginGUI
+    double currentFrequency;
     // Add any other plugin-specific data here
 } my_plugin_t;
 
