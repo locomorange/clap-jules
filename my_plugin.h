@@ -1,11 +1,23 @@
 #pragma once
 
 #include <clap/clap.h>
+#include <memory>
 
-// Basic plugin structure
+// Forward declarations
+namespace ClapeJules {
+    class AudioProcessor;
+    class FilterViewModel;
+    class FilterView;
+}
+
+// Plugin structure with MVVM components
 typedef struct {
     clap_plugin_t plugin;
-    // Add any other plugin-specific data here
+    
+    // MVVM components managed by dependency injection
+    std::shared_ptr<ClapeJules::AudioProcessor> audioProcessor;
+    std::shared_ptr<ClapeJules::FilterViewModel> viewModel;
+    std::shared_ptr<ClapeJules::FilterView> view;
 } my_plugin_t;
 
 // Plugin factory ID
