@@ -9,6 +9,15 @@
 #include <clap/ext/gui.h>
 #endif
 
+#ifdef BRISK_INTEGRATION_READY
+// Brisk integration headers - ready for future implementation
+// These will be uncommented once Brisk dependencies are fully resolved
+// #include <brisk/gui/GuiApplication.hpp>
+// #include <brisk/gui/GuiWindow.hpp>
+// #include <brisk/widgets/Widgets.hpp>
+// #include <brisk/gui/Component.hpp>
+#endif
+
 #ifdef HAS_X11_GUI
 // --- GUI Extension Implementation ---
 static bool gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
@@ -47,6 +56,15 @@ static bool gui_create(const clap_plugin_t *plugin, const char *api, bool is_flo
     self->gui_height = 300;
     self->gui_created = true;
     self->gui_visible = false;
+    
+    #ifdef BRISK_INTEGRATION_READY
+    // TODO: Initialize Brisk GUI components here once dependencies are resolved
+    // Example future integration:
+    // BriskGuiApplication app;
+    // BriskWindow window = app.createWindow();
+    // window.setSize(self->gui_width, self->gui_height);
+    printf("MyPlugin GUI: Brisk integration ready (awaiting dependency resolution)\n");
+    #endif
     
     printf("MyPlugin GUI: Created X11 GUI\n");
     return true;
