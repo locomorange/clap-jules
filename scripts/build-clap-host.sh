@@ -1,0 +1,164 @@
+#!/bin/bash
+# build-clap-host.sh - Build CLAP Host for testing
+set -e
+
+OS_TYPE="$1"
+CLAP_HOST_DIR_ARG="${2}"
+VCPKG_ROOT="${3:-$(pwd)/vcpkg}"
+
+# Devcontainer環境ではCLAP_HOST_DIRのデフォルトを変更
+if [ -n "$DEVCONTAINER" ] || [ -d "/opt/clap-host-template" ]; then
+    DEFAULT_CLAP_HOST_DIR="/opt/clap-host-template"
+else
+    DEFAULT_CLAP_HOST_DIR="clap-host-repo"
+fi
+
+CLAP_HOST_DIR="${CLAP_HOST_DIR_ARG:-$DEFAULT_CLAP_HOST_DIR}"
+
+echo "=== Building CLAP Host on $OS_TYPE ==="
+echo "CLAP_HOST_DIR: $CLAP_HOST_DIR"
+
+cd "$CLAP_HOST_DIR"
+
+mkdir -p ../screenshots
+
+case "$OS_TYPE" in
+    "linux"|"macos")
+        # Set vcpkg toolchain - 重要！
+        export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+        if [ "$OS_TYPE" = "linux" ]; then
+            export VCPKG_TARGET_TRIPLET="x64-linux"
+        elif [ "$OS_TYPE" = "macos" ]; then
+            export VCPKG_TARGET_TRIPLET="arm64-osx"
+        fi
+        
+        echo "Using vcpkg at: $VCPKG_ROOT"
+        echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
+        echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
+        
+        # Verify vcpkg packages are installed
+        if [ -d "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET" ]; then
+            echo "Checking installed vcpkg packages..."
+            ls -la "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET/" | grep -E "(include|lib)" || echo "include/lib directories not found"
+            find "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET" -name "RtMidi.h" 2>/dev/null | head -3 || echo "RtMidi.h not found"
+        fi
+        
+        # Check available presets
+        echo "Available CMake presets:"
+        cmake --list-presets 2>/dev/null || echo "No presets available"
+        
+        # Try vcpkg-based build strategies
+        BUILD_SUCCESS=false
+        
+        # 1. Try ninja-vcpkg preset first (推奨)
+        echo "Trying ninja-vcpkg preset build (recommended)"
+        # Set UsePkgConfig=OFF to avoid pkg-config path resolution issues
+        export CMAKE_ARGS="-DUsePkgConfig=OFF"
+        if cmake --preset=ninja-vcpkg -DUsePkgConfig=OFF 2>/dev/null; then
+            if cmake --build --preset=ninja-vcpkg 2>/dev/null; then
+                BUILD_SUCCESS=true
+                echo "✓ ninja-vcpkg preset build succeeded"
+            else
+                echo "ninja-vcpkg preset build failed"
+            fi
+        else
+            echo "ninja-vcpkg preset configure failed"
+        fi
+        
+        # 2. Manual vcpkg build as fallback
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+            echo "Trying manual build with vcpkg toolchain"
+            if cmake . -B builds/vcpkg-build -G Ninja \
+                -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                -DUsePkgConfig=OFF \
+                2>&1 | tee "../screenshots/cmake-vcpkg-configure-log-$OS_TYPE.txt"; then
+                echo "vcpkg configuration successful"
+                if cmake --build builds/vcpkg-build --config Release \
+                    2>&1 | tee "../screenshots/cmake-vcpkg-build-log-$OS_TYPE.txt"; then
+                    BUILD_SUCCESS=true
+                    echo "✓ Manual vcpkg build succeeded"
+                else
+                    echo "Manual vcpkg build failed"
+                fi
+            else
+                echo "Manual vcpkg configure failed"
+            fi
+        fi
+        
+        # Last resort: simple cmake build without specific dependencies
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+            echo "Trying simple cmake build"
+            if cmake . -B builds/simple-build -G Ninja -DCMAKE_BUILD_TYPE=Release; then
+                if cmake --build builds/simple-build --config Release; then
+                    BUILD_SUCCESS=true
+                    echo "✓ Simple build succeeded"
+                else
+                    echo "Simple build failed"
+                fi
+            else
+                echo "Simple configure failed"
+            fi
+        fi
+
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+            echo "✗ All build attempts failed"
+            exit 1
+        fi
+        ;;
+        
+    "windows")
+        BUILD_SUCCESS=false
+
+        # Try build script first for static build (primary method)
+        if [ -f "scripts/build.sh" ]; then
+            echo "Trying static build script"
+            if bash scripts/build.sh; then
+                BUILD_SUCCESS=true
+                echo "✓ Static build script succeeded"
+            else
+                echo "Static build script failed"
+            fi
+        else
+            echo "scripts/build.sh not found, trying other build methods"
+        fi
+
+        # Fallback to simple cmake build
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+            echo "Trying simple cmake build for Windows"
+            if cmake . -B builds/windows-build -DCMAKE_BUILD_TYPE=Release; then
+                if cmake --build builds/windows-build --config Release; then
+                    BUILD_SUCCESS=true
+                    echo "✓ Simple Windows build succeeded"
+                else
+                    echo "Simple Windows build failed"
+                fi
+            else
+                echo "Simple Windows configure failed"
+            fi
+        fi
+
+        if [ "$BUILD_SUCCESS" = "false" ]; then
+            echo "✗ All Windows build attempts failed"
+            exit 1
+        fi
+        ;;
+        
+    *)
+        echo "Unknown OS type: $OS_TYPE"
+        exit 1
+        ;;
+esac
+
+# Find the built executable
+echo "=== Finding CLAP Host executable ==="
+EXECUTABLES_FILE="../screenshots/found-executables-$OS_TYPE.txt"
+find builds -name "clap-host*" -type f 2>/dev/null | tee "$EXECUTABLES_FILE" || echo "No clap-host executable found"
+
+if [ ! -s "$EXECUTABLES_FILE" ]; then
+    echo "Warning: No CLAP Host executable found"
+else
+    echo "✓ CLAP Host build completed successfully"
+fi
