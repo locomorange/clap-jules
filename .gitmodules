@@ -7,3 +7,7 @@
 [submodule "libs/clap-helpers"]
 	path = libs/clap-helpers
 	url = https://github.com/free-audio/clap-helpers.git
+[submodule "libs/flutter"]
+	path = libs/flutter
+	url = https://github.com/flutter/flutter.git
+	branch = stable
