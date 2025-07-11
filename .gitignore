@@ -45,3 +45,7 @@ clap-info.zip
 clap-validator
 clap-validator.tar.gz
 clap-host-repo/
+clap-host-builds/
+screenshots/*.log
+screenshots/*-log-*.txt
+aqtinstall.log
