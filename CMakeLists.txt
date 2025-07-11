@@ -39,9 +39,101 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
     add_subdirectory(libs/clap-helpers)
 endif()
 
+# Add GLFW if available
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw/CMakeLists.txt")
+    message(STATUS "Found GLFW, adding as subdirectory")
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "Don't build GLFW docs")
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "Don't build GLFW tests")
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Don't build GLFW examples")
+    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Don't build GLFW with Wayland support")
+    set(GLFW_BUILD_X11 ON CACHE BOOL "Build GLFW with X11 support for GUI")
+    add_subdirectory(libs/glfw)
+endif()
+
+# Add Skia support (optional, requires pre-built Skia)
+option(USE_SKIA "Enable Skia graphics support" OFF)
+if(USE_SKIA)
+    # Look for pre-built Skia
+    find_path(SKIA_INCLUDE_DIR 
+        NAMES skia/core/SkCanvas.h
+        PATHS 
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/include"
+            /usr/local/include
+            /usr/include
+        DOC "Path to Skia include directory"
+    )
+    
+    find_library(SKIA_LIBRARY
+        NAMES skia
+        PATHS
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/out/Release"
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/skia/out/Debug"
+            /usr/local/lib
+            /usr/lib
+        DOC "Path to Skia library"
+    )
+    
+    if(SKIA_INCLUDE_DIR AND SKIA_LIBRARY)
+        message(STATUS "Found Skia: ${SKIA_LIBRARY}")
+        add_library(skia INTERFACE)
+        target_include_directories(skia INTERFACE ${SKIA_INCLUDE_DIR})
+        target_link_libraries(skia INTERFACE ${SKIA_LIBRARY})
+    else()
+        message(WARNING "Skia not found. Please build Skia first or set SKIA_INCLUDE_DIR and SKIA_LIBRARY. See README for instructions.")
+        set(USE_SKIA OFF)
+    endif()
+endif()
+
 # Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+add_library(my_clap_plugin SHARED 
+    my_plugin.cpp
+    graphics/skia_graphics.cpp
+    graphics/win32_renderer.cpp
+    graphics/x11_renderer.cpp
+)
 target_link_libraries(my_clap_plugin PRIVATE clap)
+
+# Add threading support
+find_package(Threads REQUIRED)
+target_link_libraries(my_clap_plugin PRIVATE Threads::Threads)
+
+# Link with optional dependencies
+# GLFW is temporarily disabled in favor of native window embedding
+# if (TARGET glfw)
+#     target_link_libraries(my_clap_plugin PRIVATE glfw)
+#     target_compile_definitions(my_clap_plugin PRIVATE HAVE_GLFW=1)
+#     
+#     # Link OpenGL for rendering
+#     find_package(OpenGL REQUIRED)
+#     target_link_libraries(my_clap_plugin PRIVATE ${OPENGL_LIBRARIES})
+#     target_include_directories(my_clap_plugin PRIVATE ${OPENGL_INCLUDE_DIRS})
+#     
+#     message(STATUS "GLFW support enabled with OpenGL")
+# endif()
+
+# Add X11 support on Linux
+if (UNIX AND NOT APPLE)
+    find_package(X11 QUIET)
+    if (X11_FOUND)
+        target_link_libraries(my_clap_plugin PRIVATE ${X11_LIBRARIES})
+        target_include_directories(my_clap_plugin PRIVATE ${X11_INCLUDE_DIR})
+        target_compile_definitions(my_clap_plugin PRIVATE HAVE_X11=1)
+        message(STATUS "X11 support enabled")
+    else()
+        message(STATUS "X11 not found, using software rendering only")
+    endif()
+endif()
+
+if (USE_SKIA AND TARGET skia)
+    target_link_libraries(my_clap_plugin PRIVATE skia)
+    target_compile_definitions(my_clap_plugin PRIVATE HAVE_SKIA=1)
+    message(STATUS "Skia support enabled")
+endif()
+# Add Windows-specific libraries for Win32 renderer
+if (WIN32)
+    target_link_libraries(my_clap_plugin PRIVATE user32 gdi32 kernel32)
+endif()
+
 # On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
 if (WIN32)
   set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
@@ -67,8 +159,64 @@ message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstC
 add_subdirectory(libs/googletest)
 enable_testing()
 
-add_executable(my_plugin_tests test/test_my_plugin.cpp)
-target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+add_executable(my_plugin_tests 
+    test/test_my_plugin.cpp 
+    test/test_gui.cpp
+    my_plugin.cpp
+    graphics/skia_graphics.cpp
+    graphics/win32_renderer.cpp
+    graphics/x11_renderer.cpp
+)
+target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main clap Threads::Threads)
+
+# Add Windows-specific libraries for Win32 renderer to tests
+if (WIN32)
+    target_link_libraries(my_plugin_tests PRIVATE user32 gdi32 kernel32)
+endif()
+
+# Add include directories for the test target
+target_include_directories(my_plugin_tests PRIVATE 
+    ${CLAP_PATH}/include
+    libs/clap/include
+)
+
+# Add GLFW include directories if available
+# if (TARGET glfw)
+#     target_include_directories(my_plugin_tests PRIVATE libs/glfw/include)
+#     # Also link OpenGL to tests
+#     find_package(OpenGL REQUIRED)
+#     target_link_libraries(my_plugin_tests PRIVATE ${OPENGL_LIBRARIES})
+# endif()
+
+# Add compile definitions for graphics libraries to tests
+if (TARGET glfw)
+    target_compile_definitions(my_plugin_tests PRIVATE HAVE_GLFW=1)
+endif()
+
+# Add X11 support to tests on Linux
+if (UNIX AND NOT APPLE AND X11_FOUND)
+    target_link_libraries(my_plugin_tests PRIVATE ${X11_LIBRARIES})
+    target_include_directories(my_plugin_tests PRIVATE ${X11_INCLUDE_DIR})
+    target_compile_definitions(my_plugin_tests PRIVATE HAVE_X11=1)
+endif()
+
+if (USE_SKIA AND TARGET skia)
+    target_compile_definitions(my_plugin_tests PRIVATE HAVE_SKIA=1)
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+
+# Add GUI test executable (only if GLFW is available)
+if (TARGET glfw)
+    add_executable(test_gui test_gui.cpp)
+    target_link_libraries(test_gui PRIVATE my_clap_plugin clap glfw ${OPENGL_LIBRARIES} Threads::Threads)
+    target_include_directories(test_gui PRIVATE 
+        ${CLAP_PATH}/include
+        libs/clap/include
+        libs/glfw/include
+        ${OPENGL_INCLUDE_DIRS}
+    )
+    target_compile_definitions(test_gui PRIVATE HAVE_GLFW=1)
+    message(STATUS "GUI test executable added")
+endif()
