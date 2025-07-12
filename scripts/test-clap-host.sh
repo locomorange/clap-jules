@@ -85,6 +85,12 @@ case "$OS_TYPE" in
     "linux")
         echo "Testing CLAP Host with virtual display and screenshot..."
         
+        # Set up Qt6 library path for runtime
+        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}/lib" ]; then
+            export LD_LIBRARY_PATH="${QT_ROOT_DIR}/lib:${LD_LIBRARY_PATH}"
+            echo "Runtime LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+        fi
+        
         # Calculate screenshot hash before running
         PREV_HASH=""
         if [ -f "previous-screenshots/clap-host-linux-screenshot.png" ]; then

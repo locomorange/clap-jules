@@ -20,6 +20,10 @@ echo "CLAP_HOST_DIR: $CLAP_HOST_DIR"
 
 cd "$CLAP_HOST_DIR"
 
+# Clean up previous builds to ensure fresh build
+echo "Cleaning up previous builds..."
+rm -rf builds/ || true
+
 mkdir -p ../screenshots
 
 case "$OS_TYPE" in
@@ -35,6 +39,16 @@ case "$OS_TYPE" in
         echo "Using vcpkg at: $VCPKG_ROOT"
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
         echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
+        
+        # Check Qt6 environment
+        echo "Qt6 environment check:"
+        echo "QT_ROOT_DIR: ${QT_ROOT_DIR:-not set}"
+        echo "LD_LIBRARY_PATH: ${LD_LIBRARY_PATH:-not set}"
+        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}/lib" ]; then
+            echo "Qt6 libraries found at: ${QT_ROOT_DIR}/lib"
+            export LD_LIBRARY_PATH="${QT_ROOT_DIR}/lib:${LD_LIBRARY_PATH}"
+            echo "Updated LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+        fi
         
         # Verify vcpkg packages are installed
         if [ -d "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET" ]; then
