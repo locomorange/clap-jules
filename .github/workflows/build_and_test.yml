@@ -168,7 +168,7 @@ jobs:
         path: |
           clap-host-repo/builds/
           clap-host-repo/vcpkg_installed/
-          vcpkg/installed/
+          libs/vcpkg/installed/
         key: clap-host-${{ runner.os }}-qt6-${{ hashFiles('**/vcpkg.json', '**/CMakeLists.txt') }}
         restore-keys: |
           clap-host-${{ runner.os }}-qt6-
@@ -227,10 +227,10 @@ jobs:
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         
         if [ "$OS_TYPE" != "windows" ]; then
-          export VCPKG_ROOT="${VCPKG_ROOT:-$(pwd)/vcpkg}"
+          export VCPKG_ROOT="${VCPKG_ROOT:-$(pwd)/libs/vcpkg}"
         fi
         
-        ./scripts/build-clap-host.sh "$OS_TYPE" "clap-host-repo" "${VCPKG_ROOT:-$(pwd)/vcpkg}"
+        ./scripts/build-clap-host.sh "$OS_TYPE" "clap-host-repo" "${VCPKG_ROOT:-$(pwd)/libs/vcpkg}"
 
     - name: Test CLAP Host with Plugin and Take Screenshot
       shell: bash

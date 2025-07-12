@@ -86,7 +86,7 @@ jobs:
         if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          export VCPKG_ROOT="$(pwd)/vcpkg"
+          export VCPKG_ROOT="$(pwd)/libs/vcpkg"
           ./scripts/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}"
           
           # ビルド成果物を専用ディレクトリに保存
