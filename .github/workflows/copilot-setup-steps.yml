@@ -60,7 +60,7 @@ jobs:
       #   id: clap-host-cache
       #   with:
       #     path: |
-      #       clap-host-repo/
+      #       tools/clap-host/
       #       clap-host-builds/
       #     key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/setup-vcpkg.sh', 'scripts/build-clap-host.sh') }}-v4
       #     restore-keys: |
@@ -71,8 +71,8 @@ jobs:
       #   if: steps.clap-host-cache.outputs.cache-hit == 'true'
       #   shell: bash
       #   run: |
-      #     echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
-      #     echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/clap-host-repo"
+      #     echo "CLAP_HOST_PATH=$(pwd)/tools/clap-host" >> $GITHUB_ENV
+      #     echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/tools/clap-host"
 
       # CLAP Hostリポジトリ準備
       - name: Prepare CLAP Host Repository
@@ -85,12 +85,12 @@ jobs:
         shell: bash
         run: |
           export VCPKG_ROOT="$(pwd)/libs/vcpkg"
-          ./scripts/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}"
+          ./scripts/build-clap-host.sh linux "tools/clap-host" "${VCPKG_ROOT}"
           
           # ビルド成果物を専用ディレクトリに保存
           mkdir -p clap-host-builds
-          if [ -d "clap-host-repo/builds" ]; then
-            cp -r clap-host-repo/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
+          if [ -d "tools/clap-host/builds" ]; then
+            cp -r tools/clap-host/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
       # 環境検証

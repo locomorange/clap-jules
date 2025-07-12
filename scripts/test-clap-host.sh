@@ -3,7 +3,7 @@
 set -e
 
 OS_TYPE="$1"
-CLAP_HOST_DIR="${2:-clap-host-repo}"
+CLAP_HOST_DIR="${2:-tools/clap-host}"
 PLUGIN_FILE="${3:-$PLUGIN_FILE}"
 TIMEOUT_DURATION="${4:-30}"
 

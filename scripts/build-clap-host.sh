@@ -6,14 +6,9 @@ OS_TYPE="$1"
 CLAP_HOST_DIR_ARG="${2}"
 VCPKG_ROOT="${3:-$(pwd)/vcpkg}"
 
-# Devcontainer環境ではCLAP_HOST_DIRのデフォルトを変更
-if [ -n "$DEVCONTAINER" ] || [ -d "/workspaces/clap-jules/tools/clap-host" ]; then
-    DEFAULT_CLAP_HOST_DIR="/workspaces/clap-jules/tools/clap-host"
-else
-    DEFAULT_CLAP_HOST_DIR="clap-host-repo"
-fi
 
-CLAP_HOST_DIR="${CLAP_HOST_DIR_ARG:-$DEFAULT_CLAP_HOST_DIR}"
+# CLAP Host の場所は常に tools/clap-host を使う
+CLAP_HOST_DIR="${CLAP_HOST_DIR_ARG:-tools/clap-host}"
 
 echo "=== Building CLAP Host on $OS_TYPE ==="
 echo "CLAP_HOST_DIR: $CLAP_HOST_DIR"

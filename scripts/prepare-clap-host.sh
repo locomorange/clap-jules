@@ -2,7 +2,7 @@
 # prepare-clap-host.sh - Prepare CLAP Host repository for development
 set -e
 
-CLAP_HOST_DIR="${1:-clap-host-repo}"
+CLAP_HOST_DIR="${1:-tools/clap-host}"
 
 echo "=== Preparing CLAP Host repository ==="
 
@@ -19,7 +19,7 @@ else
 fi
 
 # 環境変数設定
-export CLAP_HOST_PATH="$(pwd)/$CLAP_HOST_DIR"
+export CLAP_HOST_PATH="$CLAP_HOST_DIR"
 echo "CLAP_HOST_PATH=$CLAP_HOST_PATH" >> ${GITHUB_ENV:-/dev/null}
 
 echo "✓ CLAP Host repository prepared at: $CLAP_HOST_PATH"

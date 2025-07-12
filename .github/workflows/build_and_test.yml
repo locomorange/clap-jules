@@ -166,8 +166,8 @@ jobs:
     #   id: clap-host-cache
     #   with:
     #     path: |
-    #       clap-host-repo/builds/
-    #       clap-host-repo/vcpkg_installed/
+    #       tools/clap-host/builds/
+    #       tools/clap-host/vcpkg_installed/
     #       libs/vcpkg/installed/
     #     key: clap-host-${{ runner.os }}-qt6-${{ hashFiles('**/vcpkg.json', '**/CMakeLists.txt') }}
     #     restore-keys: |
@@ -227,7 +227,7 @@ jobs:
           export VCPKG_ROOT="${VCPKG_ROOT:-$(pwd)/libs/vcpkg}"
         fi
         
-        ./scripts/build-clap-host.sh "$OS_TYPE" "clap-host-repo" "${VCPKG_ROOT:-$(pwd)/libs/vcpkg}"
+        ./scripts/build-clap-host.sh "$OS_TYPE" "tools/clap-host" "${VCPKG_ROOT:-$(pwd)/libs/vcpkg}"
 
     - name: Test CLAP Host with Plugin and Take Screenshot
       shell: bash
@@ -246,7 +246,7 @@ jobs:
             ;;
         esac
         
-        ./scripts/test-clap-host.sh "$OS_TYPE" "clap-host-repo" "$PLUGIN_FILE" "30"
+        ./scripts/test-clap-host.sh "$OS_TYPE" "tools/clap-host" "$PLUGIN_FILE" "30"
 
     - name: Upload Screenshot to Release and Comment on PR (Linux only)
       if: runner.os == 'Linux' && github.event_name == 'pull_request'
@@ -270,6 +270,6 @@ jobs:
         name: clap-host-test-results-${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}-${{ github.sha }}
         path: |
           screenshots/
-          clap-host-repo/builds/
+          tools/clap-host/builds/
         retention-days: 5
         if-no-files-found: ignore
