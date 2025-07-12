@@ -61,6 +61,11 @@ file "$CLAP_HOST_EXEC"
 echo "CLAP Host dependencies:"
 ldd "$CLAP_HOST_EXEC" | head -10
 
+echo "Environment variables:"
+echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+echo "QT_ROOT_DIR=$QT_ROOT_DIR"
+echo "VCPKG_ROOT=$VCPKG_ROOT"
+
 if [ ! -f "$PLUGIN_FILE" ]; then
     echo "✗ Error: Plugin file not found: $PLUGIN_FILE"
     echo "Current directory: $(pwd)"
@@ -108,8 +113,34 @@ case "$OS_TYPE" in
         echo "CLAP Host help/usage:"
         timeout 5s "$CLAP_HOST_EXEC" --help 2>/dev/null || echo "No help available or help command failed"
         
+        # Set up Qt6 library path for CLAP Host execution
+        echo "Setting up Qt6 library paths..."
+        QT6_LIB_PATHS=""
+        
+        # Check common Qt6 installation paths
+        if [ -d "/home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib" ]; then
+            QT6_LIB_PATHS="/home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib"
+            echo "Found Qt6 libraries at: $QT6_LIB_PATHS"
+        elif [ -d "/workspaces/clap-jules/tools/qt/6.5.0/gcc_64/lib" ]; then
+            QT6_LIB_PATHS="/workspaces/clap-jules/tools/qt/6.5.0/gcc_64/lib"
+            echo "Found Qt6 libraries at: $QT6_LIB_PATHS"
+        elif [ -d "$(pwd)/libs/vcpkg/installed/x64-linux/lib" ]; then
+            QT6_LIB_PATHS="$(pwd)/libs/vcpkg/installed/x64-linux/lib"
+            echo "Found vcpkg Qt6 libraries at: $QT6_LIB_PATHS"
+        else
+            echo "Warning: Qt6 libraries not found in expected locations"
+        fi
+        
+        # Verify Qt6 libraries exist
+        if [ -n "$QT6_LIB_PATHS" ]; then
+            echo "Qt6 library contents:"
+            ls -la "$QT6_LIB_PATHS/" | grep -E "(Qt6|libQt6)" | head -5 || echo "No Qt6 libraries found"
+        fi
+        
         timeout "${TIMEOUT_DURATION}s" bash -c "
             echo 'Starting CLAP Host with plugin...'
+            export LD_LIBRARY_PATH='$QT6_LIB_PATHS:\$LD_LIBRARY_PATH'
+            echo 'LD_LIBRARY_PATH='\$LD_LIBRARY_PATH
             '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
             CLAP_PID=\$!
             sleep 10
