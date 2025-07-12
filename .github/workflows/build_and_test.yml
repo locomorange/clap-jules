@@ -180,13 +180,6 @@ jobs:
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-dependencies.sh "$OS_TYPE"
 
-    - name: Setup vcpkg
-      if: runner.os != 'Windows'
-      shell: bash
-      run: |
-        OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
-        ./scripts/setup-vcpkg.sh "$OS_TYPE"
-
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
@@ -197,6 +190,13 @@ jobs:
       with:
         version: '6.5.0'
         cached: true
+
+    - name: Setup vcpkg
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
+        ./scripts/setup-vcpkg.sh "$OS_TYPE"
 
     - name: Cache Screenshots for Comparison
       uses: actions/cache@v4

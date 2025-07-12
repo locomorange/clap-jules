@@ -41,18 +41,18 @@ jobs:
         run: |
           ./scripts/setup-clap-tools.sh linux "${{ env.CLAP_VALIDATOR_VERSION }}" "${{ env.CLAP_INFO_VERSION }}"
 
-      # vcpkg環境構築
-      - name: Setup vcpkg Package Manager
-        shell: bash
-        run: |
-          ./scripts/setup-vcpkg.sh linux
-
       # Qt6環境構築
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.5.0'
           cached: true
+
+      # vcpkg環境構築
+      - name: Setup vcpkg Package Manager
+        shell: bash
+        run: |
+          ./scripts/setup-vcpkg.sh linux
 
       # CLAP Hostビルド成果物のキャッシュ（無効化）
       # - name: Cache CLAP Host Build

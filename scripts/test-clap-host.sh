@@ -146,6 +146,17 @@ case "$OS_TYPE" in
             echo "Warning: Qt6 libraries not found in expected locations"
         fi
         
+        # Add vcpkg lib path if available
+        VCPKG_LIB_PATH="$(pwd)/libs/vcpkg/installed/x64-linux/lib"
+        if [ -d "$VCPKG_LIB_PATH" ]; then
+            if [ -n "$QT6_LIB_PATHS" ]; then
+                QT6_LIB_PATHS="$QT6_LIB_PATHS:$VCPKG_LIB_PATH"
+            else
+                QT6_LIB_PATHS="$VCPKG_LIB_PATH"
+            fi
+            echo "Added vcpkg libraries at: $VCPKG_LIB_PATH"
+        fi
+        
         # Verify Qt6 libraries exist
         if [ -n "$QT6_LIB_PATHS" ]; then
             echo "Qt6 library contents:"

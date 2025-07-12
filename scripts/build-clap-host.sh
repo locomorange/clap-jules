@@ -69,12 +69,21 @@ case "$OS_TYPE" in
         
         # Use manual vcpkg build with our libs/vcpkg
         echo "Trying manual build with libs/vcpkg toolchain"
+        
+        # Additional Qt6 paths for CMake to find Qt6 installed by GitHub Actions
+        QT6_CMAKE_ARGS=""
+        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}" ]; then
+            echo "Adding Qt6 path hints for CMake: ${QT_ROOT_DIR}"
+            QT6_CMAKE_ARGS="-DQt6_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6 -DQt6Core_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6Core -DQt6Widgets_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6Widgets -DQt6Gui_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6Gui"
+        fi
+        
         if cmake . -B builds/vcpkg-build -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
             -DCMAKE_BUILD_TYPE=Release \
             -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DUsePkgConfig=OFF \
+            $QT6_CMAKE_ARGS \
             2>&1 | tee "../screenshots/cmake-vcpkg-configure-log-$OS_TYPE.txt"; then
             echo "vcpkg configuration successful"
             if cmake --build builds/vcpkg-build --config Release \

@@ -44,11 +44,11 @@ case "$OS_TYPE" in
 esac
 
 echo "Installing CLAP Host dependencies via vcpkg for $TRIPLET..."
-./"$VCPKG_DIR"/vcpkg install rtmidi rtaudio qt6-base qt6-widgets --triplet="$TRIPLET"
+./"$VCPKG_DIR"/vcpkg install rtmidi rtaudio --triplet="$TRIPLET"
 
 # Verify installation
 echo "Verifying vcpkg package installation..."
-./"$VCPKG_DIR"/vcpkg list | grep -E "(rtmidi|rtaudio|qt6)" || echo "Warning: Required packages not found in vcpkg list"
+./"$VCPKG_DIR"/vcpkg list | grep -E "(rtmidi|rtaudio)" || echo "Warning: RtMidi/RtAudio not found in vcpkg list"
 
 # Set environment variables for CLAP Host build
 export VCPKG_ROOT="$(pwd)/$VCPKG_DIR"
@@ -74,9 +74,3 @@ echo "Installed vcpkg packages:"
 # Show include paths for debugging
 echo "RtMidi include path:"
 find "$VCPKG_ROOT/installed/$TRIPLET" -name "RtMidi.h" 2>/dev/null || echo "RtMidi.h not found"
-
-echo "Qt6 include paths:"
-find "$VCPKG_ROOT/installed/$TRIPLET" -name "QtCore" -type d 2>/dev/null || echo "Qt6 headers not found"
-
-echo "Qt6 library paths:"
-find "$VCPKG_ROOT/installed/$TRIPLET" -name "libQt6Core*" 2>/dev/null || echo "Qt6 libraries not found"
