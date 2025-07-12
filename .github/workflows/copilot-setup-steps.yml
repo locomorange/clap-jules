@@ -92,7 +92,6 @@ jobs:
           if [ -d "clap-host-repo/builds" ]; then
             cp -r clap-host-repo/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
-          fi
 
       # 環境検証
       - name: Verify Complete Environment
