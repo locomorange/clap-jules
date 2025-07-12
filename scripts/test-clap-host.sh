@@ -1,5 +1,5 @@
 #!/bin/bash
-# test-clap-host.sh - Test CLAP Host with plugin and take screenshot
+# test-clap-host-simple.sh - Simplified CLAP Host testing
 set -e
 
 OS_TYPE="$1"
@@ -12,7 +12,6 @@ echo "=== Testing CLAP Host with Plugin on $OS_TYPE ==="
 # Use override if available, otherwise use provided plugin file
 if [ -n "$PLUGIN_FILE_OVERRIDE" ]; then
     PLUGIN_FILE="$PLUGIN_FILE_OVERRIDE"
-    echo "Using plugin file override: $PLUGIN_FILE"
 elif [ -z "$PLUGIN_FILE" ]; then
     # Determine default plugin file path if not provided
     case "$OS_TYPE" in
@@ -20,13 +19,7 @@ elif [ -z "$PLUGIN_FILE" ]; then
             PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
             ;;
         "windows")
-            if [ -f "$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap" ]; then
-                PLUGIN_FILE="$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap"
-            elif [ -f "$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap" ]; then
-                PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap"
-            else
-                PLUGIN_FILE=$(find "$(pwd)/plugin-artifacts" -name "*.clap" -type f | head -1)
-            fi
+            PLUGIN_FILE=$(find "$(pwd)/plugin-artifacts" -name "*.clap" -type f | head -1)
             ;;
         "macos")
             PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
@@ -34,67 +27,35 @@ elif [ -z "$PLUGIN_FILE" ]; then
     esac
 fi
 
-echo "Using plugin file: $PLUGIN_FILE"
-
 # Convert to absolute path if it's not already absolute
 if [[ "$PLUGIN_FILE" != /* ]]; then
     PLUGIN_FILE="$(pwd)/$PLUGIN_FILE"
 fi
 
-echo "Absolute plugin file path: $PLUGIN_FILE"
+echo "Using plugin file: $PLUGIN_FILE"
 
 # Find clap-host executable
 CLAP_HOST_EXEC=$(find "$CLAP_HOST_DIR" -name "clap-host*" -type f | head -1)
 if [ -z "$CLAP_HOST_EXEC" ]; then
     echo "✗ Error: clap-host executable not found!"
-    echo "Contents of $CLAP_HOST_DIR/builds:"
-    find "$CLAP_HOST_DIR" -name "*clap-host*" -type f 2>/dev/null || echo "No clap-host files found"
     exit 1
 fi
 
 echo "Found clap-host at: $CLAP_HOST_EXEC"
 chmod +x "$CLAP_HOST_EXEC"
 
-echo "CLAP Host details:"
-ls -la "$CLAP_HOST_EXEC"
-file "$CLAP_HOST_EXEC"
-echo "CLAP Host dependencies:"
-ldd "$CLAP_HOST_EXEC" | head -10
-
-echo "Environment variables:"
-echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-echo "QT_ROOT_DIR=$QT_ROOT_DIR"
-echo "VCPKG_ROOT=$VCPKG_ROOT"
-
 if [ ! -f "$PLUGIN_FILE" ]; then
     echo "✗ Error: Plugin file not found: $PLUGIN_FILE"
-    echo "Current directory: $(pwd)"
-    echo "Plugin artifacts directory contents:"
-    ls -la plugin-artifacts/ 2>/dev/null || echo "plugin-artifacts directory not found"
     exit 1
 fi
 
 echo "✓ Plugin file verified: $PLUGIN_FILE"
-echo "Plugin file details:"
-ls -la "$PLUGIN_FILE"
-file "$PLUGIN_FILE"
-
-# Check if plugin has CLAP entry points
-echo "Checking CLAP plugin symbols:"
-nm -D "$PLUGIN_FILE" 2>/dev/null | grep -E "(clap_|plugin_)" | head -5 || echo "No CLAP symbols found (this might be normal for stripped binaries)"
-objdump -T "$PLUGIN_FILE" 2>/dev/null | grep -E "(clap_|plugin_)" | head -5 || echo "No CLAP symbols found via objdump"
 
 mkdir -p screenshots
 
 case "$OS_TYPE" in
     "linux")
         echo "Testing CLAP Host with virtual display and screenshot..."
-        
-        # Set up Qt6 library path for runtime
-        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}/lib" ]; then
-            export LD_LIBRARY_PATH="${QT_ROOT_DIR}/lib:${LD_LIBRARY_PATH}"
-            echo "Runtime LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-        fi
         
         # Calculate screenshot hash before running
         PREV_HASH=""
@@ -103,9 +64,7 @@ case "$OS_TYPE" in
             echo "Previous screenshot hash: $PREV_HASH"
         elif [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
             PREV_HASH=$(sha256sum "screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
-            echo "Found previous screenshot in current directory"
-        else
-            echo "No previous screenshot found - this will be the first"
+            echo "Previous screenshot hash: $PREV_HASH"
         fi
         
         # Start virtual display
@@ -114,59 +73,12 @@ case "$OS_TYPE" in
         XVFB_PID=$!
         sleep 5
         
-        # Test clap-host and take screenshot
-        echo "Debug: CLAP_HOST_EXEC='$CLAP_HOST_EXEC'"
-        echo "Debug: PLUGIN_FILE='$PLUGIN_FILE'"
-        echo "Debug: Absolute plugin path='$(realpath "$PLUGIN_FILE" 2>/dev/null || echo "File not found")'"
-        echo "Debug: Command that will be executed: '$CLAP_HOST_EXEC' --clap-plugin '$PLUGIN_FILE'"
-        
-        # Test if CLAP Host can access the plugin file
-        echo "Testing CLAP Host access to plugin file..."
-        timeout 5s "$CLAP_HOST_EXEC" --clap-plugin "$PLUGIN_FILE" --help 2>/dev/null || echo "Plugin access test completed"
-        
-        # Check CLAP Host help to understand expected arguments
-        echo "CLAP Host help/usage:"
-        timeout 5s "$CLAP_HOST_EXEC" --help 2>/dev/null || echo "No help available or help command failed"
-        
-        # Set up Qt6 library path for CLAP Host execution
-        echo "Setting up Qt6 library paths..."
-        QT6_LIB_PATHS=""
-        
-        # Check common Qt6 installation paths
-        if [ -d "/home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib" ]; then
-            QT6_LIB_PATHS="/home/runner/work/clap-jules/Qt/6.5.0/gcc_64/lib"
-            echo "Found Qt6 libraries at: $QT6_LIB_PATHS"
-        elif [ -d "/workspaces/clap-jules/tools/qt/6.5.0/gcc_64/lib" ]; then
-            QT6_LIB_PATHS="/workspaces/clap-jules/tools/qt/6.5.0/gcc_64/lib"
-            echo "Found Qt6 libraries at: $QT6_LIB_PATHS"
-        elif [ -d "$(pwd)/libs/vcpkg/installed/x64-linux/lib" ]; then
-            QT6_LIB_PATHS="$(pwd)/libs/vcpkg/installed/x64-linux/lib"
-            echo "Found vcpkg Qt6 libraries at: $QT6_LIB_PATHS"
-        else
-            echo "Warning: Qt6 libraries not found in expected locations"
-        fi
-        
-        # Add vcpkg lib path if available
-        VCPKG_LIB_PATH="$(pwd)/libs/vcpkg/installed/x64-linux/lib"
-        if [ -d "$VCPKG_LIB_PATH" ]; then
-            if [ -n "$QT6_LIB_PATHS" ]; then
-                QT6_LIB_PATHS="$QT6_LIB_PATHS:$VCPKG_LIB_PATH"
-            else
-                QT6_LIB_PATHS="$VCPKG_LIB_PATH"
-            fi
-            echo "Added vcpkg libraries at: $VCPKG_LIB_PATH"
-        fi
-        
-        # Verify Qt6 libraries exist
-        if [ -n "$QT6_LIB_PATHS" ]; then
-            echo "Qt6 library contents:"
-            ls -la "$QT6_LIB_PATHS/" | grep -E "(Qt6|libQt6)" | head -5 || echo "No Qt6 libraries found"
+        # Set up Qt6 library path for runtime
+        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}/lib" ]; then
+            export LD_LIBRARY_PATH="${QT_ROOT_DIR}/lib:${LD_LIBRARY_PATH}"
         fi
         
         timeout "${TIMEOUT_DURATION}s" bash -c "
-            echo 'Starting CLAP Host with plugin...'
-            export LD_LIBRARY_PATH='$QT6_LIB_PATHS:\$LD_LIBRARY_PATH'
-            echo 'LD_LIBRARY_PATH='\$LD_LIBRARY_PATH
             '$CLAP_HOST_EXEC' --clap-plugin '$PLUGIN_FILE' &
             CLAP_PID=\$!
             sleep 10
@@ -177,7 +89,7 @@ case "$OS_TYPE" in
             echo 'Screenshot capture failed'
             
             kill \$CLAP_PID 2>/dev/null || true
-        " || echo "Screenshot capture completed"
+        " || echo "Test completed"
         
         kill $XVFB_PID 2>/dev/null || true
         
@@ -187,43 +99,25 @@ case "$OS_TYPE" in
             NEW_HASH=$(sha256sum "screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
             echo "NEW_SCREENSHOT_HASH=$NEW_HASH" >> ${GITHUB_ENV:-/dev/null}
             
-            if [ "$PREV_HASH" != "$NEW_HASH" ]; then
+            if [ -n "$PREV_HASH" ] && [ "$PREV_HASH" != "$NEW_HASH" ]; then
                 echo "SCREENSHOT_CHANGED=true" >> ${GITHUB_ENV:-/dev/null}
-                echo "✓ Screenshot changed - new hash: $NEW_HASH"
+                echo "Screenshot changed"
             else
-                echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
                 echo "Screenshot unchanged"
             fi
         else
-            echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
             echo "No screenshot generated"
         fi
         ;;
         
-    "macos")
-        echo "Testing clap-host functionality without screenshot..."
-        timeout "${TIMEOUT_DURATION}s" bash -c "
-            '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
-            CLAP_PID=\$!
-            sleep 10
-            kill \$CLAP_PID 2>/dev/null || true
-        " || echo "CLAP Host test completed"
-        
-        echo "CLAP Host test completed on macOS (no screenshot)" > screenshots/clap-host-test-macos.txt
-        echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
+    "windows")
+        echo "Testing CLAP Host on Windows..."
+        timeout "${TIMEOUT_DURATION}s" "$CLAP_HOST_EXEC" --clap-plugin "$PLUGIN_FILE" || echo "Windows test completed"
         ;;
         
-    "windows")
-        echo "Testing clap-host functionality without screenshot..."
-        timeout "${TIMEOUT_DURATION}s" bash -c "
-            '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
-            CLAP_PID=\$!
-            sleep 10
-            kill \$CLAP_PID 2>/dev/null || true
-        " || echo "CLAP Host test completed"
-        
-        echo "CLAP Host test completed on Windows (no screenshot)" > screenshots/clap-host-test-windows.txt
-        echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
+    "macos")
+        echo "Testing CLAP Host on macOS..."
+        timeout "${TIMEOUT_DURATION}s" "$CLAP_HOST_EXEC" --clap-plugin "$PLUGIN_FILE" || echo "macOS test completed"
         ;;
         
     *)
