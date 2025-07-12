@@ -4,10 +4,10 @@
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
-  "onCreateCommand": "bash ./scripts/devcontainer-oncreate.sh",
+  "onCreateCommand": "git submodule update --init --recursive && bash ./scripts/devcontainer-oncreate.sh",
   "postCreateCommand": [
     "bash", "-c", 
-    "git submodule update --init --recursive && ./scripts/verify-environment.sh && ./scripts/environment-summary.sh"
+    "./scripts/verify-environment.sh && ./scripts/environment-summary.sh"
   ],
   "remoteUser": "vscode",
   "workspaceFolder": "/workspaces/clap-jules",
