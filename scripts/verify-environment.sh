@@ -11,7 +11,7 @@ command -v gcc
 command -v g++
 
 echo "--- CLAP Tools ---"
-export PATH=$PATH:/usr/local/bin:/opt/clap-tools
+export PATH=$PATH:/usr/local/bin:/workspaces/clap-jules/tools/clap-tools
 command -v clap-validator || echo "clap-validator not found"
 command -v clap-info || echo "clap-info not found"
 

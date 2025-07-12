@@ -7,8 +7,8 @@ CLAP_HOST_DIR_ARG="${2}"
 VCPKG_ROOT="${3:-$(pwd)/vcpkg}"
 
 # Devcontainer環境ではCLAP_HOST_DIRのデフォルトを変更
-if [ -n "$DEVCONTAINER" ] || [ -d "/opt/clap-host-template" ]; then
-    DEFAULT_CLAP_HOST_DIR="/opt/clap-host-template"
+if [ -n "$DEVCONTAINER" ] || [ -d "/workspaces/clap-jules/tools/clap-host-template" ]; then
+    DEFAULT_CLAP_HOST_DIR="/workspaces/clap-jules/tools/clap-host-template"
 else
     DEFAULT_CLAP_HOST_DIR="clap-host-repo"
 fi
