@@ -79,6 +79,11 @@ echo "Plugin file details:"
 ls -la "$PLUGIN_FILE"
 file "$PLUGIN_FILE"
 
+# Check if plugin has CLAP entry points
+echo "Checking CLAP plugin symbols:"
+nm -D "$PLUGIN_FILE" 2>/dev/null | grep -E "(clap_|plugin_)" | head -5 || echo "No CLAP symbols found (this might be normal for stripped binaries)"
+objdump -T "$PLUGIN_FILE" 2>/dev/null | grep -E "(clap_|plugin_)" | head -5 || echo "No CLAP symbols found via objdump"
+
 mkdir -p screenshots
 
 case "$OS_TYPE" in
@@ -113,7 +118,11 @@ case "$OS_TYPE" in
         echo "Debug: CLAP_HOST_EXEC='$CLAP_HOST_EXEC'"
         echo "Debug: PLUGIN_FILE='$PLUGIN_FILE'"
         echo "Debug: Absolute plugin path='$(realpath "$PLUGIN_FILE" 2>/dev/null || echo "File not found")'"
-        echo "Debug: Command that will be executed: '$CLAP_HOST_EXEC' '$PLUGIN_FILE'"
+        echo "Debug: Command that will be executed: '$CLAP_HOST_EXEC' --clap-plugin '$PLUGIN_FILE'"
+        
+        # Test if CLAP Host can access the plugin file
+        echo "Testing CLAP Host access to plugin file..."
+        timeout 5s "$CLAP_HOST_EXEC" --clap-plugin "$PLUGIN_FILE" --help 2>/dev/null || echo "Plugin access test completed"
         
         # Check CLAP Host help to understand expected arguments
         echo "CLAP Host help/usage:"
@@ -147,7 +156,7 @@ case "$OS_TYPE" in
             echo 'Starting CLAP Host with plugin...'
             export LD_LIBRARY_PATH='$QT6_LIB_PATHS:\$LD_LIBRARY_PATH'
             echo 'LD_LIBRARY_PATH='\$LD_LIBRARY_PATH
-            '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
+            '$CLAP_HOST_EXEC' --clap-plugin '$PLUGIN_FILE' &
             CLAP_PID=\$!
             sleep 10
             
