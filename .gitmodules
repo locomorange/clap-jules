@@ -7,6 +7,6 @@
 [submodule "libs/clap-helpers"]
 	path = libs/clap-helpers
 	url = https://github.com/free-audio/clap-helpers.git
-[submodule "libs/vcpkg"]
+[submodule "vcpkg"]
 	path = libs/vcpkg
-	url = https://github.com/Microsoft/vcpkg.git
+	url = https://github.com/microsoft/vcpkg.git

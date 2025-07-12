@@ -8,7 +8,7 @@ VCPKG_DIR="libs/vcpkg"
 echo "=== Setting up vcpkg for CLAP Host build on $OS_TYPE ==="
 
 # サブモジュールとしてlibs/vcpkgを利用
-if [ ! -d "$VCPKG_DIR" ] || [ ! -f "$VCPKG_DIR/.git/config" ]; then
+if [ ! -d "$VCPKG_DIR" ] || [ ! -e "$VCPKG_DIR/.git" ]; then
     echo "Error: libs/vcpkg submodule not found. Please initialize submodules."
     exit 1
 fi
