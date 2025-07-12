@@ -61,10 +61,9 @@ case "$OS_TYPE" in
         PREV_HASH=""
         if [ -f "previous-screenshots/clap-host-linux-screenshot.png" ]; then
             PREV_HASH=$(sha256sum "previous-screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
-            echo "Previous screenshot hash: $PREV_HASH"
-        elif [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
-            PREV_HASH=$(sha256sum "screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
-            echo "Previous screenshot hash: $PREV_HASH"
+            echo "Previous screenshot hash from PR cache: $PREV_HASH"
+        else
+            echo "No previous screenshot found in PR cache"
         fi
         
         # Start virtual display
@@ -98,13 +97,8 @@ case "$OS_TYPE" in
             mv "screenshots/clap-host-linux-screenshot-new.png" "screenshots/clap-host-linux-screenshot.png"
             NEW_HASH=$(sha256sum "screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
             echo "NEW_SCREENSHOT_HASH=$NEW_HASH" >> ${GITHUB_ENV:-/dev/null}
-            
-            if [ -n "$PREV_HASH" ] && [ "$PREV_HASH" != "$NEW_HASH" ]; then
-                echo "SCREENSHOT_CHANGED=true" >> ${GITHUB_ENV:-/dev/null}
-                echo "Screenshot changed"
-            else
-                echo "Screenshot unchanged"
-            fi
+            echo "New screenshot hash: $NEW_HASH"
+            echo "Screenshot comparison will be handled by GitHub Actions workflow"
         else
             echo "No screenshot generated"
         fi

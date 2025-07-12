@@ -203,9 +203,9 @@ jobs:
       continue-on-error: true
       with:
         path: previous-screenshots/
-        key: clap-host-screenshots-${{ matrix.os }}-${{ github.event.pull_request.number || github.ref }}
+        key: clap-host-screenshots-${{ matrix.os }}-pr${{ github.event.pull_request.number }}-${{ github.sha }}
         restore-keys: |
-          clap-host-screenshots-${{ matrix.os }}-
+          clap-host-screenshots-${{ matrix.os }}-pr${{ github.event.pull_request.number }}-
 
     - name: Verify Plugin Artifact
       shell: bash
@@ -248,19 +248,57 @@ jobs:
         
         ./scripts/test-clap-host.sh "$OS_TYPE" "tools/clap-host" "$PLUGIN_FILE" "30"
 
-    - name: Upload Screenshot to Release and Comment on PR (Linux only)
-      if: runner.os == 'Linux' && github.event_name == 'pull_request'
+    - name: Compare Screenshots and Determine Changes
+      if: runner.os == 'Linux'
       shell: bash
       run: |
-        if [ "${SCREENSHOT_CHANGED:-false}" = "true" ]; then
-          ./scripts/ci/upload-screenshot.sh \
-            "${{ secrets.GITHUB_TOKEN }}" \
-            "${{ github.repository }}" \
-            "${{ github.event.pull_request.number }}" \
-            "${{ github.run_id }}" \
-            "${{ github.sha }}" \
-            "${NEW_SCREENSHOT_HASH:-unknown}"
+        # If this is the first screenshot in PR or no previous screenshot exists, mark as changed
+        if [ ! -f "previous-screenshots/clap-host-linux-screenshot.png" ]; then
+          echo "SCREENSHOT_CHANGED=true" >> $GITHUB_ENV
+          echo "SCREENSHOT_REASON=first_in_pr" >> $GITHUB_ENV
+          echo "No previous screenshot found in PR - this will be uploaded as the first screenshot"
+        elif [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
+          # Compare with previous screenshot in this PR
+          PREV_HASH=$(sha256sum "previous-screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
+          NEW_HASH=$(sha256sum "screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
+          echo "Previous screenshot hash: $PREV_HASH"
+          echo "New screenshot hash: $NEW_HASH"
+          echo "NEW_SCREENSHOT_HASH=$NEW_HASH" >> $GITHUB_ENV
+          
+          if [ "$PREV_HASH" != "$NEW_HASH" ]; then
+            echo "SCREENSHOT_CHANGED=true" >> $GITHUB_ENV
+            echo "SCREENSHOT_REASON=changed_in_pr" >> $GITHUB_ENV
+            echo "Screenshot has changed since last run in this PR"
+          else
+            echo "SCREENSHOT_CHANGED=false" >> $GITHUB_ENV
+            echo "SCREENSHOT_REASON=unchanged" >> $GITHUB_ENV
+            echo "Screenshot is identical to previous run in this PR"
+          fi
         fi
+
+    - name: Save Current Screenshot for Future Comparison
+      if: runner.os == 'Linux' && env.SCREENSHOT_CHANGED == 'true'
+      shell: bash
+      run: |
+        # Save current screenshot for next comparison in this PR
+        mkdir -p previous-screenshots/
+        if [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
+          cp "screenshots/clap-host-linux-screenshot.png" "previous-screenshots/clap-host-linux-screenshot.png"
+          echo "Screenshot saved for future comparison in this PR"
+        fi
+
+    - name: Upload Screenshot to Release and Comment on PR (Linux only)
+      if: runner.os == 'Linux' && github.event_name == 'pull_request' && env.SCREENSHOT_CHANGED == 'true'
+      shell: bash
+      run: |
+        ./scripts/upload-screenshot.sh \
+          "${{ secrets.GITHUB_TOKEN }}" \
+          "${{ github.repository }}" \
+          "${{ github.event.pull_request.number }}" \
+          "${{ github.run_id }}" \
+          "${{ github.sha }}" \
+          "${NEW_SCREENSHOT_HASH:-unknown}" \
+          "${SCREENSHOT_REASON:-unknown}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -273,3 +311,10 @@ jobs:
           tools/clap-host/builds/
         retention-days: 5
         if-no-files-found: ignore
+
+    - name: Update Screenshot Cache for Next Run (Linux only)
+      if: runner.os == 'Linux' && env.SCREENSHOT_CHANGED == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: previous-screenshots/
+        key: clap-host-screenshots-${{ matrix.os }}-pr${{ github.event.pull_request.number }}-${{ github.sha }}
