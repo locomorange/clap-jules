@@ -29,6 +29,30 @@ jobs:
         with:
           submodules: 'recursive'
 
+      # vcpkg成果物のキャッシュ
+      - name: Cache vcpkg artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            libs/vcpkg/installed
+            libs/vcpkg/buildtrees
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('libs/vcpkg/scripts/ci.baseline.txt') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      # CLAP開発ツールのキャッシュ
+      - name: Cache CLAP tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/clap-tools/clap-info
+            tools/clap-tools/clap-info.zip
+            tools/clap-tools/clap-validator
+            tools/clap-tools/clap-validator.tar.gz
+          key: clap-tools-${{ runner.os }}-${{ env.CLAP_VALIDATOR_VERSION }}-${{ env.CLAP_INFO_VERSION }}
+          restore-keys: |
+            clap-tools-${{ runner.os }}-
+
       # ビルド環境の包括的セットアップ
       - name: Setup Build Environment
         shell: bash
@@ -48,31 +72,41 @@ jobs:
           version: '6.5.0'
           cached: true
 
+      # Qtバイナリのキャッシュ
+      - name: Cache Qt binaries
+        uses: actions/cache@v4
+        with:
+          path: tools/qt/6.5.0
+          key: qt-${{ runner.os }}-6.5.0
+          restore-keys: |
+            qt-${{ runner.os }}-
+
       # vcpkg環境構築
       - name: Setup vcpkg Package Manager
         shell: bash
         run: |
           ./scripts/setup-vcpkg.sh linux
 
-      # CLAP Hostビルド成果物のキャッシュ（無効化）
-      # - name: Cache CLAP Host Build
-      #   uses: actions/cache@v4
-      #   id: clap-host-cache
-      #   with:
-      #     path: |
-      #       tools/clap-host/
-      #       clap-host-builds/
-      #     key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/setup-vcpkg.sh', 'scripts/build-clap-host.sh') }}-v4
-      #     restore-keys: |
-      #       clap-host-copilot-setup-${{ runner.os }}-
+      # CLAP Hostビルド成果物のキャッシュ
+      - name: Cache CLAP Host Build
+        uses: actions/cache@v4
+        id: clap-host-cache
+        with:
+          path: |
+            tools/clap-host/builds/
+            tools/clap-host/vcpkg_installed/
+            clap-host-builds/
+          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/setup-vcpkg.sh', 'scripts/build-clap-host.sh') }}-v5
+          restore-keys: |
+            clap-host-copilot-setup-${{ runner.os }}-
 
       # CLAP_HOST_PATH環境変数設定（キャッシュヒット時）
-      # - name: Set CLAP_HOST_PATH for Cached Build
-      #   if: steps.clap-host-cache.outputs.cache-hit == 'true'
-      #   shell: bash
-      #   run: |
-      #     echo "CLAP_HOST_PATH=$(pwd)/tools/clap-host" >> $GITHUB_ENV
-      #     echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/tools/clap-host"
+      - name: Set CLAP_HOST_PATH for Cached Build
+        if: steps.clap-host-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo "CLAP_HOST_PATH=$(pwd)/tools/clap-host" >> $GITHUB_ENV
+          echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/tools/clap-host"
 
       # CLAP Hostリポジトリ準備
       - name: Prepare CLAP Host Repository
