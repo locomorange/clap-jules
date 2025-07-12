@@ -64,42 +64,28 @@ case "$OS_TYPE" in
         # Try vcpkg-based build strategies
         BUILD_SUCCESS=false
         
-        # 1. Try ninja-vcpkg preset first (推奨)
-        echo "Trying ninja-vcpkg preset build (recommended)"
-        # Set UsePkgConfig=OFF to avoid pkg-config path resolution issues
-        export CMAKE_ARGS="-DUsePkgConfig=OFF"
-        if cmake --preset=ninja-vcpkg -DUsePkgConfig=OFF 2>/dev/null; then
-            if cmake --build --preset=ninja-vcpkg 2>/dev/null; then
+        # Skip ninja-vcpkg preset to force using our libs/vcpkg
+        echo "Skipping ninja-vcpkg preset to use our libs/vcpkg toolchain"
+        
+        # Use manual vcpkg build with our libs/vcpkg
+        echo "Trying manual build with libs/vcpkg toolchain"
+        if cmake . -B builds/vcpkg-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DUsePkgConfig=OFF \
+            2>&1 | tee "../screenshots/cmake-vcpkg-configure-log-$OS_TYPE.txt"; then
+            echo "vcpkg configuration successful"
+            if cmake --build builds/vcpkg-build --config Release \
+                2>&1 | tee "../screenshots/cmake-vcpkg-build-log-$OS_TYPE.txt"; then
                 BUILD_SUCCESS=true
-                echo "✓ ninja-vcpkg preset build succeeded"
+                echo "✓ Manual vcpkg build succeeded"
             else
-                echo "ninja-vcpkg preset build failed"
+                echo "Manual vcpkg build failed"
             fi
         else
-            echo "ninja-vcpkg preset configure failed"
-        fi
-        
-        # 2. Manual vcpkg build as fallback
-        if [ "$BUILD_SUCCESS" = "false" ]; then
-            echo "Trying manual build with vcpkg toolchain"
-            if cmake . -B builds/vcpkg-build -G Ninja \
-                -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                -DUsePkgConfig=OFF \
-                2>&1 | tee "../screenshots/cmake-vcpkg-configure-log-$OS_TYPE.txt"; then
-                echo "vcpkg configuration successful"
-                if cmake --build builds/vcpkg-build --config Release \
-                    2>&1 | tee "../screenshots/cmake-vcpkg-build-log-$OS_TYPE.txt"; then
-                    BUILD_SUCCESS=true
-                    echo "✓ Manual vcpkg build succeeded"
-                else
-                    echo "Manual vcpkg build failed"
-                fi
-            else
-                echo "Manual vcpkg configure failed"
-            fi
+            echo "Manual vcpkg configure failed"
         fi
         
         # Last resort: simple cmake build without specific dependencies
