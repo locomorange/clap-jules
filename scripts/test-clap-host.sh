@@ -36,6 +36,13 @@ fi
 
 echo "Using plugin file: $PLUGIN_FILE"
 
+# Convert to absolute path if it's not already absolute
+if [[ "$PLUGIN_FILE" != /* ]]; then
+    PLUGIN_FILE="$(pwd)/$PLUGIN_FILE"
+fi
+
+echo "Absolute plugin file path: $PLUGIN_FILE"
+
 # Find clap-host executable
 CLAP_HOST_EXEC=$(find "$CLAP_HOST_DIR" -name "clap-host*" -type f | head -1)
 if [ -z "$CLAP_HOST_EXEC" ]; then
@@ -48,10 +55,24 @@ fi
 echo "Found clap-host at: $CLAP_HOST_EXEC"
 chmod +x "$CLAP_HOST_EXEC"
 
+echo "CLAP Host details:"
+ls -la "$CLAP_HOST_EXEC"
+file "$CLAP_HOST_EXEC"
+echo "CLAP Host dependencies:"
+ldd "$CLAP_HOST_EXEC" | head -10
+
 if [ ! -f "$PLUGIN_FILE" ]; then
     echo "✗ Error: Plugin file not found: $PLUGIN_FILE"
+    echo "Current directory: $(pwd)"
+    echo "Plugin artifacts directory contents:"
+    ls -la plugin-artifacts/ 2>/dev/null || echo "plugin-artifacts directory not found"
     exit 1
 fi
+
+echo "✓ Plugin file verified: $PLUGIN_FILE"
+echo "Plugin file details:"
+ls -la "$PLUGIN_FILE"
+file "$PLUGIN_FILE"
 
 mkdir -p screenshots
 
@@ -78,7 +99,17 @@ case "$OS_TYPE" in
         sleep 5
         
         # Test clap-host and take screenshot
+        echo "Debug: CLAP_HOST_EXEC='$CLAP_HOST_EXEC'"
+        echo "Debug: PLUGIN_FILE='$PLUGIN_FILE'"
+        echo "Debug: Absolute plugin path='$(realpath "$PLUGIN_FILE" 2>/dev/null || echo "File not found")'"
+        echo "Debug: Command that will be executed: '$CLAP_HOST_EXEC' '$PLUGIN_FILE'"
+        
+        # Check CLAP Host help to understand expected arguments
+        echo "CLAP Host help/usage:"
+        timeout 5s "$CLAP_HOST_EXEC" --help 2>/dev/null || echo "No help available or help command failed"
+        
         timeout "${TIMEOUT_DURATION}s" bash -c "
+            echo 'Starting CLAP Host with plugin...'
             '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
             CLAP_PID=\$!
             sleep 10
