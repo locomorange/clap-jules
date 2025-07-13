@@ -11,7 +11,11 @@ command -v gcc
 command -v g++
 
 echo "--- CLAP Tools ---"
-export PATH=$PATH:/usr/local/bin:/opt/clap-tools
+if [ -z "$CLAP_TOOLS_PATH" ]; then
+    echo "CLAP_TOOLS_PATH not set. Please set it to the directory containing clap-tools."
+    exit 1
+fi
+export PATH=$PATH:/usr/local/bin:$CLAP_TOOLS_PATH
 command -v clap-validator || echo "clap-validator not found"
 command -v clap-info || echo "clap-info not found"
 

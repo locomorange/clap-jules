@@ -21,7 +21,7 @@ case "$OS_TYPE" in
         # Download clap-info
         wget -O clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${CLAP_INFO_VERSION}/clap-info-linux-x64.zip" || echo "clap-info download failed"
         if [ -f clap-info.zip ]; then
-            unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
+            unzip -o -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
         fi
         ;;
         
@@ -29,13 +29,13 @@ case "$OS_TYPE" in
         # Download clap-validator
         curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${CLAP_VALIDATOR_VERSION}/clap-validator-${CLAP_VALIDATOR_VERSION}-windows.zip" || echo "clap-validator download failed"
         if [ -f clap-validator.zip ]; then
-            unzip -q clap-validator.zip || echo "clap-validator extraction failed"
+            unzip -o -q clap-validator.zip || echo "clap-validator extraction failed"
         fi
         
         # Download clap-info
         curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${CLAP_INFO_VERSION}/clap-info-win-x64.zip" || echo "clap-info download failed"
         if [ -f clap-info.zip ]; then
-            unzip -q clap-info.zip || echo "clap-info extraction failed"
+            unzip -o -q clap-info.zip || echo "clap-info extraction failed"
         fi
         ;;
         
@@ -43,13 +43,13 @@ case "$OS_TYPE" in
         # Download clap-validator
         curl -L -o clap-validator.zip "https://github.com/free-audio/clap-validator/releases/download/${CLAP_VALIDATOR_VERSION}/clap-validator-macos.zip" || echo "clap-validator download failed"
         if [ -f clap-validator.zip ]; then
-            unzip -q clap-validator.zip && chmod +x clap-validator || echo "clap-validator extraction failed"
+            unzip -o -q clap-validator.zip && chmod +x clap-validator || echo "clap-validator extraction failed"
         fi
         
         # Download clap-info
         curl -L -o clap-info.zip "https://github.com/free-audio/clap-info/releases/download/${CLAP_INFO_VERSION}/clap-info-mac-universal.zip" || echo "clap-info download failed"
         if [ -f clap-info.zip ]; then
-            unzip -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
+            unzip -o -q clap-info.zip && chmod +x clap-info || echo "clap-info extraction failed"
         fi
         ;;
         

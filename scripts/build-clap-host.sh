@@ -6,19 +6,18 @@ OS_TYPE="$1"
 CLAP_HOST_DIR_ARG="${2}"
 VCPKG_ROOT="${3:-$(pwd)/vcpkg}"
 
-# Devcontainer環境ではCLAP_HOST_DIRのデフォルトを変更
-if [ -n "$DEVCONTAINER" ] || [ -d "/opt/clap-host-template" ]; then
-    DEFAULT_CLAP_HOST_DIR="/opt/clap-host-template"
-else
-    DEFAULT_CLAP_HOST_DIR="clap-host-repo"
-fi
 
-CLAP_HOST_DIR="${CLAP_HOST_DIR_ARG:-$DEFAULT_CLAP_HOST_DIR}"
+# CLAP Host の場所は常に tools/clap-host を使う
+CLAP_HOST_DIR="${CLAP_HOST_DIR_ARG:-tools/clap-host}"
 
 echo "=== Building CLAP Host on $OS_TYPE ==="
 echo "CLAP_HOST_DIR: $CLAP_HOST_DIR"
 
 cd "$CLAP_HOST_DIR"
+
+# Clean up previous builds to ensure fresh build
+echo "Cleaning up previous builds..."
+rm -rf builds/ || true
 
 mkdir -p ../screenshots
 
@@ -36,6 +35,16 @@ case "$OS_TYPE" in
         echo "CMAKE_TOOLCHAIN_FILE: $CMAKE_TOOLCHAIN_FILE"
         echo "VCPKG_TARGET_TRIPLET: $VCPKG_TARGET_TRIPLET"
         
+        # Check Qt6 environment
+        echo "Qt6 environment check:"
+        echo "QT_ROOT_DIR: ${QT_ROOT_DIR:-not set}"
+        echo "LD_LIBRARY_PATH: ${LD_LIBRARY_PATH:-not set}"
+        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}/lib" ]; then
+            echo "Qt6 libraries found at: ${QT_ROOT_DIR}/lib"
+            export LD_LIBRARY_PATH="${QT_ROOT_DIR}/lib:${LD_LIBRARY_PATH}"
+            echo "Updated LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+        fi
+        
         # Verify vcpkg packages are installed
         if [ -d "$VCPKG_ROOT/installed/$VCPKG_TARGET_TRIPLET" ]; then
             echo "Checking installed vcpkg packages..."
@@ -50,42 +59,37 @@ case "$OS_TYPE" in
         # Try vcpkg-based build strategies
         BUILD_SUCCESS=false
         
-        # 1. Try ninja-vcpkg preset first (推奨)
-        echo "Trying ninja-vcpkg preset build (recommended)"
-        # Set UsePkgConfig=OFF to avoid pkg-config path resolution issues
-        export CMAKE_ARGS="-DUsePkgConfig=OFF"
-        if cmake --preset=ninja-vcpkg -DUsePkgConfig=OFF 2>/dev/null; then
-            if cmake --build --preset=ninja-vcpkg 2>/dev/null; then
-                BUILD_SUCCESS=true
-                echo "✓ ninja-vcpkg preset build succeeded"
-            else
-                echo "ninja-vcpkg preset build failed"
-            fi
-        else
-            echo "ninja-vcpkg preset configure failed"
+        # Skip ninja-vcpkg preset to force using our libs/vcpkg
+        echo "Skipping ninja-vcpkg preset to use our libs/vcpkg toolchain"
+        
+        # Use manual vcpkg build with our libs/vcpkg
+        echo "Trying manual build with libs/vcpkg toolchain"
+        
+        # Additional Qt6 paths for CMake to find Qt6 installed by GitHub Actions
+        QT6_CMAKE_ARGS=""
+        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}" ]; then
+            echo "Adding Qt6 path hints for CMake: ${QT_ROOT_DIR}"
+            QT6_CMAKE_ARGS="-DQt6_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6 -DQt6Core_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6Core -DQt6Widgets_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6Widgets -DQt6Gui_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6Gui"
         fi
         
-        # 2. Manual vcpkg build as fallback
-        if [ "$BUILD_SUCCESS" = "false" ]; then
-            echo "Trying manual build with vcpkg toolchain"
-            if cmake . -B builds/vcpkg-build -G Ninja \
-                -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                -DUsePkgConfig=OFF \
-                2>&1 | tee "../screenshots/cmake-vcpkg-configure-log-$OS_TYPE.txt"; then
-                echo "vcpkg configuration successful"
-                if cmake --build builds/vcpkg-build --config Release \
-                    2>&1 | tee "../screenshots/cmake-vcpkg-build-log-$OS_TYPE.txt"; then
-                    BUILD_SUCCESS=true
-                    echo "✓ Manual vcpkg build succeeded"
-                else
-                    echo "Manual vcpkg build failed"
-                fi
+        if cmake . -B builds/vcpkg-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DUsePkgConfig=OFF \
+            $QT6_CMAKE_ARGS \
+            2>&1 | tee "../screenshots/cmake-vcpkg-configure-log-$OS_TYPE.txt"; then
+            echo "vcpkg configuration successful"
+            if cmake --build builds/vcpkg-build --config Release \
+                2>&1 | tee "../screenshots/cmake-vcpkg-build-log-$OS_TYPE.txt"; then
+                BUILD_SUCCESS=true
+                echo "✓ Manual vcpkg build succeeded"
             else
-                echo "Manual vcpkg configure failed"
+                echo "Manual vcpkg build failed"
             fi
+        else
+            echo "Manual vcpkg configure failed"
         fi
         
         # Last resort: simple cmake build without specific dependencies

@@ -1,9 +1,9 @@
 #!/bin/bash
-# test-clap-host.sh - Test CLAP Host with plugin and take screenshot
+# test-clap-host-simple.sh - Simplified CLAP Host testing
 set -e
 
 OS_TYPE="$1"
-CLAP_HOST_DIR="${2:-clap-host-repo}"
+CLAP_HOST_DIR="${2:-tools/clap-host}"
 PLUGIN_FILE="${3:-$PLUGIN_FILE}"
 TIMEOUT_DURATION="${4:-30}"
 
@@ -12,7 +12,6 @@ echo "=== Testing CLAP Host with Plugin on $OS_TYPE ==="
 # Use override if available, otherwise use provided plugin file
 if [ -n "$PLUGIN_FILE_OVERRIDE" ]; then
     PLUGIN_FILE="$PLUGIN_FILE_OVERRIDE"
-    echo "Using plugin file override: $PLUGIN_FILE"
 elif [ -z "$PLUGIN_FILE" ]; then
     # Determine default plugin file path if not provided
     case "$OS_TYPE" in
@@ -20,18 +19,17 @@ elif [ -z "$PLUGIN_FILE" ]; then
             PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.so"
             ;;
         "windows")
-            if [ -f "$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap" ]; then
-                PLUGIN_FILE="$(pwd)/plugin-artifacts/Release/MyFirstClapPlugin.clap"
-            elif [ -f "$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap" ]; then
-                PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.clap"
-            else
-                PLUGIN_FILE=$(find "$(pwd)/plugin-artifacts" -name "*.clap" -type f | head -1)
-            fi
+            PLUGIN_FILE=$(find "$(pwd)/plugin-artifacts" -name "*.clap" -type f | head -1)
             ;;
         "macos")
             PLUGIN_FILE="$(pwd)/plugin-artifacts/MyFirstClapPlugin.dylib"
             ;;
     esac
+fi
+
+# Convert to absolute path if it's not already absolute
+if [[ "$PLUGIN_FILE" != /* ]]; then
+    PLUGIN_FILE="$(pwd)/$PLUGIN_FILE"
 fi
 
 echo "Using plugin file: $PLUGIN_FILE"
@@ -40,8 +38,6 @@ echo "Using plugin file: $PLUGIN_FILE"
 CLAP_HOST_EXEC=$(find "$CLAP_HOST_DIR" -name "clap-host*" -type f | head -1)
 if [ -z "$CLAP_HOST_EXEC" ]; then
     echo "✗ Error: clap-host executable not found!"
-    echo "Contents of $CLAP_HOST_DIR/builds:"
-    find "$CLAP_HOST_DIR" -name "*clap-host*" -type f 2>/dev/null || echo "No clap-host files found"
     exit 1
 fi
 
@@ -53,6 +49,8 @@ if [ ! -f "$PLUGIN_FILE" ]; then
     exit 1
 fi
 
+echo "✓ Plugin file verified: $PLUGIN_FILE"
+
 mkdir -p screenshots
 
 case "$OS_TYPE" in
@@ -63,12 +61,9 @@ case "$OS_TYPE" in
         PREV_HASH=""
         if [ -f "previous-screenshots/clap-host-linux-screenshot.png" ]; then
             PREV_HASH=$(sha256sum "previous-screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
-            echo "Previous screenshot hash: $PREV_HASH"
-        elif [ -f "screenshots/clap-host-linux-screenshot.png" ]; then
-            PREV_HASH=$(sha256sum "screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
-            echo "Found previous screenshot in current directory"
+            echo "Previous screenshot hash from PR cache: $PREV_HASH"
         else
-            echo "No previous screenshot found - this will be the first"
+            echo "No previous screenshot found in PR cache"
         fi
         
         # Start virtual display
@@ -77,9 +72,13 @@ case "$OS_TYPE" in
         XVFB_PID=$!
         sleep 5
         
-        # Test clap-host and take screenshot
+        # Set up Qt6 library path for runtime
+        if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}/lib" ]; then
+            export LD_LIBRARY_PATH="${QT_ROOT_DIR}/lib:${LD_LIBRARY_PATH}"
+        fi
+        
         timeout "${TIMEOUT_DURATION}s" bash -c "
-            '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
+            '$CLAP_HOST_EXEC' --clap-plugin '$PLUGIN_FILE' &
             CLAP_PID=\$!
             sleep 10
             
@@ -89,7 +88,7 @@ case "$OS_TYPE" in
             echo 'Screenshot capture failed'
             
             kill \$CLAP_PID 2>/dev/null || true
-        " || echo "Screenshot capture completed"
+        " || echo "Test completed"
         
         kill $XVFB_PID 2>/dev/null || true
         
@@ -98,44 +97,21 @@ case "$OS_TYPE" in
             mv "screenshots/clap-host-linux-screenshot-new.png" "screenshots/clap-host-linux-screenshot.png"
             NEW_HASH=$(sha256sum "screenshots/clap-host-linux-screenshot.png" | cut -d' ' -f1)
             echo "NEW_SCREENSHOT_HASH=$NEW_HASH" >> ${GITHUB_ENV:-/dev/null}
-            
-            if [ "$PREV_HASH" != "$NEW_HASH" ]; then
-                echo "SCREENSHOT_CHANGED=true" >> ${GITHUB_ENV:-/dev/null}
-                echo "✓ Screenshot changed - new hash: $NEW_HASH"
-            else
-                echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
-                echo "Screenshot unchanged"
-            fi
+            echo "New screenshot hash: $NEW_HASH"
+            echo "Screenshot comparison will be handled by GitHub Actions workflow"
         else
-            echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
             echo "No screenshot generated"
         fi
         ;;
         
-    "macos")
-        echo "Testing clap-host functionality without screenshot..."
-        timeout "${TIMEOUT_DURATION}s" bash -c "
-            '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
-            CLAP_PID=\$!
-            sleep 10
-            kill \$CLAP_PID 2>/dev/null || true
-        " || echo "CLAP Host test completed"
-        
-        echo "CLAP Host test completed on macOS (no screenshot)" > screenshots/clap-host-test-macos.txt
-        echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
+    "windows")
+        echo "Testing CLAP Host on Windows..."
+        timeout "${TIMEOUT_DURATION}s" "$CLAP_HOST_EXEC" --clap-plugin "$PLUGIN_FILE" || echo "Windows test completed"
         ;;
         
-    "windows")
-        echo "Testing clap-host functionality without screenshot..."
-        timeout "${TIMEOUT_DURATION}s" bash -c "
-            '$CLAP_HOST_EXEC' '$PLUGIN_FILE' &
-            CLAP_PID=\$!
-            sleep 10
-            kill \$CLAP_PID 2>/dev/null || true
-        " || echo "CLAP Host test completed"
-        
-        echo "CLAP Host test completed on Windows (no screenshot)" > screenshots/clap-host-test-windows.txt
-        echo "SCREENSHOT_CHANGED=false" >> ${GITHUB_ENV:-/dev/null}
+    "macos")
+        echo "Testing CLAP Host on macOS..."
+        timeout "${TIMEOUT_DURATION}s" "$CLAP_HOST_EXEC" --clap-plugin "$PLUGIN_FILE" || echo "macOS test completed"
         ;;
         
     *)
