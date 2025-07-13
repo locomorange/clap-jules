@@ -15,7 +15,7 @@ CLAP (CLever Audio Plugin) 開発環境とCoding Agentが連携するための�
 ### 環境変数
 ```bash
 export VCPKG_ROOT=/path/to/vcpkg
-export CLAP_HOST_PATH=/path/to/clap-host-repo
+export CLAP_HOST_PATH=tools/clap-host
 export CMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
 ```
 
@@ -46,7 +46,7 @@ clap-info build/MyFirstClapPlugin.so --brief
 ### CLAP Host統合テスト
 ```bash
 # CLAP Host環境構築
-cd clap-host-repo
+cd tools/clap-host
 cmake . -B builds/vcpkg-build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
@@ -135,7 +135,7 @@ sudo apt-get install -y \
 ### CLAP Host問題
 1. **実行ファイル見つからない**
    ```bash
-   find clap-host-repo -name "clap-host*" -type f
+   find tools/clap-host -name "clap-host*" -type f
    ```
 
 2. **GUI起動エラー**

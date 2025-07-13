@@ -8,9 +8,10 @@ PR_NUMBER="$3"
 RUN_ID="$4"
 SHA="$5"
 NEW_SCREENSHOT_HASH="$6"
+SCREENSHOT_REASON="${7:-unknown}"
 
 if [ -z "$GITHUB_TOKEN" ] || [ -z "$REPOSITORY" ] || [ -z "$PR_NUMBER" ]; then
-    echo "Usage: $0 <github_token> <repository> <pr_number> <run_id> <sha> <new_screenshot_hash>"
+    echo "Usage: $0 <github_token> <repository> <pr_number> <run_id> <sha> <new_screenshot_hash> [reason]"
     exit 1
 fi
 
@@ -44,14 +45,29 @@ ASSET_URL="https://github.com/${REPOSITORY}/releases/download/screenshots/${SCRE
 
 # Comment on PR with screenshot
 echo "Commenting on PR with screenshot..."
+
+# Determine message based on reason
+case "$SCREENSHOT_REASON" in
+    "first_in_pr")
+        REASON_MSG="このPRで初めてのスクリーンショットです。"
+        ;;
+    "changed_in_pr")
+        REASON_MSG="このPR内で前回のスクリーンショットから変更されました。"
+        ;;
+    *)
+        REASON_MSG="スクリーンショットが更新されました。"
+        ;;
+esac
+
 COMMENT_BODY="## CLAP Host Screenshot (Linux)
 
-スクリーンショットが更新されました。
+${REASON_MSG}
 
 📸 新しいスクリーンショット: [![screenshot](${ASSET_URL})](${ASSET_URL})
 
 - 🔗 [全てのスクリーンショットを見る](https://github.com/${REPOSITORY}/releases/tag/screenshots)
 - 📁 ファイル名: \`${SCREENSHOT_FILENAME}\`
+- 🔄 更新理由: ${SCREENSHOT_REASON}
 
 <!--screenshot-hash:${NEW_SCREENSHOT_HASH}-->"
 

@@ -3,26 +3,22 @@
 set -e
 
 OS_TYPE="$1"
-VCPKG_DIR="${2:-vcpkg}"
+VCPKG_DIR="libs/vcpkg"
 
 echo "=== Setting up vcpkg for CLAP Host build on $OS_TYPE ==="
 
-# Clone or update vcpkg
-if [ ! -d "$VCPKG_DIR" ] || [ ! -f "$VCPKG_DIR/.git/config" ]; then
-    echo "Cloning fresh vcpkg repository..."
-    rm -rf "$VCPKG_DIR" 2>/dev/null || true
-    git clone https://github.com/Microsoft/vcpkg.git "$VCPKG_DIR"
-else
-    echo "vcpkg directory exists, updating..."
-    cd "$VCPKG_DIR" && git pull && cd ..
+# サブモジュールとしてlibs/vcpkgを利用
+if [ ! -d "$VCPKG_DIR" ] || [ ! -e "$VCPKG_DIR/.git" ]; then
+    echo "Error: libs/vcpkg submodule not found. Please initialize submodules."
+    exit 1
 fi
 
 # Bootstrap vcpkg - 重要！
 echo "Bootstrapping vcpkg..."
 if [ "$OS_TYPE" = "windows" ]; then
-    ./"$VCPKG_DIR"/bootstrap-vcpkg.bat
+    ./$VCPKG_DIR/bootstrap-vcpkg.bat
 else
-    ./"$VCPKG_DIR"/bootstrap-vcpkg.sh
+    ./$VCPKG_DIR/bootstrap-vcpkg.sh
 fi
 
 # Determine triplet based on OS

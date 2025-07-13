@@ -13,12 +13,13 @@ on:
 env:
   CLAP_VALIDATOR_VERSION: '0.3.2'
   CLAP_INFO_VERSION: 'v1.2.2'
+  CLAP_TOOLS_PATH: tools/clap-tools
 
 jobs:
   # Copilot Actionで認識されるジョブ名
   copilot-setup-steps:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 59
     
     permissions:
       contents: read
@@ -28,6 +29,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+
+      # vcpkg成果物のキャッシュ
+      - name: Cache vcpkg artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            libs/vcpkg/installed
+            libs/vcpkg/buildtrees
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('libs/vcpkg/scripts/ci.baseline.txt') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      # CLAP開発ツールのキャッシュ
+      - name: Cache CLAP tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/clap-tools/clap-info
+            tools/clap-tools/clap-info.zip
+            tools/clap-tools/clap-validator
+            tools/clap-tools/clap-validator.tar.gz
+          key: clap-tools-${{ runner.os }}-${{ env.CLAP_VALIDATOR_VERSION }}-${{ env.CLAP_INFO_VERSION }}
+          restore-keys: |
+            clap-tools-${{ runner.os }}-
 
       # ビルド環境の包括的セットアップ
       - name: Setup Build Environment
@@ -41,12 +66,6 @@ jobs:
         run: |
           ./scripts/setup-clap-tools.sh linux "${{ env.CLAP_VALIDATOR_VERSION }}" "${{ env.CLAP_INFO_VERSION }}"
 
-      # vcpkg環境構築
-      - name: Setup vcpkg Package Manager
-        shell: bash
-        run: |
-          ./scripts/setup-vcpkg.sh linux
-
       # Qt6環境構築
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
@@ -54,15 +73,31 @@ jobs:
           version: '6.5.0'
           cached: true
 
+      # Qtバイナリのキャッシュ
+      - name: Cache Qt binaries
+        uses: actions/cache@v4
+        with:
+          path: tools/qt/6.5.0
+          key: qt-${{ runner.os }}-6.5.0
+          restore-keys: |
+            qt-${{ runner.os }}-
+
+      # vcpkg環境構築
+      - name: Setup vcpkg Package Manager
+        shell: bash
+        run: |
+          ./scripts/setup-vcpkg.sh linux
+
       # CLAP Hostビルド成果物のキャッシュ
       - name: Cache CLAP Host Build
         uses: actions/cache@v4
         id: clap-host-cache
         with:
           path: |
-            clap-host-repo/
+            tools/clap-host/builds/
+            tools/clap-host/vcpkg_installed/
             clap-host-builds/
-          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/setup-vcpkg.sh', 'scripts/build-clap-host.sh') }}-v4
+          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/setup-vcpkg.sh', 'scripts/build-clap-host.sh') }}-v5
           restore-keys: |
             clap-host-copilot-setup-${{ runner.os }}-
 
@@ -71,8 +106,8 @@ jobs:
         if: steps.clap-host-cache.outputs.cache-hit == 'true'
         shell: bash
         run: |
-          echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
-          echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/clap-host-repo"
+          echo "CLAP_HOST_PATH=$(pwd)/tools/clap-host" >> $GITHUB_ENV
+          echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/tools/clap-host"
 
       # CLAP Hostリポジトリ準備
       - name: Prepare CLAP Host Repository
@@ -86,13 +121,13 @@ jobs:
         if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          export VCPKG_ROOT="$(pwd)/vcpkg"
-          ./scripts/build-clap-host.sh linux "clap-host-repo" "${VCPKG_ROOT}"
+          export VCPKG_ROOT="$(pwd)/libs/vcpkg"
+          ./scripts/build-clap-host.sh linux "tools/clap-host" "${VCPKG_ROOT}"
           
           # ビルド成果物を専用ディレクトリに保存
           mkdir -p clap-host-builds
-          if [ -d "clap-host-repo/builds" ]; then
-            cp -r clap-host-repo/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
+          if [ -d "tools/clap-host/builds" ]; then
+            cp -r tools/clap-host/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
       # 環境検証

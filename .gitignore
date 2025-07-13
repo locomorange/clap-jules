@@ -40,8 +40,6 @@ CMakeUserPresets.json
 build/
 
 # CLAP tools (should not be committed)
-clap-info
-clap-info.zip
-clap-validator
-clap-validator.tar.gz
-clap-host-repo/
+tools/
+
+aqtinstall.log
