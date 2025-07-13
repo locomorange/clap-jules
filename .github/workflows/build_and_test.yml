@@ -355,9 +355,8 @@ jobs:
     - name: Upload Screenshots and Logs
       uses: actions/upload-artifact@v4
       with:
-        name: clap-host-test-results-${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}-${{ github.sha }}
+        name: clap-host-screenshots-${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}-${{ github.sha }}
         path: |
           screenshots/
-          tools/clap-host/builds/
         retention-days: 5
         if-no-files-found: ignore
