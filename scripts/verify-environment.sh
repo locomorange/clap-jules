@@ -11,6 +11,7 @@ command -v gcc
 command -v g++
 
 echo "--- CLAP Tools ---"
+export CLAP_TOOLS_PATH="tools/clap-tools"
 if [ -z "$CLAP_TOOLS_PATH" ]; then
     echo "CLAP_TOOLS_PATH not set. Please set it to the directory containing clap-tools."
     exit 1
