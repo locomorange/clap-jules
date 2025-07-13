@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+# サブモジュール初期化
+git submodule update --init --recursive
 
 # 環境変数の設定
 export CLAP_VALIDATOR_VERSION=0.3.2
