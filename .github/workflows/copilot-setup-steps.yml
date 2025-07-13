@@ -110,12 +110,14 @@ jobs:
 
       # CLAP Hostリポジトリ準備
       - name: Prepare CLAP Host Repository
+        if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           ./scripts/prepare-clap-host.sh
 
       # CLAP Hostビルド
       - name: Build CLAP Host
+        if: steps.clap-host-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           export VCPKG_ROOT="$(pwd)/libs/vcpkg"

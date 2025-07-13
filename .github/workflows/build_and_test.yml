@@ -263,11 +263,13 @@ jobs:
         ./scripts/verify-plugin-artifact.sh "$OS_TYPE"
 
     - name: Prepare CLAP Host
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         ./scripts/prepare-clap-host.sh
 
     - name: Build CLAP Host
+      if: steps.clap-host-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
