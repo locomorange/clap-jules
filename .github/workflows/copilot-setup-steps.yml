@@ -13,12 +13,13 @@ on:
 env:
   CLAP_VALIDATOR_VERSION: '0.3.2'
   CLAP_INFO_VERSION: 'v1.2.2'
+  CLAP_TOOLS_PATH: tools/clap-tools
 
 jobs:
   # Copilot Actionで認識されるジョブ名
   copilot-setup-steps:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 59
     
     permissions:
       contents: read
