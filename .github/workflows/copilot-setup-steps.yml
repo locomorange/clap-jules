@@ -66,6 +66,9 @@ jobs:
         run: |
           ./scripts/setup-clap-tools.sh linux "${{ env.CLAP_VALIDATOR_VERSION }}" "${{ env.CLAP_INFO_VERSION }}"
 
+      - name: Set CLAP_TOOLS_PATH
+        run: echo "CLAP_TOOLS_PATH=tools/clap-tools" >> $GITHUB_ENV
+
       # Qt6環境構築
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
