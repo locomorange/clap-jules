@@ -2,6 +2,12 @@
 #include <stdio.h>  // For printf in example functions
 #include <string.h> // For strcmp
 #include <cstdlib>  // For calloc
+#include <cmath>    // For pow function
+
+// Helper function to convert dB to linear scale
+static double db_to_linear(double db) {
+    return pow(10.0, db / 20.0);
+}
 
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
@@ -15,30 +21,61 @@ static clap_process_status my_plugin_process(const struct clap_plugin *plugin, c
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id);
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin);
 
+// --- Parameter extension functions ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin);
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info);
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value);
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size);
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value);
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out);
+
+// --- Audio ports extension functions ---
+static uint32_t my_plugin_audio_ports_count(const clap_plugin_t *plugin, bool is_input);
+static bool my_plugin_audio_ports_get(const clap_plugin_t *plugin, uint32_t index, bool is_input, clap_audio_port_info_t *info);
+
 // --- Plugin Descriptor ---
 // Features array for the plugin descriptor
-static const char *const plugin_features[] = {"audio_effect", nullptr};
+static const char *const plugin_features[] = {"audio-effect", nullptr};
+
+// --- Extension implementations ---
+static const clap_plugin_params_t my_plugin_params_extension = {
+    .count = my_plugin_params_count,
+    .get_info = my_plugin_params_get_info,
+    .get_value = my_plugin_params_get_value,
+    .value_to_text = my_plugin_params_value_to_text,
+    .text_to_value = my_plugin_params_text_to_value,
+    .flush = my_plugin_params_flush,
+};
+
+static const clap_plugin_audio_ports_t my_plugin_audio_ports_extension = {
+    .count = my_plugin_audio_ports_count,
+    .get = my_plugin_audio_ports_get,
+};
 
 static const clap_plugin_descriptor_t my_plugin_descriptor = {
     CLAP_VERSION,
-    "com.example.myplugin", // id
-    "My First CLAP Plugin", // name
+    "com.example.gainfx", // id
+    "Gain Control FX", // name
     "My Company",           // vendor
     "https://example.com",  // url
     "https://example.com/bugtracker", // manual_url
     "https://example.com/support",    // support_url
-    "0.0.1",                // version
-    "A simple example CLAP audio plugin.", // description
+    "0.1.0",                // version
+    "Simple gain control plugin with -36dB to +36dB range.", // description
     plugin_features, // features
-    // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT, // Example if using clap_plugin_features.h
 };
 
 
 // --- Plugin Implementation ---
 static bool my_plugin_init(const struct clap_plugin *plugin) {
-    // my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Initializing plugin\n");
-    // Initialize your plugin state here
+    
+    // Initialize gain to 0dB (no change)
+    self->gain_db = 0.0;
+    self->gain_linear = 1.0;
+    self->sample_rate = 44100.0; // Default, will be updated in activate
+    
     return true;
 }
 
@@ -48,8 +85,12 @@ static void my_plugin_destroy(const struct clap_plugin *plugin) {
 }
 
 static bool my_plugin_activate(const struct clap_plugin *plugin, double sample_rate, uint32_t min_frames_count, uint32_t max_frames_count) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin: Activating plugin (Sample Rate: %.2f, Min Frames: %u, Max Frames: %u)\n", sample_rate, min_frames_count, max_frames_count);
-    // Allocate and prepare resources needed for processing (e.g., buffers)
+    
+    // Store sample rate
+    self->sample_rate = sample_rate;
+    
     return true;
 }
 
@@ -73,58 +114,149 @@ static void my_plugin_reset(const struct clap_plugin *plugin) {
 }
 
 static clap_process_status my_plugin_process(const struct clap_plugin *plugin, const clap_process_t *process) {
-    // This is where the main audio processing happens.
-    // For this example, we'll just print a message once.
-    // static bool first_process = true;
-    // if (first_process) {
-    //     printf("MyPlugin: Processing audio...\n");
-    //     first_process = false;
-    // }
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Process parameter changes
+    const uint32_t num_events = process->in_events->size(process->in_events);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
+            switch (hdr->type) {
+                case CLAP_EVENT_PARAM_VALUE: {
+                    const clap_event_param_value_t* param_event = (const clap_event_param_value_t*)hdr;
+                    if (param_event->param_id == PARAM_GAIN_ID) {
+                        self->gain_db = param_event->value;
+                        self->gain_linear = db_to_linear(self->gain_db);
+                    }
+                    break;
+                }
+            }
+        }
+    }
 
-    // Example: Iterate over input events
-    // const uint32_t num_events = process->in_events->size(process->in_events);
-    // for (uint32_t i = 0; i < num_events; ++i) {
-    //     const clap_event_header_t* hdr = process->in_events->get(process->in_events, i);
-    //     if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
-    //         switch (hdr->type) {
-    //             case CLAP_EVENT_NOTE_ON:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note on
-    //                 break;
-    //             case CLAP_EVENT_NOTE_OFF:
-    //                 // const clap_event_note_t* nev = (const clap_event_note_t*)hdr;
-    //                 // Handle note off
-    //                 break;
-    //             // Add other event types as needed
-    //         }
-    //     }
-    // }
+    // Process audio from input to output (stereo)
+    if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
+        clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
+        const clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
 
-    // Example: Process audio from input to output (stereo)
-    // if (process->audio_outputs_count > 0 && process->audio_inputs_count > 0) {
-    //     clap_audio_buffer_t *out_buf = &process->audio_outputs[0];
-    //     clap_audio_buffer_t *in_buf = &process->audio_inputs[0];
-    //
-    //     if (out_buf->channel_count >= 2 && in_buf->channel_count >=2 && out_buf->data32 && in_buf->data32) {
-    //         for (uint32_t i = 0; i < process->frames_count; ++i) {
-    //             out_buf->data32[0][i] = in_buf->data32[0][i]; // Left channel
-    //             out_buf->data32[1][i] = in_buf->data32[1][i]; // Right channel
-    //         }
-    //     }
-    // }
+        if (out_buf->channel_count >= 2 && in_buf->channel_count >= 2 && out_buf->data32 && in_buf->data32) {
+            for (uint32_t i = 0; i < process->frames_count; ++i) {
+                out_buf->data32[0][i] = in_buf->data32[0][i] * (float)self->gain_linear; // Left channel
+                out_buf->data32[1][i] = in_buf->data32[1][i] * (float)self->gain_linear; // Right channel
+            }
+        }
+    }
+    
     return CLAP_PROCESS_CONTINUE;
 }
 
 static const void *my_plugin_get_extension(const struct clap_plugin *plugin, const char *id) {
-    // Example: if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) return &my_audio_ports_extension;
-    // Example: if (strcmp(id, CLAP_EXT_PARAMS) == 0) return &my_params_extension;
     printf("MyPlugin: Host requesting extension: %s\n", id);
-    return NULL; // No extensions supported in this basic example
+    
+    if (strcmp(id, CLAP_EXT_PARAMS) == 0) {
+        return &my_plugin_params_extension;
+    }
+    if (strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0) {
+        return &my_plugin_audio_ports_extension;
+    }
+    
+    return NULL; // Extension not supported
 }
 
 static void my_plugin_on_main_thread(const struct clap_plugin *plugin) {
     // Called by the host to perform tasks that must run on the main thread.
     // printf("MyPlugin: on_main_thread called\n");
+}
+
+// --- Parameter Extension Implementation ---
+static uint32_t my_plugin_params_count(const clap_plugin_t *plugin) {
+    return 1; // We have one parameter: gain
+}
+
+static bool my_plugin_params_get_info(const clap_plugin_t *plugin, uint32_t param_index, clap_param_info_t *param_info) {
+    if (param_index == 0) {
+        param_info->id = PARAM_GAIN_ID;
+        param_info->flags = CLAP_PARAM_IS_AUTOMATABLE;
+        param_info->cookie = nullptr;
+        strcpy(param_info->name, "Gain");
+        strcpy(param_info->module, "");
+        param_info->min_value = -36.0;
+        param_info->max_value = 36.0;
+        param_info->default_value = 0.0;
+        return true;
+    }
+    return false;
+}
+
+static bool my_plugin_params_get_value(const clap_plugin_t *plugin, clap_id param_id, double *value) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    if (param_id == PARAM_GAIN_ID) {
+        *value = self->gain_db;
+        return true;
+    }
+    return false;
+}
+
+static bool my_plugin_params_value_to_text(const clap_plugin_t *plugin, clap_id param_id, double value, char *display, uint32_t size) {
+    if (param_id == PARAM_GAIN_ID) {
+        snprintf(display, size, "%.1f dB", value);
+        return true;
+    }
+    return false;
+}
+
+static bool my_plugin_params_text_to_value(const clap_plugin_t *plugin, clap_id param_id, const char *display, double *value) {
+    if (param_id == PARAM_GAIN_ID) {
+        double parsed_value;
+        if (sscanf(display, "%lf", &parsed_value) == 1) {
+            // Clamp to valid range
+            if (parsed_value < -36.0) parsed_value = -36.0;
+            if (parsed_value > 36.0) parsed_value = 36.0;
+            *value = parsed_value;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input_events_t *in, const clap_output_events_t *out) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
+    
+    // Process parameter changes
+    const uint32_t num_events = in->size(in);
+    for (uint32_t i = 0; i < num_events; ++i) {
+        const clap_event_header_t* hdr = in->get(in, i);
+        if (hdr->space_id == CLAP_CORE_EVENT_SPACE_ID) {
+            switch (hdr->type) {
+                case CLAP_EVENT_PARAM_VALUE: {
+                    const clap_event_param_value_t* param_event = (const clap_event_param_value_t*)hdr;
+                    if (param_event->param_id == PARAM_GAIN_ID) {
+                        self->gain_db = param_event->value;
+                        self->gain_linear = db_to_linear(self->gain_db);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// --- Audio Ports Extension Implementation ---
+static uint32_t my_plugin_audio_ports_count(const clap_plugin_t *plugin, bool is_input) {
+    return 1; // One stereo input and one stereo output
+}
+
+static bool my_plugin_audio_ports_get(const clap_plugin_t *plugin, uint32_t index, bool is_input, clap_audio_port_info_t *info) {
+    if (index == 0) {
+        info->id = is_input ? 0 : 1;
+        strcpy(info->name, is_input ? "Audio In" : "Audio Out");
+        info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+        info->channel_count = 2;
+        info->port_type = CLAP_PORT_STEREO;
+        info->in_place_pair = is_input ? 1 : 0; // Input port 0 pairs with output port 1
+        return true;
+    }
+    return false;
 }
 
 // --- Plugin Entry Point (clap_plugin_entry) ---
