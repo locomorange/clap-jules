@@ -88,6 +88,19 @@ jobs:
         run: |
           ./scripts/setup-vcpkg.sh linux
 
+      # Briskビルド成果物のキャッシュ
+      - name: Cache Brisk Build
+        uses: actions/cache@v4
+        id: brisk-cache
+        with:
+          path: |
+            libs/brisk/build-release/
+            libs/brisk/dist/
+            libs/brisk/vcpkg_installed/
+          key: brisk-build-${{ runner.os }}-${{ hashFiles('scripts/build-brisk-full.sh', 'libs/brisk/CMakeLists.txt') }}
+          restore-keys: |
+            brisk-build-${{ runner.os }}-
+
       # CLAP Hostビルド成果物のキャッシュ
       - name: Cache CLAP Host Build
         uses: actions/cache@v4
@@ -149,26 +162,47 @@ jobs:
             cp -r tools/clap-host/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
-      # Brisk prebuilt binary setup
-      - name: Setup Brisk Prebuilt Binaries
+      # Brisk build from source
+      - name: Build Brisk from Source
+        if: steps.brisk-cache.outputs.cache-hit != 'true'
         run: |
-          echo "=== Setting up Brisk prebuilt binaries ==="
+          echo "=== Building Brisk from source ==="
           
-          # Run Brisk setup script
-          ./scripts/brisk/setup-brisk.sh
+          # Run Brisk build script
+          chmod +x scripts/build-brisk-full.sh
+          ./scripts/build-brisk-full.sh
           
-          # Verify Brisk setup
-          if [ -d "libs/brisk/include" ]; then
+          # Verify Brisk build
+          if [ -d "libs/brisk/dist/include" ]; then
             echo "✓ Brisk headers available"
-            ls -la libs/brisk/include/brisk/ 2>/dev/null || echo "  No brisk headers found"
+            ls -la libs/brisk/dist/include/brisk/ 2>/dev/null || echo "  No brisk headers found"
           fi
           
-          if [ -d "libs/brisk/lib" ]; then
+          if [ -d "libs/brisk/dist/lib" ]; then
             echo "✓ Brisk libraries available"
-            ls -la libs/brisk/lib/ 2>/dev/null || echo "  No brisk libraries found"
+            ls -la libs/brisk/dist/lib/ 2>/dev/null || echo "  No brisk libraries found"
           fi
           
-          echo "✓ Brisk setup completed"
+          echo "✓ Brisk build completed"
+
+      # Brisk キャッシュヒット時の確認
+      - name: Verify Cached Brisk Build
+        if: steps.brisk-cache.outputs.cache-hit == 'true'
+        run: |
+          echo "=== Using cached Brisk build ==="
+          
+          # Verify cached Brisk build
+          if [ -d "libs/brisk/dist/include" ]; then
+            echo "✓ Cached Brisk headers available"
+            ls -la libs/brisk/dist/include/brisk/ 2>/dev/null || echo "  No brisk headers found"
+          fi
+          
+          if [ -d "libs/brisk/dist/lib" ]; then
+            echo "✓ Cached Brisk libraries available" 
+            ls -la libs/brisk/dist/lib/ 2>/dev/null || echo "  No brisk libraries found"
+          fi
+          
+          echo "✓ Cached Brisk verification completed"
 
       # 環境検証
       - name: Verify Complete Environment

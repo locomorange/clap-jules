@@ -42,23 +42,37 @@ jobs:
         restore-keys: |
           vcpkg-${{ runner.os }}-
 
-    - name: Cache Brisk Prebuilt Binaries
+    - name: Cache Brisk Build
       uses: actions/cache@v4
       id: brisk-cache
       with:
         path: |
-          libs/brisk/
-        key: brisk-prebuilt-${{ runner.os }}-${{ hashFiles('scripts/brisk/setup-brisk.sh') }}
+          libs/brisk/build-release/
+          libs/brisk/dist/
+          libs/brisk/vcpkg_installed/
+        key: brisk-build-${{ runner.os }}-${{ hashFiles('scripts/build-brisk-full.sh', 'libs/brisk/CMakeLists.txt') }}
         restore-keys: |
-          brisk-prebuilt-${{ runner.os }}-
+          brisk-build-${{ runner.os }}-
 
-    - name: Setup Brisk Dependencies
+    - name: Build Brisk from Source
       if: steps.brisk-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        echo "Setting up Brisk prebuilt binaries..."
-        chmod +x scripts/brisk/setup-brisk.sh
-        ./scripts/brisk/setup-brisk.sh
+        echo "Building Brisk from source..."
+        chmod +x scripts/build-brisk-full.sh
+        ./scripts/build-brisk-full.sh
+
+    - name: Verify Cached Brisk Build
+      if: steps.brisk-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        echo "Using cached Brisk build..."
+        if [ -d "libs/brisk/dist/include" ]; then
+          echo "✓ Cached Brisk headers available"
+        fi
+        if [ -d "libs/brisk/dist/lib" ]; then
+          echo "✓ Cached Brisk libraries available"
+        fi
 
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'

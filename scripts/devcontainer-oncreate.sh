@@ -51,6 +51,10 @@ if [ ! -d "$CLAP_HOST_BASE" ]; then
   cd -
 fi
 
+# Briskライブラリのビルド
+echo "Building Brisk library..."
+./scripts/build-brisk-full.sh
+
 # CLAP Hostのビルド
 ./scripts/build-clap-host.sh linux
 
