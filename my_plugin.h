@@ -4,7 +4,7 @@
 #include <clap/ext/gui.h>
 #include "src/plugin_viewmodel.h"
 #include "src/audio_processor.h"
-#include "src/minimal_brisk_gui.h"
+#include "src/brisk_clap_integration.h"
 #include <memory>
 
 // Plugin structure with MVVM components
@@ -15,7 +15,7 @@ typedef struct {
     std::shared_ptr<plugin::PluginModel> model;
     std::shared_ptr<plugin::AudioProcessor> processor;
     std::shared_ptr<plugin::PluginViewModel> viewmodel;
-    std::shared_ptr<clap_gui::MinimalBriskGUI> ui_view;
+    std::shared_ptr<brisk_clap::BriskClapGUI> ui_view;
     
     // Plugin state
     double sample_rate;

@@ -1,176 +1,173 @@
-cmake_minimum_required(VERSION 3.22)
-
-# Set BRISK_DIR for consistent referencing
-set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
-
-# Set vcpkg toolchain for Brisk prebuilt binaries - MUST be done before project()
-if (EXISTS "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
-    set(CMAKE_TOOLCHAIN_FILE "${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
-    # Set vcpkg variables for Brisk prebuilt binaries
-    set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/installed" CACHE STRING "")
-    set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "")
-    set(VCPKG_HOST_TRIPLET "x64-linux" CACHE STRING "")
-    # Disable vcpkg manifest mode to avoid dependency conflicts
-    set(VCPKG_MANIFEST_MODE OFF CACHE BOOL "")
-    message(STATUS "Brisk: Using vcpkg toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
-    message(STATUS "Brisk: VCPKG_INSTALLED_DIR: ${VCPKG_INSTALLED_DIR}")
-    message(STATUS "Brisk: VCPKG_TARGET_TRIPLET: ${VCPKG_TARGET_TRIPLET}")
-    message(STATUS "Brisk: VCPKG_MANIFEST_MODE: OFF")
-else()
-    message(WARNING "Brisk vcpkg toolchain not found at ${BRISK_DIR}/scripts/buildsystems/vcpkg.cmake")
+# vcpkgツールチェーンファイルをセット
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/libs/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 endif()
 
+cmake_minimum_required(VERSION 3.22)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES C CXX)
-
-
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Try to find CLAP automatically, then try to find it in a fixed location.
-# This is useful for development, but you may want to remove it for production.
-# If you want to use a custom location, you can set CLAP_PATH before running cmake.
-# For example: cmake -DCLAP_PATH=/path/to/clap ..
-find_package(clap CONFIG)
-if (NOT CLAP_FOUND)
-    if (DEFINED ENV{CLAP_PATH})
-        set(CLAP_PATH $ENV{CLAP_PATH})
-    elseif(DEFINED CLAP_PATH)
-        # CLAP_PATH is already set (e.g. by cmake -DCLAP_PATH=...)
-    else()
-        # Try a default location (e.g. a submodule)
-        set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
-    endif()
+# Find required packages
+find_package(PNG REQUIRED)
 
-    if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
-        message(STATUS "Found CLAP headers in ${CLAP_PATH}/include")
-    else()
-        message(FATAL_ERROR "Could not find CLAP headers in ${CLAP_PATH}/include. Please set CLAP_PATH to the directory containing the CLAP SDK.")
-    endif()
-
-    # Add clap as a subdirectory.
-    # This will build clap if it's not already built.
-    # This also makes the clap targets available to us.
-    add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
+# Find CLAP
+if (DEFINED ENV{CLAP_PATH})
+    set(CLAP_PATH $ENV{CLAP_PATH})
+elseif(NOT DEFINED CLAP_PATH)
+    set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
 endif()
+
+if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
+    message(STATUS "Found CLAP headers in ${CLAP_PATH}/include")
+    add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
+else()
+    message(FATAL_ERROR "Could not find CLAP headers")
+endif()
+
+# Optional libraries setup
+set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+
+# Helper function to setup common target properties
+function(setup_target_deps target)
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    
+    # boost-di (header-only)
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
+        target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include")
+    endif()
+    
+    # KFR
+    if (TARGET kfr)
+        target_link_libraries(${target} PRIVATE kfr)
+    endif()
+    
+    # Brisk
+    if (EXISTS "${BRISK_DIR}/dist/lib" AND EXISTS "${BRISK_DIR}/dist/include")
+        # Briskライブラリを正しい順序で収集
+        set(BRISK_LIBS
+            ${BRISK_DIR}/dist/lib/libbrisk-window.a
+            ${BRISK_DIR}/dist/lib/libbrisk-widgets.a
+            ${BRISK_DIR}/dist/lib/libbrisk-gui.a
+            ${BRISK_DIR}/dist/lib/libbrisk-graphics.a
+            ${BRISK_DIR}/dist/lib/libbrisk-core.a
+        )
+        
+        # 存在するライブラリのみを使用
+        set(BRISK_LIBRARIES "")
+        foreach(lib ${BRISK_LIBS})
+            if(EXISTS ${lib})
+                list(APPEND BRISK_LIBRARIES ${lib})
+            endif()
+        endforeach()
+        
+        if(BRISK_LIBRARIES)
+            target_compile_definitions(${target} PRIVATE BRISK_FOUND=1 BRISK_WEBGPU=1)
+            target_include_directories(${target} PRIVATE 
+                ${BRISK_DIR}/dist/include
+                ${BRISK_DIR}/vcpkg_installed/x64-linux/include
+            )
+            
+            # Briskのvcpkgディレクトリを追加
+            list(APPEND CMAKE_PREFIX_PATH "${BRISK_DIR}/vcpkg_installed/x64-linux")
+            
+            # 必要な依存関係
+            find_package(Threads REQUIRED)
+            find_package(X11 REQUIRED)
+            
+            # vcpkgからライブラリを直接リンク
+            set(BRISK_DEPS "")
+            if(EXISTS "${BRISK_DIR}/vcpkg_installed/x64-linux/lib")
+                file(GLOB GLFW_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libglfw3.a")
+                file(GLOB FMT_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libfmt.a")
+                file(GLOB SPDLOG_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libspdlog.a")
+                file(GLOB LLVM_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libLLVM*.a")
+                
+                if(GLFW_LIB)
+                    list(APPEND BRISK_DEPS ${GLFW_LIB})
+                endif()
+                if(FMT_LIB)
+                    list(APPEND BRISK_DEPS ${FMT_LIB})
+                endif()
+                if(SPDLOG_LIB)
+                    list(APPEND BRISK_DEPS ${SPDLOG_LIB})
+                endif()
+                if(LLVM_LIB)
+                    list(APPEND BRISK_DEPS ${LLVM_LIB})
+                endif()
+            endif()
+            
+            # Briskライブラリとその依存関係をリンク（順序が重要）
+            target_link_libraries(${target} PRIVATE 
+                ${BRISK_LIBRARIES}
+                ${BRISK_DEPS}
+                Threads::Threads
+                ${X11_LIBRARIES}
+                ${CMAKE_DL_LIBS}
+            )
+            
+            # 追加のシステムライブラリ
+            if(UNIX AND NOT APPLE)
+                target_link_libraries(${target} PRIVATE
+                    Xi
+                    Xrandr
+                    Xxf86vm
+                    Xinerama
+                    Xcursor
+                )
+            endif()
+        endif()
+    endif()
+endfunction()
 
 # Add clap-helpers if available
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
-    message(STATUS "Found clap-helpers, adding as subdirectory")
     set(CLAP_HELPERS_BUILD_TESTS OFF CACHE BOOL "Don't build clap-helpers tests")
-    set(CLAP_HELPERS_NO_CLAP_IS_FATAL OFF CACHE BOOL "Don't make missing clap fatal for clap-helpers")
     add_subdirectory(libs/clap-helpers)
-endif()
-
-# Add boost-di (header-only library)
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
-    message(STATUS "Found boost-di, adding include directory")
-    set(BOOST_DI_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include")
-else()
-    message(WARNING "boost-di not found")
 endif()
 
 # Add KFR library
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
-    message(STATUS "Found KFR, adding as subdirectory")
     set(KFR_ENABLE_TESTS OFF CACHE BOOL "Don't build KFR tests")
     set(KFR_ENABLE_EXAMPLES OFF CACHE BOOL "Don't build KFR examples")
     set(KFR_ENABLE_TOOLS OFF CACHE BOOL "Don't build KFR tools")
     add_subdirectory(libs/kfr)
-else()
-    message(WARNING "KFR not found")
 endif()
 
-# Add Brisk library using proper CMake configuration
-if (EXISTS "${BRISK_DIR}/lib/cmake/brisk/BriskConfig.cmake")
-    message(STATUS "Found Brisk CMake configuration, loading...")
-    
-    find_package(Brisk REQUIRED CONFIG PATHS "${BRISK_DIR}/lib/cmake/brisk" NO_DEFAULT_PATH)
-    
-    if(Brisk_FOUND)
-        message(STATUS "Brisk: Configuration successful with proper targets")
-        set(BRISK_FOUND TRUE)
-    endif()
-else()
-    message(WARNING "Brisk CMake configuration not found - UI will use placeholder implementation")
-    set(BRISK_FOUND FALSE)
-endif()
-
-# Add your plugin target here - Plugin itself must be SHARED
+# Add plugin target
 add_library(my_clap_plugin SHARED 
     my_plugin.cpp
     src/plugin_model.h
     src/audio_processor.h  
     src/plugin_viewmodel.h
-    src/minimal_brisk_gui.h
-    src/minimal_brisk_gui.cpp
 )
 
-target_link_libraries(my_clap_plugin PRIVATE clap)
-
-# Add include directories for our source files
-target_include_directories(my_clap_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-# Link boost-di (header-only)
-if (DEFINED BOOST_DI_INCLUDE_DIR)
-    target_include_directories(my_clap_plugin PRIVATE ${BOOST_DI_INCLUDE_DIR})
-endif()
-
-# Link KFR if available  
-if (TARGET kfr)
-    target_link_libraries(my_clap_plugin PRIVATE kfr)
-endif()
-
-# Link Brisk if available - GCC 12+ optimized static linking
-if (BRISK_FOUND)
-    # Link Brisk libraries with proper static linking approach
-    target_link_libraries(my_clap_plugin PRIVATE 
-        Brisk::Core
-        Brisk::Window  
-        Brisk::Gui
-        Brisk::Widgets
+# Check for Brisk integration sources
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/brisk_clap_integration.h")
+    target_sources(my_clap_plugin PRIVATE
+        src/brisk_clap_integration.h
+        src/brisk_clap_integration.cpp
     )
-    target_compile_definitions(my_clap_plugin PRIVATE BRISK_FOUND=1)
-    
-    # GCC 12+ specific flags for better static library integration
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0")
-        target_link_options(my_clap_plugin PRIVATE 
-            -Wl,--allow-multiple-definition
-            -Wl,--start-group
-        )
-    endif()
-    
-    message(STATUS "Linking Brisk libraries to plugin target with GUI support (GCC 12+ optimized)")
-else()
-    # Fallback: add Brisk include directory manually if the library files exist
-    if (EXISTS "${BRISK_DIR}/include/brisk/core/App.hpp")
-        target_include_directories(my_clap_plugin PRIVATE "${BRISK_DIR}/include")
-        target_compile_definitions(my_clap_plugin PRIVATE BRISK_FOUND=1)
-        message(STATUS "Adding Brisk include directory manually: ${BRISK_DIR}/include")
-    endif()
 endif()
-# On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
+
+# Basic linking and setup
+target_link_libraries(my_clap_plugin PRIVATE clap)
+setup_target_deps(my_clap_plugin)
+
+# Set plugin properties
 if (WIN32)
-  set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
+    set_target_properties(my_clap_plugin PROPERTIES 
+        PREFIX "" 
+        SUFFIX ".clap"
+        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+    )
 else()
-  set_target_properties(my_clap_plugin PROPERTIES PREFIX "") # Use default suffix (.so or .dylib)
+    set_target_properties(my_clap_plugin PROPERTIES PREFIX "")
 endif()
 set_target_properties(my_clap_plugin PROPERTIES OUTPUT_NAME "MyFirstClapPlugin")
 
-# Additional Brisk setup for plugin if available
-# Disabled for now as brisk_setup_executable is for standalone applications
-# if (BRISK_FOUND)
-#     # Note: brisk_setup_executable is typically for standalone applications
-#     # For a plugin, we may need different setup, but let's try this if the function exists
-#     if(COMMAND brisk_setup_executable)
-#         brisk_setup_executable(my_clap_plugin)
-#     endif()
-# endif()
-
-
-# Install the plugin (optional, but good practice)
-# This will install the plugin to <prefix>/lib/clap on Linux/macOS
-# and <prefix>/CLAP on Windows.
+# Install
 if(WIN32)
     set(CLAP_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/CLAP")
 else()
@@ -178,58 +175,15 @@ else()
 endif()
 install(TARGETS my_clap_plugin DESTINATION ${CLAP_INSTALL_DIR})
 
-message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.")
-
-# Google Test integration
+# Tests
 add_subdirectory(libs/googletest)
 enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
-
-add_executable(integration_tests 
-    test/test_integration.cpp
-    test/test_minimal_brisk_gui.cpp
-    src/minimal_brisk_gui.cpp
-)
-target_link_libraries(integration_tests PRIVATE gtest gtest_main my_clap_plugin)
-
-# Add include directories for tests
-target_include_directories(my_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(integration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-if (DEFINED BOOST_DI_INCLUDE_DIR)
-    target_include_directories(my_plugin_tests PRIVATE ${BOOST_DI_INCLUDE_DIR})
-    target_include_directories(integration_tests PRIVATE ${BOOST_DI_INCLUDE_DIR})
-endif()
-
-# Link KFR for tests if available  
-if (TARGET kfr)
-    target_link_libraries(my_plugin_tests PRIVATE kfr)
-    target_link_libraries(integration_tests PRIVATE kfr)
-endif()
-
-# Link Brisk for tests if available
-if (BRISK_FOUND)
-    target_link_libraries(my_plugin_tests PRIVATE 
-        Brisk::Widgets 
-        Brisk::Gui 
-        Brisk::Core
-        Brisk::Graphics
-        Brisk::Window
-    )
-    target_link_libraries(integration_tests PRIVATE 
-        Brisk::Widgets 
-        Brisk::Gui 
-        Brisk::Core
-        Brisk::Graphics
-        Brisk::Window
-    )
-    target_compile_definitions(my_plugin_tests PRIVATE BRISK_FOUND=1)
-    target_compile_definitions(integration_tests PRIVATE BRISK_FOUND=1)
-    message(STATUS "Linking Brisk libraries to test targets")
-endif()
+setup_target_deps(my_plugin_tests)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
-gtest_discover_tests(integration_tests)
+
+message(STATUS "CMake configuration complete")

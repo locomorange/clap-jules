@@ -1,4 +1,7 @@
 #include "my_plugin.h"
+#include "src/plugin_viewmodel.h"
+#include "src/audio_processor.h"
+#include "src/brisk_clap_integration.h" // Ensure brisk_clap::BriskClapGUI is available
 #include <clap/ext/gui.h>
 #include <clap/ext/params.h>
 #include <stdio.h>  // For printf in example functions
@@ -6,7 +9,14 @@
 #include <cstdlib>  // For calloc
 #include <algorithm> // For std::min
 #include <exception> // For exception handling
+#include <brisk/gui/Component.hpp>
+#include <brisk/gui/GuiApplication.hpp>
+#include <brisk/widgets/Graphene.hpp>
+#include <brisk/widgets/Button.hpp>
+#include <brisk/widgets/Layouts.hpp>
+#include <brisk/widgets/Text.hpp>
 
+//Brisk::GuiApplication application;
 // --- Forward declarations of plugin functions ---
 static bool my_plugin_init(const struct clap_plugin *plugin);
 static void my_plugin_destroy(const struct clap_plugin *plugin);
@@ -116,7 +126,7 @@ static bool my_plugin_init(const struct clap_plugin *plugin) {
         self->model = std::make_shared<plugin::PluginModel>();
         self->processor = std::make_shared<plugin::AudioProcessor>(self->model);
         self->viewmodel = std::make_shared<plugin::PluginViewModel>(self->model, self->processor);
-        self->ui_view = std::make_shared<clap_gui::MinimalBriskGUI>();
+        self->ui_view = std::make_shared<brisk_clap::BriskClapGUI>(); // Now brisk_clap should be available
         
         // Initialize plugin state
         self->sample_rate = 44100.0;
@@ -359,19 +369,14 @@ static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, b
     }
     
     try {
-        // Create a clap_window_t structure to pass to MinimalBriskGUI
-        clap_window_t window = {};
-        window.api = api;
-        window.ptr = nullptr; // Will be set when parent is assigned
-        
-        // Initialize the MinimalBriskGUI
-        if (self->ui_view && self->ui_view->create(&window, is_floating)) {
+        // Initialize the BriskClapGUI
+        if (self->ui_view && self->ui_view->initialize()) {
             self->gui_created = true;
             self->gui_visible = false;
             printf("MyPlugin GUI: GUI created successfully\n");
             return true;
         } else {
-            printf("MyPlugin GUI: Failed to create MinimalBriskGUI\n");
+            printf("MyPlugin GUI: Failed to initialize BriskClapGUI\n");
             return false;
         }
     } catch (const std::exception& e) {
@@ -386,7 +391,7 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
     
     if (self->gui_created) {
         if (self->ui_view) {
-            self->ui_view->destroy();
+            self->ui_view->destroyWindow();
         }
         self->gui_visible = false;
         self->gui_created = false;
@@ -409,7 +414,8 @@ static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width,
         return false;
     }
     
-    if (self->ui_view && self->ui_view->get_size(width, height)) {
+    if (self->ui_view) {
+        self->ui_view->getSize(width, height);
         printf("MyPlugin GUI: Returning size %ux%u\n", *width, *height);
         return true;
     }
@@ -467,7 +473,7 @@ static bool my_plugin_gui_set_size(const clap_plugin_t *plugin, uint32_t width, 
     
     // Update MinimalBriskGUI size
     if (self->ui_view) {
-        return self->ui_view->set_size(width, height);
+        return self->ui_view->setSize(width, height);
     }
     
     return true;
@@ -485,8 +491,10 @@ static bool my_plugin_gui_set_parent(const clap_plugin_t *plugin, const clap_win
     // Store parent window info
     self->parent_window = window->ptr;
     
-    // The parent window setup is handled during GUI creation
-    // MinimalBriskGUI will use this information when showing the window
+    // Create the Brisk window with the parent
+    if (self->ui_view) {
+        return self->ui_view->createWindow(window);
+    }
     printf("MyPlugin GUI: Parent window set successfully\n");
     return true;
 }
@@ -514,6 +522,8 @@ static bool my_plugin_gui_show(const clap_plugin_t *plugin) {
     try {
         if (self->ui_view) {
             self->ui_view->show();
+            // Start processing events
+            self->ui_view->processEvents();
             self->gui_visible = true;
             printf("MyPlugin GUI: GUI shown successfully\n");
             return true;
@@ -624,7 +634,7 @@ static void my_plugin_params_flush(const clap_plugin_t *plugin, const clap_input
                 
                 // Update UI if available
                 if (self->ui_view) {
-                    self->ui_view->set_parameter_value(param_event->param_id, param_event->value);
+                    self->ui_view->updateParameter(param_event->param_id, param_event->value);
                 }
             }
         }
