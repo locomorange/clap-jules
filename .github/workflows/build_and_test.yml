@@ -84,6 +84,12 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+    - name: Set CMake Generator to Unix Makefiles (macOS only)
+      if: runner.os == 'macOS'
+      run: |
+        echo "VCPKG_CMAKE_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
+        echo "CMAKE_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
+
     - name: Setup Dependencies
       shell: bash
       run: |
