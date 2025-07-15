@@ -84,6 +84,14 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
+
+    - name: Ensure build tools are installed (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install ninja llvm
+        echo "CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
+        echo "CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++" >> $GITHUB_ENV
+
     - name: Set CMake Generator to Unix Makefiles (macOS only)
       if: runner.os == 'macOS'
       run: |
