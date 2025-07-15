@@ -54,6 +54,12 @@ jobs:
         restore-keys: |
           brisk-build-${{ runner.os }}-
 
+    - name: Setup vcpkg (full history)
+      shell: bash
+      run: |
+        OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
+        ./scripts/setup-vcpkg.sh "$OS_TYPE"
+
     - name: Build Brisk from Source
       if: steps.brisk-cache.outputs.cache-hit != 'true'
       shell: bash
