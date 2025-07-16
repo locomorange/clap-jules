@@ -3,11 +3,19 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/libs/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 endif()
 
+# Initialize Brisk CMake modules. This must be done before the first project directive.
+set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+# Set Brisk configuration similar to build-brisk-full.sh
+set(VCPKG_TARGET_TRIPLET "x64-linux")
+set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/vcpkg_installed")
+include(${BRISK_DIR}/cmake/brisk.cmake)
+
 cmake_minimum_required(VERSION 3.22)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Find required packages
 
@@ -25,8 +33,8 @@ else()
     message(FATAL_ERROR "Could not find CLAP headers")
 endif()
 
-# Optional libraries setup
-set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+# Include Brisk source. This must be done after the first project directive.
+add_subdirectory(${BRISK_DIR} brisk-bin)
 
 # Helper function to setup common target properties
 function(setup_target_deps target)
@@ -43,80 +51,15 @@ function(setup_target_deps target)
     endif()
     
     # Brisk
-    if (EXISTS "${BRISK_DIR}/dist/lib" AND EXISTS "${BRISK_DIR}/dist/include")
-        # Briskライブラリを正しい順序で収集
-        set(BRISK_LIBS
-            ${BRISK_DIR}/dist/lib/libbrisk-window.a
-            ${BRISK_DIR}/dist/lib/libbrisk-widgets.a
-            ${BRISK_DIR}/dist/lib/libbrisk-gui.a
-            ${BRISK_DIR}/dist/lib/libbrisk-graphics.a
-            ${BRISK_DIR}/dist/lib/libbrisk-core.a
+    if (TARGET brisk-widgets)
+        target_compile_definitions(${target} PRIVATE BRISK_FOUND=1 BRISK_WEBGPU=1)
+        target_link_libraries(${target} PRIVATE 
+            brisk-widgets
+            brisk-window
+            brisk-gui
+            brisk-graphics
+            brisk-core
         )
-        
-        # 存在するライブラリのみを使用
-        set(BRISK_LIBRARIES "")
-        foreach(lib ${BRISK_LIBS})
-            if(EXISTS ${lib})
-                list(APPEND BRISK_LIBRARIES ${lib})
-            endif()
-        endforeach()
-        
-        if(BRISK_LIBRARIES)
-            target_compile_definitions(${target} PRIVATE BRISK_FOUND=1 BRISK_WEBGPU=1)
-            target_include_directories(${target} PRIVATE 
-                ${BRISK_DIR}/dist/include
-                ${BRISK_DIR}/vcpkg_installed/x64-linux/include
-            )
-            
-            # Briskのvcpkgディレクトリを追加
-            list(APPEND CMAKE_PREFIX_PATH "${BRISK_DIR}/vcpkg_installed/x64-linux")
-            
-            # 必要な依存関係
-            find_package(Threads REQUIRED)
-            find_package(X11 REQUIRED)
-            
-            # vcpkgからライブラリを直接リンク
-            set(BRISK_DEPS "")
-            if(EXISTS "${BRISK_DIR}/vcpkg_installed/x64-linux/lib")
-                file(GLOB GLFW_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libglfw3.a")
-                file(GLOB FMT_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libfmt.a")
-                file(GLOB SPDLOG_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libspdlog.a")
-                file(GLOB LLVM_LIB "${BRISK_DIR}/vcpkg_installed/x64-linux/lib/libLLVM*.a")
-                
-                if(GLFW_LIB)
-                    list(APPEND BRISK_DEPS ${GLFW_LIB})
-                endif()
-                if(FMT_LIB)
-                    list(APPEND BRISK_DEPS ${FMT_LIB})
-                endif()
-                if(SPDLOG_LIB)
-                    list(APPEND BRISK_DEPS ${SPDLOG_LIB})
-                endif()
-                if(LLVM_LIB)
-                    list(APPEND BRISK_DEPS ${LLVM_LIB})
-                endif()
-            endif()
-            
-            # Briskライブラリとその依存関係をリンク（順序が重要）
-            target_link_libraries(${target} PRIVATE 
-                ${BRISK_LIBRARIES}
-                ${BRISK_DEPS}
-                Threads::Threads
-                ${X11_LIBRARIES}
-                ${CMAKE_DL_LIBS}
-            )
-            
-            # 追加のシステムライブラリ
-            if(UNIX AND NOT APPLE)
-                target_link_libraries(${target} PRIVATE
-                    Xi
-                    Xrandr
-                    Xxf86vm
-                    Xinerama
-                    Xcursor
-                )
-            endif()
-        endif()
     endif()
 endfunction()
 
@@ -153,6 +96,9 @@ endif()
 # Basic linking and setup
 target_link_libraries(my_clap_plugin PRIVATE clap)
 setup_target_deps(my_clap_plugin)
+
+# Add Brisk resources
+brisk_bundle_resources(my_clap_plugin)
 
 # Set plugin properties
 if (WIN32)

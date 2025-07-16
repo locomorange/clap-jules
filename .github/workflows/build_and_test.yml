@@ -42,15 +42,14 @@ jobs:
         restore-keys: |
           vcpkg-${{ runner.os }}-
 
-    - name: Cache Brisk Build
+    - name: Cache Brisk Build (add_subdirectory integration)
       uses: actions/cache@v4
       id: brisk-cache
       with:
         path: |
-          libs/brisk/build-release/
-          libs/brisk/dist/
+          build/brisk-bin/
           libs/brisk/vcpkg_installed/
-        key: brisk-build-${{ runner.os }}-${{ hashFiles('scripts/build-brisk-full.sh', 'libs/brisk/CMakeLists.txt') }}
+        key: brisk-build-${{ runner.os }}-${{ hashFiles('libs/brisk/CMakeLists.txt', 'libs/brisk/vcpkg.json') }}
         restore-keys: |
           brisk-build-${{ runner.os }}-
 
@@ -59,26 +58,6 @@ jobs:
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-vcpkg.sh "$OS_TYPE"
-
-    - name: Build Brisk from Source
-      if: steps.brisk-cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        echo "Building Brisk from source..."
-        chmod +x scripts/build-brisk-full.sh
-        ./scripts/build-brisk-full.sh
-
-    - name: Verify Cached Brisk Build
-      if: steps.brisk-cache.outputs.cache-hit == 'true'
-      shell: bash
-      run: |
-        echo "Using cached Brisk build..."
-        if [ -d "libs/brisk/dist/include" ]; then
-          echo "✓ Cached Brisk headers available"
-        fi
-        if [ -d "libs/brisk/dist/lib" ]; then
-          echo "✓ Cached Brisk libraries available"
-        fi
 
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
@@ -110,6 +89,16 @@ jobs:
 
     - name: Build project
       run: cmake --build build --config Release
+
+    - name: Verify Brisk Build Cache
+      shell: bash
+      run: |
+        if [ -d "build/brisk-bin" ]; then
+          echo "✓ Brisk build artifacts generated in build/brisk-bin/"
+          ls -la build/brisk-bin/ 2>/dev/null || echo "  No brisk-bin contents"
+        else
+          echo "⚠ No build/brisk-bin directory found"
+        fi
 
     - name: Verify Plugin Build
       id: verify

@@ -51,9 +51,8 @@ if [ ! -d "$CLAP_HOST_BASE" ]; then
   cd -
 fi
 
-# Briskライブラリのビルド
-echo "Building Brisk library..."
-./scripts/build-brisk-full.sh
+# Briskライブラリの準備（add_subdirectoryで統合されるため事前ビルド不要）
+echo "Brisk library will be built automatically with add_subdirectory..."
 
 # CLAP Hostのビルド
 ./scripts/build-clap-host.sh linux

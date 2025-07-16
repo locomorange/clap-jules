@@ -88,16 +88,15 @@ jobs:
         run: |
           ./scripts/setup-vcpkg.sh linux
 
-      # Briskビルド成果物のキャッシュ
+      # Briskビルド成果物のキャッシュ (add_subdirectory integration)
       - name: Cache Brisk Build
         uses: actions/cache@v4
         id: brisk-cache
         with:
           path: |
-            libs/brisk/build-release/
-            libs/brisk/dist/
+            build/brisk-bin/
             libs/brisk/vcpkg_installed/
-          key: brisk-build-${{ runner.os }}-${{ hashFiles('scripts/build-brisk-full.sh', 'libs/brisk/CMakeLists.txt') }}
+          key: brisk-build-${{ runner.os }}-${{ hashFiles('libs/brisk/CMakeLists.txt', 'libs/brisk/vcpkg.json') }}
           restore-keys: |
             brisk-build-${{ runner.os }}-
 
@@ -162,47 +161,32 @@ jobs:
             cp -r tools/clap-host/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
-      # Brisk build from source
-      - name: Build Brisk from Source
-        if: steps.brisk-cache.outputs.cache-hit != 'true'
+      # プラグインビルド（Briskキャッシュのため）
+      - name: Build Plugin (for Brisk cache generation)
+        continue-on-error: true
+        shell: bash
         run: |
-          echo "=== Building Brisk from source ==="
+          echo "=== Building plugin to generate Brisk cache ==="
           
-          # Run Brisk build script
-          chmod +x scripts/build-brisk-full.sh
-          ./scripts/build-brisk-full.sh
+          # Configure CMake
+          cmake . -B build -DCMAKE_BUILD_TYPE=Release
           
-          # Verify Brisk build
-          if [ -d "libs/brisk/dist/include" ]; then
-            echo "✓ Brisk headers available"
-            ls -la libs/brisk/dist/include/brisk/ 2>/dev/null || echo "  No brisk headers found"
+          # Build plugin (this will build Brisk via add_subdirectory)
+          cmake --build build --config Release --target my_clap_plugin
+          
+          # Verify build results
+          if [ -d "build/brisk-bin" ]; then
+            echo "✓ Brisk build artifacts generated in build/brisk-bin/"
+            ls -la build/brisk-bin/ 2>/dev/null || echo "  No brisk-bin contents"
           fi
           
-          if [ -d "libs/brisk/dist/lib" ]; then
-            echo "✓ Brisk libraries available"
-            ls -la libs/brisk/dist/lib/ 2>/dev/null || echo "  No brisk libraries found"
+          if [ -f "build/MyFirstClapPlugin.so" ]; then
+            echo "✓ Plugin built successfully"
+          else
+            echo "⚠ Plugin build failed, but continuing for environment setup"
           fi
           
-          echo "✓ Brisk build completed"
-
-      # Brisk キャッシュヒット時の確認
-      - name: Verify Cached Brisk Build
-        if: steps.brisk-cache.outputs.cache-hit == 'true'
-        run: |
-          echo "=== Using cached Brisk build ==="
-          
-          # Verify cached Brisk build
-          if [ -d "libs/brisk/dist/include" ]; then
-            echo "✓ Cached Brisk headers available"
-            ls -la libs/brisk/dist/include/brisk/ 2>/dev/null || echo "  No brisk headers found"
-          fi
-          
-          if [ -d "libs/brisk/dist/lib" ]; then
-            echo "✓ Cached Brisk libraries available" 
-            ls -la libs/brisk/dist/lib/ 2>/dev/null || echo "  No brisk libraries found"
-          fi
-          
-          echo "✓ Cached Brisk verification completed"
+          echo "✓ Plugin build completed"
 
       # 環境検証
       - name: Verify Complete Environment
