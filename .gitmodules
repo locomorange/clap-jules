@@ -17,6 +17,6 @@
 	path = libs/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
 
-[submodule "libs/brisk"]
+[submodule "brisk"]
 	path = libs/brisk
-	url = https://github.com/brisklib/brisk.git
+	url = https://github.com/locomorange/brisk.git
