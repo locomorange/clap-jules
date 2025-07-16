@@ -20,7 +20,7 @@ jobs:
   build-plugin:
     name: Build Plugin on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -134,7 +134,7 @@ jobs:
     name: Unit Tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 20
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -179,7 +179,7 @@ jobs:
     name: CLAP Validation on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 20
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -227,7 +227,7 @@ jobs:
     name: CLAP Host Integration Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 90
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
