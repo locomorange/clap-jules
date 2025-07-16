@@ -33,6 +33,22 @@ else
     exit 1
 fi
 
+# OSごとにtripletを自動選択
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ $(uname -m) == "arm64" ]]; then
+        BRISK_TRIPLET="arm64-osx"
+    else
+        BRISK_TRIPLET="x64-osx"
+    fi
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    BRISK_TRIPLET="x64-linux"
+elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
+    BRISK_TRIPLET="x64-windows-static"
+else
+    echo "Unsupported OS for triplet: $OSTYPE"
+    exit 1
+fi
+
 echo "Building Brisk..."
 cd libs/brisk
 
@@ -41,7 +57,7 @@ cmake -G Ninja \
     -B build-release \
     -DVCPKG_MANIFEST_INSTALL=ON \
     -DCMAKE_INSTALL_PREFIX=dist \
-    -DVCPKG_TARGET_TRIPLET=x64-linux \
+    -DVCPKG_TARGET_TRIPLET=${BRISK_TRIPLET} \
     -DCMAKE_TOOLCHAIN_FILE=../../vcpkg/scripts/buildsystems/vcpkg.cmake \
     -DVCPKG_INSTALLED_DIR=vcpkg_installed \
     -DCMAKE_BUILD_TYPE=Release \
