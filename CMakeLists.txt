@@ -10,7 +10,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Find required packages
-find_package(PNG REQUIRED)
 
 # Find CLAP
 if (DEFINED ENV{CLAP_PATH})
