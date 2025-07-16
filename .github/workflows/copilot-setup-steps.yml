@@ -60,6 +60,12 @@ jobs:
         run: |
           ./scripts/setup-dependencies.sh linux
 
+      # Brisk依存関係セットアップ
+      - name: Setup Brisk Dependencies
+        shell: bash
+        run: |
+          ./scripts/setup-brisk-dependencies.sh
+
       # CLAP開発ツールのセットアップ
       - name: Setup CLAP Development Tools
         shell: bash

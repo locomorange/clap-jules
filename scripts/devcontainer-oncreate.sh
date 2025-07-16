@@ -28,6 +28,9 @@ chmod +x ./scripts/*.sh
 # 依存関係セットアップ
 ./scripts/setup-dependencies.sh linux
 
+# Brisk依存関係セットアップ
+./scripts/setup-brisk-dependencies.sh
+
 # CLAP開発ツールのセットアップ
 mkdir -p "$CLAP_TOOLS_BASE"
 cd "$CLAP_TOOLS_BASE"

@@ -83,6 +83,11 @@ jobs:
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-dependencies.sh "$OS_TYPE"
 
+    - name: Setup Brisk Dependencies
+      shell: bash
+      run: |
+        ./scripts/setup-brisk-dependencies.sh
+
     - name: Configure CMake
       shell: bash
       run: cmake . -B build
@@ -154,6 +159,11 @@ jobs:
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-dependencies.sh "$OS_TYPE"
+
+    - name: Setup Brisk Dependencies
+      shell: bash
+      run: |
+        ./scripts/setup-brisk-dependencies.sh
 
     - name: Configure and Build
       shell: bash
@@ -269,6 +279,11 @@ jobs:
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-dependencies.sh "$OS_TYPE"
+
+    - name: Setup Brisk Dependencies for CLAP Host
+      shell: bash
+      run: |
+        ./scripts/setup-brisk-dependencies.sh
 
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows'
