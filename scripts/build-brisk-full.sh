@@ -28,6 +28,11 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
         libx11-xcb-dev \
         libwayland-dev \
         libxkbcommon-dev
+elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
+    # Windows (Git Bash/MSYS environment)
+    echo "Windows environment detected. Dependencies will be handled by vcpkg."
+    # On Windows, we rely on vcpkg for dependency management
+    # CMake, Ninja, and other build tools are expected to be available
 else
     echo "Unsupported OS: $OSTYPE"
     exit 1
