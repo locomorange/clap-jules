@@ -28,9 +28,6 @@ chmod +x ./scripts/*.sh
 # 依存関係セットアップ
 ./scripts/setup-dependencies.sh linux
 
-# Brisk依存関係セットアップ
-./scripts/setup-brisk-dependencies.sh
-
 # CLAP開発ツールのセットアップ
 mkdir -p "$CLAP_TOOLS_BASE"
 cd "$CLAP_TOOLS_BASE"
@@ -54,8 +51,8 @@ if [ ! -d "$CLAP_HOST_BASE" ]; then
   cd -
 fi
 
-# Briskライブラリの準備（add_subdirectoryで統合されるため事前ビルド不要）
-echo "Brisk library will be built automatically with add_subdirectory..."
+# Briskフルビルド
+./scripts/build-brisk-full.sh
 
 # CLAP Hostのビルド
 ./scripts/build-clap-host.sh linux

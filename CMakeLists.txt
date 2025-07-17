@@ -8,6 +8,8 @@ set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
 # Set Brisk configuration similar to build-brisk-full.sh
 set(VCPKG_TARGET_TRIPLET "x64-linux")
 #set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/vcpkg_installed")
+set(VCPKG_MANIFEST_INSTALL ON)
+#set(CMAKE_INSTALL_PREFIX dist)
 set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/vcpkg/installed")
 # Set pack_resource tool path for Brisk
 #set(PACK_RESOURCE_TOOL "${BRISK_DIR}/vcpkg_installed/x64-linux/tools/pack-resource/pack_resource" CACHE FILEPATH "Path to pack_resource tool")
