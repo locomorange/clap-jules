@@ -11,6 +11,26 @@ set(VCPKG_TARGET_TRIPLET "x64-linux")
 set(VCPKG_MANIFEST_INSTALL ON)
 #set(CMAKE_INSTALL_PREFIX dist)
 set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/vcpkg/installed")
+
+if(VCPKG_TARGET_TRIPLET)
+    if(WIN32)
+        set(PACK_RESOURCE_EXECUTABLE "pack_resource.exe")
+    else()
+        set(PACK_RESOURCE_EXECUTABLE "pack_resource")
+    endif()
+
+    find_program(PACK_RESOURCE_TOOL_PATH
+        NAMES ${PACK_RESOURCE_EXECUTABLE}
+        HINTS
+            "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/tools/pack-resource"
+            "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/debug/tools/pack-resource"
+    )
+
+    if(PACK_RESOURCE_TOOL_PATH)
+        set(PACK_RESOURCE_TOOL ${PACK_RESOURCE_TOOL_PATH} CACHE FILEPATH "Path to pack_resource tool")
+    endif()
+endif()
+
 # Set pack_resource tool path for Brisk
 #set(PACK_RESOURCE_TOOL "${BRISK_DIR}/vcpkg_installed/x64-linux/tools/pack-resource/pack_resource" CACHE FILEPATH "Path to pack_resource tool")
 include(${BRISK_DIR}/cmake/brisk.cmake)
