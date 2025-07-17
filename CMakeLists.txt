@@ -59,7 +59,10 @@ else()
 endif()
 
 # Include Brisk source. This must be done after the first project directive.
-add_subdirectory(${BRISK_DIR} brisk-bin)
+if (NOT _BRISK_INCLUDE_DIR)
+    find_package(Brisk CONFIG REQUIRED)
+endif ()
+#add_subdirectory(${BRISK_DIR} brisk-bin)
 #brisk_setup()
 
 # Helper function to setup common target properties
