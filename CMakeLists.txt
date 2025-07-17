@@ -63,7 +63,7 @@ if (NOT _BRISK_INCLUDE_DIR)
     find_package(Brisk CONFIG REQUIRED)
 endif ()
 #add_subdirectory(${BRISK_DIR} brisk-bin)
-#brisk_setup()
+brisk_setup()
 
 # Helper function to setup common target properties
 function(setup_target_deps target)
