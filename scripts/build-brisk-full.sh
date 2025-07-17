@@ -61,14 +61,11 @@ cmake -G Ninja \
     -S . \
     -B build \
     -DVCPKG_MANIFEST_INSTALL=ON \
-    -DCMAKE_INSTALL_PREFIX=dist \
     -DVCPKG_TARGET_TRIPLET=${BRISK_TRIPLET} \
     -DCMAKE_TOOLCHAIN_FILE=../vcpkg/scripts/buildsystems/vcpkg.cmake \
     -DVCPKG_INSTALLED_DIR=../vcpkg/installed \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-
-#    
 
 # cmake --build build --target install
 
