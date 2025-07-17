@@ -57,7 +57,14 @@ fi
 echo "Building Brisk..."
 cd libs/brisk
 
-cmake -G Ninja \
+# ジェネレータ選択: WindowsはVisual Studio、それ以外はNinja
+if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
+    CMAKE_GENERATOR="Visual Studio 17 2022"
+else
+    CMAKE_GENERATOR="Ninja"
+fi
+
+cmake -G "$CMAKE_GENERATOR" \
     -S . \
     -B build \
     -DVCPKG_MANIFEST_INSTALL=ON \
