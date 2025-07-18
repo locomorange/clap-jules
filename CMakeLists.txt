@@ -6,7 +6,7 @@ endif()
 # Initialize Brisk CMake modules. This must be done before the first project directive.
 set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
 # Set Brisk configuration similar to build-brisk-full.sh
-set(VCPKG_TARGET_TRIPLET "x64-linux")
+#set(VCPKG_TARGET_TRIPLET "x64-linux")
 #set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/vcpkg_installed")
 set(VCPKG_MANIFEST_INSTALL ON)
 #set(CMAKE_INSTALL_PREFIX dist)
