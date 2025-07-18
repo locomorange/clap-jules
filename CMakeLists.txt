@@ -6,7 +6,16 @@ endif()
 # Initialize Brisk CMake modules. This must be done before the first project directive.
 set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
 # Set Brisk configuration similar to build-brisk-full.sh
-#set(VCPKG_TARGET_TRIPLET "x64-linux")
+# クロスプラットフォーム対応: OSごとにVCPKG_TARGET_TRIPLETを自動設定（CIで上書きも可）
+if(NOT DEFINED VCPKG_TARGET_TRIPLET)
+    if(WIN32)
+        set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "Vcpkg target triplet")
+    elseif(APPLE)
+        set(VCPKG_TARGET_TRIPLET "x64-osx" CACHE STRING "Vcpkg target triplet")
+    else()
+        set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "Vcpkg target triplet")
+    endif()
+endif()
 #set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/vcpkg_installed")
 set(VCPKG_MANIFEST_INSTALL ON)
 #set(CMAKE_INSTALL_PREFIX dist)
