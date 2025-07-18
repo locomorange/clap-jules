@@ -33,10 +33,12 @@ jobs:
       # vcpkg成果物のキャッシュ
       - name: Cache vcpkg artifacts
         uses: actions/cache@v4
+        id: vcpkg-cache
         with:
           path: |
             libs/vcpkg/installed
             libs/vcpkg/buildtrees
+            libs/vcpkg/packages
           key: vcpkg-${{ runner.os }}-${{ hashFiles('libs/vcpkg/scripts/ci.baseline.txt') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-
@@ -161,15 +163,29 @@ jobs:
             cp -r tools/clap-host/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
+      # Briskビルド（キャッシュ対応）
+      - name: Build Brisk Full
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true' || steps.brisk-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          echo "Cache miss detected - building Brisk"
+          echo "  vcpkg cache hit: ${{ steps.vcpkg-cache.outputs.cache-hit }}"
+          echo "  brisk cache hit: ${{ steps.brisk-cache.outputs.cache-hit }}"
+          ./scripts/build-brisk-full.sh
+
+      - name: Setup Brisk Dependencies (Cache Hit)
+        if: steps.vcpkg-cache.outputs.cache-hit == 'true' && steps.brisk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo "Both vcpkg and Brisk cache hit - setting up dependencies only"
+          ./scripts/setup-brisk-dependencies.sh
+
       # プラグインビルド（Briskキャッシュのため）
       - name: Build Plugin (for Brisk cache generation)
         continue-on-error: true
         shell: bash
         run: |
-          echo "=== Building plugin with Brisk full build ==="
-          
-          # Setup Brisk dependencies and build with full script
-          ./scripts/build-brisk-full.sh
+          echo "=== Building plugin with CMake ==="
           
           # Configure CMake
           cmake . -B build -DCMAKE_BUILD_TYPE=Release

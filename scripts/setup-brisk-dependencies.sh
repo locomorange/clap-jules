@@ -50,3 +50,16 @@ else
 fi
 
 echo "✅ Brisk dependencies setup completed"
+
+# Briskビルドキャッシュが存在する場合のみビルドを実行
+if [ -d "build/brisk-bin" ]; then
+    echo "Brisk build cache found. Skipping build-brisk-full.sh."
+else
+    echo "No Brisk build cache found. Running build-brisk-full.sh..."
+    if [ -f "./scripts/build-brisk-full.sh" ]; then
+        ./scripts/build-brisk-full.sh
+    else
+        echo "build-brisk-full.sh not found!"
+        exit 1
+    fi
+fi
