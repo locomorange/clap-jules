@@ -2,6 +2,7 @@
 #include "src/plugin_viewmodel.h"
 #include "src/audio_processor.h"
 #include "src/brisk_clap_integration.h" // Ensure brisk_clap::BriskClapGUI is available
+#include "src/cross_platform_gui_support.h" // Cross-platform GUI support
 #include <clap/ext/gui.h>
 #include <clap/ext/params.h>
 #include <stdio.h>  // For printf in example functions
@@ -330,33 +331,23 @@ const CLAP_EXPORT struct clap_plugin_factory my_plugin_factory = {
 static bool my_plugin_gui_is_api_supported(const clap_plugin_t *plugin, const char *api, bool is_floating) {
     printf("MyPlugin GUI: Checking API support for %s (floating: %s)\n", api, is_floating ? "true" : "false");
     
-    // Support common windowing APIs
-    if (strcmp(api, CLAP_WINDOW_API_X11) == 0) return true;
-    if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0) return true;
-    if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) return true;
-    if (strcmp(api, CLAP_WINDOW_API_WAYLAND) == 0) return is_floating; // Wayland only supports floating
-    
-    return false;
+    // Use cross-platform helper to check API support
+    return brisk_clap::CrossPlatformGUISupport::isApiSupportedOnPlatform(api, is_floating);
 }
 
 static bool my_plugin_gui_get_preferred_api(const clap_plugin_t *plugin, const char **api, bool *is_floating) {
     printf("MyPlugin GUI: Getting preferred API\n");
     
-    // Prefer embedded windows over floating
-    *is_floating = false;
+    // Get preferred API using cross-platform helper
+    *api = brisk_clap::CrossPlatformGUISupport::getPreferredApi();
     
-    // Return platform-specific preferred API
-#ifdef __linux__
-    *api = CLAP_WINDOW_API_X11;
-#elif defined(_WIN32)
-    *api = CLAP_WINDOW_API_WIN32;
-#elif defined(__APPLE__)
-    *api = CLAP_WINDOW_API_COCOA;
-#else
-    *api = CLAP_WINDOW_API_X11; // Fallback
-#endif
+    // Prefer embedded windows unless the API requires floating
+    if (*api) {
+        *is_floating = brisk_clap::CrossPlatformGUISupport::prefersFloatingWindows(*api);
+        return true;
+    }
     
-    return true;
+    return false;
 }
 
 static bool my_plugin_gui_create(const clap_plugin_t *plugin, const char *api, bool is_floating) {
@@ -401,9 +392,22 @@ static void my_plugin_gui_destroy(const clap_plugin_t *plugin) {
 }
 
 static bool my_plugin_gui_set_scale(const clap_plugin_t *plugin, double scale) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin GUI: Setting scale to %f\n", scale);
-    // TODO: Implement scaling support in Brisk UI
-    return true; // Accept any scale for now
+    
+    if (!self->gui_created || !self->ui_view) {
+        printf("MyPlugin GUI: Cannot set scale - GUI not created\n");
+        return false;
+    }
+    
+    // Apply scaling to Brisk GUI
+    if (self->ui_view->setScale(scale)) {
+        printf("MyPlugin GUI: Scale applied successfully\n");
+        return true;
+    } else {
+        printf("MyPlugin GUI: Failed to apply scale\n");
+        return false;
+    }
 }
 
 static bool my_plugin_gui_get_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
@@ -445,17 +449,32 @@ static bool my_plugin_gui_get_resize_hints(const clap_plugin_t *plugin, clap_gui
 }
 
 static bool my_plugin_gui_adjust_size(const clap_plugin_t *plugin, uint32_t *width, uint32_t *height) {
+    my_plugin_t *self = (my_plugin_t *)plugin->plugin_data;
     printf("MyPlugin GUI: Adjusting size from %ux%u\n", *width, *height);
     
-    // Enforce minimum size
-    if (*width < 200) *width = 200;
-    if (*height < 150) *height = 150;
+    // Use cross-platform validation if we have a known API
+    const char* api = nullptr;
+    if (self->ui_view) {
+        // Get the API from the UI view if available
+        api = brisk_clap::CrossPlatformGUISupport::getPreferredApi();
+    }
     
-    // Enforce maximum size
-    if (*width > 1200) *width = 1200;
-    if (*height > 800) *height = 800;
+    if (api && brisk_clap::CrossPlatformGUISupport::validateSize(api, width, height)) {
+        printf("MyPlugin GUI: Platform-validated size to %ux%u\n", *width, *height);
+    } else {
+        // Fallback to manual constraints
+        if (*width < 200) *width = 200;
+        if (*height < 150) *height = 150;
+        if (*width > 1200) *width = 1200;
+        if (*height > 800) *height = 800;
+        printf("MyPlugin GUI: Manually adjusted size to %ux%u\n", *width, *height);
+    }
     
-    printf("MyPlugin GUI: Adjusted size to %ux%u\n", *width, *height);
+    // Also use the Brisk GUI's adjust size if available
+    if (self->ui_view && self->gui_created) {
+        return self->ui_view->adjustSize(width, height);
+    }
+    
     return true;
 }
 

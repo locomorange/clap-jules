@@ -1,4 +1,5 @@
 #include "brisk_clap_integration.h"
+#include "cross_platform_gui_support.h"
 #include <iostream>
 #include <cstring>
 #include <mutex>
@@ -6,7 +7,9 @@
 #include <brisk/core/internal/Initialization.hpp>
 #include <brisk/core/Text.hpp>
 #include <brisk/graphics/Geometry.hpp>
+#include <brisk/graphics/Matrix.hpp>
 #include <brisk/gui/Gui.hpp>
+#include <brisk/gui/Event.hpp>
 #include <brisk/widgets/Graphene.hpp>
 #include <brisk/widgets/Text.hpp>
 #include <brisk/widgets/Button.hpp>
@@ -23,10 +26,23 @@ public:
     ClapNativeWindow(const clap_window_t* parentWindow)
         : m_parentWindow(parentWindow) {
         // Initialize based on parent window API
-        if (parentWindow) {
-            m_handle = parentWindow->ptr;
+        if (parentWindow && parentWindow->api) {
+            m_handle = CrossPlatformGUISupport::extractNativeHandle(parentWindow);
             m_api = parentWindow->api;
-            std::cout << "ClapNativeWindow: Created with API " << m_api << std::endl;
+            std::cout << "ClapNativeWindow: Created with API " << m_api << 
+                         " on platform " << 
+                         #ifdef _WIN32
+                         "Windows" << 
+                         #elif defined(__APPLE__)
+                         "macOS" <<
+                         #elif defined(__linux__)
+                         "Linux" <<
+                         #else
+                         "Unknown" <<
+                         #endif
+                         std::endl;
+        } else {
+            std::cout << "ClapNativeWindow: Created with null parent window" << std::endl;
         }
     }
 
@@ -40,38 +56,17 @@ public:
     }
 
     Brisk::NativeWindowHandle getHandle() const override {
-        Brisk::NativeWindowHandle handle;
-        // CLAP APIごとに適切なハンドルを返す
-        if (!m_parentWindow || !m_api || !m_handle) {
-            handle.ptr = nullptr;
-            return handle;
+        if (!m_parentWindow) {
+            return Brisk::NativeWindowHandle();
         }
-
-        // Windows (Win32)
-        if (strcmp(m_api, "win32") == 0) {
-            // HWND
-            handle.ptr = m_parentWindow->win32 ? m_parentWindow->win32 : m_handle;
-        }
-        // macOS (Cocoa)
-        else if (strcmp(m_api, "cocoa") == 0) {
-            // NSView*
-            handle.ptr = m_parentWindow->cocoa ? m_parentWindow->cocoa : m_handle;
-        }
-        // Linux/X11
-        else if (strcmp(m_api, "x11") == 0) {
-            // Window (unsigned long) を void* に変換
-            handle.ptr = m_parentWindow->x11 ? reinterpret_cast<void*>(static_cast<uintptr_t>(m_parentWindow->x11)) : m_handle;
-        }
-        // その他のAPI
-        else if (strcmp(m_api, "wayland") == 0) {
-            // Waylandの場合は汎用のptrを使用
-            handle.ptr = m_handle;
-        }
-        else {
-            // 未知のAPIはデフォルト
-            handle.ptr = m_handle;
-        }
-        return handle;
+        
+        // Use cross-platform helper to extract native handle
+        void* handle = CrossPlatformGUISupport::extractNativeHandle(m_parentWindow);
+        
+        // Create NativeWindowHandle with proper platform-specific constructor
+        Brisk::NativeWindowHandle nativeHandle;
+        nativeHandle.ptr = handle;
+        return nativeHandle;
     }
 
     const char* getWindowAPI() const { return m_api; }
@@ -91,12 +86,18 @@ public:
     Brisk::Rc<Brisk::RenderEncoder> renderEncoder;
     Brisk::InputQueue inputQueue;
     std::unique_ptr<Brisk::WidgetTree> widgetTree;
-    bool briskInitialized = false;
     std::mutex renderMutex;
 
     // GUI state
     bool hasGUI = false;
     bool isVisible = false;
+    double scaleFactor = 1.0;
+    
+    // Size constraints
+    uint32_t minWidth = 300;
+    uint32_t minHeight = 200;
+    uint32_t maxWidth = 1200;
+    uint32_t maxHeight = 800;
     
     // Parameters
     double cutoffFreq = 1000.0;
@@ -110,18 +111,67 @@ public:
     Brisk::Rc<Brisk::Text> cutoffLabel;
     Brisk::Rc<Brisk::Text> gainLabel;
     
+    // Input processing  
+    bool processMouseEvent(int x, int y, int button, bool pressed) {
+        if (!widgetTree || !hasGUI) return false;
+        
+        // Scale coordinates based on DPI scaling
+        float scaledX = static_cast<float>(x) / scaleFactor;
+        float scaledY = static_cast<float>(y) / scaleFactor;
+        
+        // Create appropriate Brisk event and add to input queue
+        if (pressed) {
+            Brisk::EventMouseButtonPressed event;
+            event.point = Brisk::PointF{scaledX, scaledY};
+            event.button = static_cast<Brisk::MouseButton>(button);
+            inputQueue.events.push_back(std::move(event));
+        } else {
+            Brisk::EventMouseButtonReleased event;
+            event.point = Brisk::PointF{scaledX, scaledY};
+            event.button = static_cast<Brisk::MouseButton>(button);
+            inputQueue.events.push_back(std::move(event));
+        }
+        
+        return true;
+    }
+    
+    bool processKeyEvent(int keyCode, bool pressed) {
+        if (!widgetTree || !hasGUI) return false;
+        
+        // Create appropriate Brisk keyboard event and add to input queue
+        if (pressed) {
+            Brisk::EventKeyPressed event;
+            event.key = static_cast<Brisk::KeyCode>(keyCode);
+            inputQueue.events.push_back(std::move(event));
+        } else {
+            Brisk::EventKeyReleased event;
+            event.key = static_cast<Brisk::KeyCode>(keyCode);
+            inputQueue.events.push_back(std::move(event));
+        }
+        
+        return true;
+    }
+    
     void updateGUI() {
         if (!widgetTree || !hasGUI) return;
         
         std::lock_guard<std::mutex> lock(renderMutex);
         
-        // Update widget tree
+        // Update widget tree 
         widgetTree->update();
         
         // Render if visible
         if (isVisible && renderTarget && renderEncoder) {
             Brisk::RenderPipeline pipeline(renderEncoder, renderTarget);
             Brisk::Canvas canvas(pipeline);
+            
+            // Apply scaling if needed
+            if (scaleFactor != 1.0) {
+                // Create identity matrix and apply scaling
+                Brisk::Matrix matrix;  // Default constructor creates identity matrix
+                canvas.transform(matrix.scale(scaleFactor, scaleFactor));
+            }
+            
             widgetTree->paint(canvas, Brisk::Palette::transparent, true);
             renderTarget->present();
         }
@@ -142,21 +192,17 @@ bool BriskClapGUI::initialize() {
     try {
         std::cout << "BriskClapGUI: Initializing with Brisk library" << std::endl;
         
-        // Initialize Brisk if not already done
-        if (!m_impl->briskInitialized) {
-            // Initialize Brisk system
-            Brisk::startup(0, nullptr);
-            Brisk::registerBuiltinFonts();
-            
-            auto deviceResult = Brisk::getRenderDevice();
-            if (!deviceResult) {
-                std::cerr << "BriskClapGUI: Failed to get render device" << std::endl;
-                return false;
-            }
-            m_impl->renderDevice = deviceResult.value();
-            m_impl->renderEncoder = m_impl->renderDevice->createEncoder();
-            m_impl->briskInitialized = true;
+        // Use global initializer to ensure Brisk is initialized only once
+        BriskClapInitializer::instance().initialize();
+        
+        // Get render device (should be available after global initialization)
+        auto deviceResult = Brisk::getRenderDevice();
+        if (!deviceResult) {
+            std::cerr << "BriskClapGUI: Failed to get render device" << std::endl;
+            return false;
         }
+        m_impl->renderDevice = deviceResult.value();
+        m_impl->renderEncoder = m_impl->renderDevice->createEncoder();
         
         m_initialized = true;
         return true;
@@ -171,15 +217,8 @@ void BriskClapGUI::shutdown() {
         destroyWindow();
     }
     
-    if (m_impl->briskInitialized) {
-        try {
-            Brisk::shutdown();
-        } catch (const std::exception& e) {
-            std::cerr << "BriskClapGUI: Exception during Brisk shutdown: " << e.what() << std::endl;
-        }
-        m_impl->briskInitialized = false;
-    }
-    
+    // Note: Don't call BriskClapInitializer::shutdown() here as other instances might still be using Brisk
+    // The global initializer will handle cleanup when the last instance is destroyed
     m_initialized = false;
 }
 
@@ -280,6 +319,66 @@ void BriskClapGUI::processEvents() {
     }
 }
 
+bool BriskClapGUI::canResize() const {
+    return true; // We support resizing
+}
+
+bool BriskClapGUI::adjustSize(uint32_t* width, uint32_t* height) const {
+    if (!width || !height) return false;
+    
+    // Clamp to min/max sizes
+    *width = std::max(m_impl->minWidth, std::min(*width, m_impl->maxWidth));
+    *height = std::max(m_impl->minHeight, std::min(*height, m_impl->maxHeight));
+    
+    return true;
+}
+
+bool BriskClapGUI::setScale(double scale) {
+    if (scale <= 0.0) return false;
+    
+    m_impl->scaleFactor = scale;
+    
+    // Update native window if created
+    if (m_impl->nativeWindow) {
+        Brisk::Size scaledSize{
+            static_cast<int>(m_width * scale),
+            static_cast<int>(m_height * scale)
+        };
+        m_impl->nativeWindow->setFramebufferSize(scaledSize);
+    }
+    
+    std::cout << "BriskClapGUI: Scale factor set to " << scale << std::endl;
+    return true;
+}
+
+bool BriskClapGUI::handleMouseEvent(int x, int y, int button, bool pressed) {
+    if (!m_impl->hasGUI) return false;
+    
+    return m_impl->processMouseEvent(x, y, button, pressed);
+}
+
+bool BriskClapGUI::handleKeyEvent(int keyCode, bool pressed) {
+    if (!m_impl->hasGUI) return false;
+    
+    return m_impl->processKeyEvent(keyCode, pressed);
+}
+
+bool BriskClapGUI::handleResizeEvent(uint32_t width, uint32_t height) {
+    if (!setSize(width, height)) return false;
+    
+    // Update render target if necessary
+    if (m_impl->renderTarget && m_impl->nativeWindow) {
+        // Recreate render target with new size
+        m_impl->renderTarget = m_impl->renderDevice->createWindowTarget(
+            m_impl->nativeWindow.get(), 
+            Brisk::PixelType::U8
+        );
+    }
+    
+    std::cout << "BriskClapGUI: Resized to " << width << "x" << height << std::endl;
+    return true;
+}
+
 void BriskClapGUI::updateParameter(clap_id paramId, double value) {
     switch (paramId) {
         case 0: // Cutoff frequency
@@ -324,7 +423,16 @@ void BriskClapInitializer::initialize(int argc, char** argv) {
     }
 
     try {
+        // Initialize Brisk system following the documented pattern
         Brisk::startup(argc, argv);
+        
+        // Try to register built-in fonts, but don't fail if resources are missing
+        try {
+            Brisk::registerBuiltinFonts();
+        } catch (const std::exception& e) {
+            std::cerr << "BriskClapInitializer: Warning - Could not register built-in fonts: " << e.what() << std::endl;
+        }
+        
         m_initialized = true;
         std::cout << "BriskClapInitializer: Brisk system initialized" << std::endl;
     } catch (const std::exception& e) {

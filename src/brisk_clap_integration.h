@@ -26,6 +26,11 @@ public:
     void destroyWindow();
     bool setSize(uint32_t width, uint32_t height);
     void getSize(uint32_t* width, uint32_t* height) const;
+    bool canResize() const;
+    bool adjustSize(uint32_t* width, uint32_t* height) const;
+    
+    // Scaling support
+    bool setScale(double scale);
     
     // Visibility
     void show();
@@ -33,6 +38,9 @@ public:
     
     // Event processing
     void processEvents();
+    bool handleMouseEvent(int x, int y, int button, bool pressed);
+    bool handleKeyEvent(int keyCode, bool pressed);
+    bool handleResizeEvent(uint32_t width, uint32_t height);
     
     // Parameter updates
     void updateParameter(clap_id paramId, double value);

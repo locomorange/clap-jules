@@ -54,6 +54,9 @@ if (NOT _BRISK_INCLUDE_DIR)
 else()
     #message(FATAL_ERROR "Could not find Brisk package")
 endif()
+# Add Brisk library - disable examples and unnecessary targets
+set(BRISK_BUILD_EXAMPLES OFF CACHE BOOL "Don't build Brisk examples")
+set(BRISK_BUILD_TESTS OFF CACHE BOOL "Don't build Brisk tests")
 add_subdirectory(${BRISK_SUBDIR} brisk-bin)
 
 #find_package(Brisk CONFIG REQUIRED)
@@ -121,8 +124,8 @@ endif()
 target_link_libraries(my_clap_plugin PRIVATE clap)
 setup_target_deps(my_clap_plugin)
 
-# Add Brisk resources
-brisk_bundle_resources(my_clap_plugin)
+# Add Brisk resources - temporarily disabled due to resource generation issues
+# brisk_bundle_resources(my_clap_plugin)
 
 # Set plugin properties
 if (WIN32)
