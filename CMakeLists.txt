@@ -9,7 +9,7 @@ set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
 # クロスプラットフォーム対応: OSごとにVCPKG_TARGET_TRIPLETを自動設定（CIで上書きも可）
 if(NOT DEFINED VCPKG_TARGET_TRIPLET)
     if(WIN32)
-        set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "Vcpkg target triplet")
+        set(VCPKG_TARGET_TRIPLET "x64-windows-static-md" CACHE STRING "Vcpkg target triplet")
     elseif(APPLE)
         set(VCPKG_TARGET_TRIPLET "arm64-osx" CACHE STRING "Vcpkg target triplet")
     else()
@@ -51,9 +51,12 @@ endif()
 # Include Brisk source. This must be done after the first project directive.
 if (NOT _BRISK_INCLUDE_DIR)
     find_package(Brisk CONFIG REQUIRED)
-endif ()
+    brisk_setup()
+else()
+    message(FATAL_ERROR "Could not find Brisk package")
+endif()
 #add_subdirectory(${BRISK_DIR} brisk-bin)
-brisk_setup()
+
 
 # Helper function to setup common target properties
 function(setup_target_deps target)
