@@ -48,7 +48,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     BRISK_TRIPLET="x64-linux"
 elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
-    BRISK_TRIPLET="x64-windows-static"
+    BRISK_TRIPLET="x64-windows-static-md"
 else
     echo "Unsupported OS for triplet: $OSTYPE"
     exit 1
@@ -69,6 +69,7 @@ cmake -G "$CMAKE_GENERATOR" \
     -B build \
     -DVCPKG_MANIFEST_INSTALL=ON \
     -DVCPKG_TARGET_TRIPLET=${BRISK_TRIPLET} \
+    -DVCPKG_HOST_TRIPLET=${BRISK_TRIPLET} \
     -DCMAKE_TOOLCHAIN_FILE=../vcpkg/scripts/buildsystems/vcpkg.cmake \
     -DVCPKG_INSTALLED_DIR=../vcpkg/installed \
     -DCMAKE_BUILD_TYPE=Release \
