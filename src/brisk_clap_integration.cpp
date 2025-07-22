@@ -41,7 +41,36 @@ public:
 
     Brisk::NativeWindowHandle getHandle() const override {
         Brisk::NativeWindowHandle handle;
-        handle.ptr = m_handle;
+        // CLAP APIごとに適切なハンドルを返す
+        if (!m_parentWindow || !m_api || !m_handle) {
+            handle.ptr = nullptr;
+            return handle;
+        }
+
+        // Windows (Win32)
+        if (strcmp(m_api, "win32") == 0) {
+            // HWND
+            handle.ptr = m_parentWindow->win32 ? m_parentWindow->win32 : m_handle;
+        }
+        // macOS (Cocoa)
+        else if (strcmp(m_api, "cocoa") == 0) {
+            // NSView*
+            handle.ptr = m_parentWindow->cocoa ? m_parentWindow->cocoa : m_handle;
+        }
+        // Linux/X11
+        else if (strcmp(m_api, "x11") == 0) {
+            // Window (unsigned long) を void* に変換
+            handle.ptr = m_parentWindow->x11 ? reinterpret_cast<void*>(static_cast<uintptr_t>(m_parentWindow->x11)) : m_handle;
+        }
+        // その他のAPI
+        else if (strcmp(m_api, "wayland") == 0) {
+            // Waylandの場合は汎用のptrを使用
+            handle.ptr = m_handle;
+        }
+        else {
+            // 未知のAPIはデフォルト
+            handle.ptr = m_handle;
+        }
         return handle;
     }
 
