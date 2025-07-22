@@ -56,7 +56,7 @@ else()
 endif()
 add_subdirectory(${BRISK_SUBDIR} brisk-bin)
 
-find_package(Brisk CONFIG REQUIRED)
+#find_package(Brisk CONFIG REQUIRED)
 #brisk_setup()
 
 
