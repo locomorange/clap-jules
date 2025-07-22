@@ -104,13 +104,6 @@ public:
     double gain = 0.7;
     bool bypass = false;
     
-    // GUI controls
-    Brisk::Rc<Brisk::Slider> cutoffSlider;
-    Brisk::Rc<Brisk::Slider> gainSlider;
-    Brisk::Rc<Brisk::Button> bypassButton;
-    Brisk::Rc<Brisk::Text> cutoffLabel;
-    Brisk::Rc<Brisk::Text> gainLabel;
-    
     // Input processing  
     bool processMouseEvent(int x, int y, int button, bool pressed) {
         if (!widgetTree || !hasGUI) return false;
@@ -403,10 +396,10 @@ void BriskClapGUI::createGUILayout()
 {
     using namespace Brisk;
 
-    // Create a minimal widget for the GUI root
+    // Create a simple widget for the GUI root
     auto mainWidget = std::make_shared<Widget>();
     
-    // Just set the root widget - minimal implementation
+    // Set the root widget - minimal implementation for now
     m_impl->widgetTree->setRoot(mainWidget);
     
     std::cout << "BriskClapGUI: Basic GUI layout created" << std::endl;

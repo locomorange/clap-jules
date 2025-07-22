@@ -100,8 +100,51 @@ public:
     // Platform-specific scaling information
     static bool usesLogicalPixels(const char* api) {
         if (!api) return false;
-        // Cocoa uses logical pixels, others use physical pixels
-        return strcmp(api, CLAP_WINDOW_API_COCOA) == 0;
+        
+        // macOS Cocoa uses logical pixels
+        if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) return true;
+        
+        // Other platforms use physical pixels
+        return false;
+    }
+    
+    // Validate and adjust size constraints based on platform
+    static bool validateSize(const char* api, uint32_t* width, uint32_t* height) {
+        if (!api || !width || !height) return false;
+        
+        uint32_t minWidth = 200, minHeight = 150;
+        uint32_t maxWidth = 1200, maxHeight = 800;
+        
+        // Platform-specific constraints
+        #ifdef _WIN32
+        if (strcmp(api, CLAP_WINDOW_API_WIN32) == 0) {
+            minWidth = 150; minHeight = 100;
+            maxWidth = 1920; maxHeight = 1080;
+        }
+        #endif
+        
+        #ifdef __APPLE__
+        if (strcmp(api, CLAP_WINDOW_API_COCOA) == 0) {
+            minWidth = 200; minHeight = 150;
+            maxWidth = 1440; maxHeight = 900;
+        }
+        #endif
+        
+        #ifdef __linux__
+        if (strcmp(api, CLAP_WINDOW_API_X11) == 0 || strcmp(api, CLAP_WINDOW_API_WAYLAND) == 0) {
+            minWidth = 150; minHeight = 100;
+            maxWidth = 1920; maxHeight = 1080;
+        }
+        #endif
+        
+        // Apply constraints
+        bool changed = false;
+        if (*width < minWidth) { *width = minWidth; changed = true; }
+        if (*height < minHeight) { *height = minHeight; changed = true; }
+        if (*width > maxWidth) { *width = maxWidth; changed = true; }
+        if (*height > maxHeight) { *height = maxHeight; changed = true; }
+        
+        return !changed; // Return true if no changes were needed
     }
     
     // Get default scale factor for the platform
@@ -120,28 +163,6 @@ public:
         #else
         return 1.0;
         #endif
-    }
-    
-    // Validate window size constraints for the platform
-    static bool validateSize(const char* api, uint32_t* width, uint32_t* height) {
-        if (!width || !height) return false;
-        
-        // Platform-specific minimum sizes
-        uint32_t minWidth = 100, minHeight = 100;
-        uint32_t maxWidth = 4096, maxHeight = 4096;
-        
-        #ifdef _WIN32
-        minWidth = 120; minHeight = 120;
-        #elif defined(__APPLE__)
-        minWidth = 100; minHeight = 100;
-        #elif defined(__linux__)
-        minWidth = 100; minHeight = 100;
-        #endif
-        
-        *width = std::max(minWidth, std::min(*width, maxWidth));
-        *height = std::max(minHeight, std::min(*height, maxHeight));
-        
-        return true;
     }
 };
 
