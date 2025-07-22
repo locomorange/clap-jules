@@ -4,7 +4,7 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 # Initialize Brisk CMake modules. This must be done before the first project directive.
-set(BRISK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk")
+set(BRISK_SUBDIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/")
 # Set Brisk configuration similar to build-brisk-full.sh
 # クロスプラットフォーム対応: OSごとにVCPKG_TARGET_TRIPLETを自動設定（CIで上書きも可）
 if(NOT DEFINED VCPKG_TARGET_TRIPLET)
@@ -23,7 +23,7 @@ set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/vcpkg/installed")
 
 
 # Set pack_resource tool path for Brisk
-include(${BRISK_DIR}/cmake/brisk.cmake)
+#include(${BRISK_DIR}/cmake/brisk.cmake)
 
 cmake_minimum_required(VERSION 3.22)
 project(MyClapPlugin VERSION 0.0.1 LANGUAGES C CXX)
@@ -50,12 +50,14 @@ endif()
 
 # Include Brisk source. This must be done after the first project directive.
 if (NOT _BRISK_INCLUDE_DIR)
-    find_package(Brisk CONFIG REQUIRED)
-    brisk_setup()
+    
 else()
-    message(FATAL_ERROR "Could not find Brisk package")
+    #message(FATAL_ERROR "Could not find Brisk package")
 endif()
-#add_subdirectory(${BRISK_DIR} brisk-bin)
+add_subdirectory(${BRISK_SUBDIR} brisk-bin)
+
+find_package(Brisk CONFIG REQUIRED)
+#brisk_setup()
 
 
 # Helper function to setup common target properties
