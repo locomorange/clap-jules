@@ -416,8 +416,9 @@ void BriskClapInitializer::initialize(int argc, char** argv) {
     }
 
     try {
-        // Initialize Brisk system following the documented pattern
-        Brisk::startup(argc, argv);
+    // Initialize Brisk core for library/plugin usage
+    // Note: Using initializeCommon/finalizeCommon avoids dependency on app-specific startup/shutdown
+    Brisk::initializeCommon();
         
         // Try to register built-in fonts, but don't fail if resources are missing
         try {
@@ -439,7 +440,8 @@ void BriskClapInitializer::shutdown() {
     }
 
     try {
-        Brisk::shutdown();
+    // Finalize Brisk core for library/plugin usage
+    Brisk::finalizeCommon();
     } catch (const std::exception& e) {
         fprintf(stderr, "Exception during Brisk shutdown: %s\n", e.what());
     }

@@ -59,6 +59,9 @@ set(BRISK_BUILD_EXAMPLES OFF CACHE BOOL "Don't build Brisk examples")
 set(BRISK_BUILD_TESTS OFF CACHE BOOL "Don't build Brisk tests")
 add_subdirectory(${BRISK_SUBDIR} brisk-bin)
 
+# Ensure resource bundling helpers are available in this scope
+include(${BRISK_SUBDIR}/cmake/scripts/compile_resources.cmake)
+
 #find_package(Brisk CONFIG REQUIRED)
 #brisk_setup()
 
@@ -124,8 +127,8 @@ endif()
 target_link_libraries(my_clap_plugin PRIVATE clap)
 setup_target_deps(my_clap_plugin)
 
-# Add Brisk resources - temporarily disabled due to resource generation issues
-# brisk_bundle_resources(my_clap_plugin)
+# Add Brisk resources to provide resourceEntries symbols required by GUI/fonts
+brisk_bundle_resources(my_clap_plugin)
 
 # Set plugin properties
 if (WIN32)
