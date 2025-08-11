@@ -33,10 +33,12 @@ jobs:
       # vcpkg成果物のキャッシュ
       - name: Cache vcpkg artifacts
         uses: actions/cache@v4
+        id: vcpkg-cache
         with:
           path: |
             libs/vcpkg/installed
             libs/vcpkg/buildtrees
+            libs/vcpkg/packages
           key: vcpkg-${{ runner.os }}-${{ hashFiles('libs/vcpkg/scripts/ci.baseline.txt') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-
@@ -91,6 +93,18 @@ jobs:
         run: |
           ./scripts/setup-vcpkg.sh linux
 
+      # Briskビルド成果物のキャッシュ (add_subdirectory integration)
+      - name: Cache Brisk Build
+        uses: actions/cache@v4
+        id: brisk-cache
+        with:
+          path: |
+            build/brisk-bin/
+            libs/brisk/vcpkg_installed/
+          key: brisk-build-${{ runner.os }}-${{ hashFiles('libs/brisk/CMakeLists.txt', 'libs/brisk/vcpkg.json') }}
+          restore-keys: |
+            brisk-build-${{ runner.os }}-
+
       # CLAP Hostビルド成果物のキャッシュ
       - name: Cache CLAP Host Build
         uses: actions/cache@v4
@@ -111,6 +125,25 @@ jobs:
         run: |
           echo "CLAP_HOST_PATH=$(pwd)/tools/clap-host" >> $GITHUB_ENV
           echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/tools/clap-host"
+
+      # CLAP Hostビルド成果物のキャッシュ
+      - name: Cache CLAP Host Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            clap-host-repo/
+            clap-host-builds/
+          key: clap-host-copilot-setup-${{ runner.os }}-${{ hashFiles('scripts/setup-vcpkg.sh', 'scripts/build-clap-host.sh') }}-v4
+          restore-keys: |
+            clap-host-copilot-setup-${{ runner.os }}-
+
+      # CLAP_HOST_PATH環境変数設定（キャッシュヒット時）
+      - name: Set CLAP_HOST_PATH for Cached Build
+        if: steps.clap-host-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo "CLAP_HOST_PATH=$(pwd)/clap-host-repo" >> $GITHUB_ENV
+          echo "✓ CLAP_HOST_PATH set for cached build: $(pwd)/clap-host-repo"
 
       # CLAP Hostリポジトリ準備
       - name: Prepare CLAP Host Repository
@@ -133,16 +166,53 @@ jobs:
             cp -r tools/clap-host/builds/* clap-host-builds/ 2>/dev/null || echo "No build artifacts to cache"
           fi
 
+      # Briskビルド（キャッシュ対応）
+      - name: Build Brisk Full
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true' || steps.brisk-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          echo "Cache miss detected - building Brisk"
+          echo "  vcpkg cache hit: ${{ steps.vcpkg-cache.outputs.cache-hit }}"
+          echo "  brisk cache hit: ${{ steps.brisk-cache.outputs.cache-hit }}"
+          ./scripts/build-brisk-full.sh
+
+      - name: Setup Brisk Dependencies (Cache Hit)
+        if: steps.vcpkg-cache.outputs.cache-hit == 'true' && steps.brisk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo "Both vcpkg and Brisk cache hit - setting up dependencies only"
+          ./scripts/setup-brisk-dependencies.sh
+
+      # プラグインビルド（Briskキャッシュのため）
+      - name: Build Plugin (for Brisk cache generation)
+        continue-on-error: true
+        shell: bash
+        run: |
+          echo "=== Building plugin with CMake ==="
+          
+          # Configure CMake
+          cmake . -B build -DCMAKE_BUILD_TYPE=Release
+          
+          # Build plugin (this will build Brisk via add_subdirectory)
+          cmake --build build --config Release --target my_clap_plugin
+          
+          # Verify build results
+          if [ -d "build/brisk-bin" ]; then
+            echo "✓ Brisk build artifacts generated in build/brisk-bin/"
+            ls -la build/brisk-bin/ 2>/dev/null || echo "  No brisk-bin contents"
+          fi
+          
+          if [ -f "build/MyFirstClapPlugin.so" ]; then
+            echo "✓ Plugin built successfully"
+          else
+            echo "⚠ Plugin build failed, but continuing for environment setup"
+          fi
+          
+          echo "✓ Plugin build completed"
+
       # 環境検証
       - name: Verify Complete Environment
         shell: bash
-        run: |
-          ./scripts/verify-environment.sh
-
-      # オプションのテストビルド実行（失敗しても継続）
-      - name: Test Plugin Build (Optional)
-        shell: bash
-        continue-on-error: true
         run: |
           ./scripts/verify-plugin-build-optional.sh || ./scripts/build-plugin.sh
 

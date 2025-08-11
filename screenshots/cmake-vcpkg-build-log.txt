@@ -1,0 +1,11 @@
+[1/23] Automatic MOC for target clap-host
+[2/23] Building CXX object host/CMakeFiles/clap-host.dir/cmake_pch.hxx.gch
+[3/23] Building CXX object host/CMakeFiles/clap-host.dir/audio-settings.cc.o
+[4/23] Building CXX object host/CMakeFiles/clap-host.dir/about-dialog.cc.o
+[5/23] Building CXX object host/CMakeFiles/clap-host.dir/plugin-param.cc.o
+[6/23] Building CXX object host/CMakeFiles/clap-host.dir/application.cc.o
+[7/23] Building CXX object host/CMakeFiles/clap-host.dir/audio-settings-widget.cc.o
+[8/23] Building CXX object host/CMakeFiles/clap-host.dir/plugin-quick-control-widget.cc.o
+[9/23] Building CXX object host/CMakeFiles/clap-host.dir/main.cc.o
+[10/23] Building CXX object host/CMakeFiles/clap-host.dir/clap-host_autogen/mocs_compilation.cpp.o
+[11/23] Building CXX object host/CMakeFiles/clap-host.dir/plugin-quick-controls-widget.cc.o

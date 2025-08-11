@@ -4,7 +4,7 @@ set -e
 
 OS_TYPE="$1"
 CLAP_HOST_DIR_ARG="${2}"
-VCPKG_ROOT="${3:-$(pwd)/vcpkg}"
+VCPKG_ROOT="${3:-$(pwd)/libs/vcpkg}"
 
 
 # CLAP Host の場所は常に tools/clap-host を使う

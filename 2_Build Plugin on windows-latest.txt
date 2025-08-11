@@ -1,0 +1,524 @@
+﻿2025-07-07T18:14:27.6486304Z Current runner version: '2.325.0'
+2025-07-07T18:14:27.6507871Z ##[group]Operating System
+2025-07-07T18:14:27.6508576Z Microsoft Windows Server 2022
+2025-07-07T18:14:27.6509068Z 10.0.20348
+2025-07-07T18:14:27.6509513Z Datacenter
+2025-07-07T18:14:27.6509910Z ##[endgroup]
+2025-07-07T18:14:27.6510357Z ##[group]Runner Image
+2025-07-07T18:14:27.6510821Z Image: windows-2022
+2025-07-07T18:14:27.6511285Z Version: 20250701.1.0
+2025-07-07T18:14:27.6512216Z Included Software: https://github.com/actions/runner-images/blob/win22/20250701.1/images/windows/Windows2022-Readme.md
+2025-07-07T18:14:27.6513497Z Image Release: https://github.com/actions/runner-images/releases/tag/win22%2F20250701.1
+2025-07-07T18:14:27.6514320Z ##[endgroup]
+2025-07-07T18:14:27.6514736Z ##[group]Runner Image Provisioner
+2025-07-07T18:14:27.6515236Z 2.0.449.1
+2025-07-07T18:14:27.6515611Z ##[endgroup]
+2025-07-07T18:14:27.6516591Z ##[group]GITHUB_TOKEN Permissions
+2025-07-07T18:14:27.6518550Z Contents: write
+2025-07-07T18:14:27.6519107Z Metadata: read
+2025-07-07T18:14:27.6519604Z PullRequests: write
+2025-07-07T18:14:27.6520026Z ##[endgroup]
+2025-07-07T18:14:27.6521839Z Secret source: Actions
+2025-07-07T18:14:27.6522431Z Prepare workflow directory
+2025-07-07T18:14:27.6863494Z Prepare all required actions
+2025-07-07T18:14:27.6898994Z Getting action download info
+2025-07-07T18:14:28.2352230Z ##[group]Download immutable action package 'actions/checkout@v4'
+2025-07-07T18:14:28.2353263Z Version: 4.2.2
+2025-07-07T18:14:28.2354119Z Digest: sha256:ccb2698953eaebd21c7bf6268a94f9c26518a7e38e27e0b83c1fe1ad049819b1
+2025-07-07T18:14:28.2355246Z Source commit SHA: 11bd71901bbe5b1630ceea73d27597364c9af683
+2025-07-07T18:14:28.2355857Z ##[endgroup]
+2025-07-07T18:14:28.3948859Z ##[group]Download immutable action package 'actions/cache@v4'
+2025-07-07T18:14:28.3949594Z Version: 4.2.3
+2025-07-07T18:14:28.3950242Z Digest: sha256:c8a3bb963e1f1826d8fcc8d1354f0dd29d8ac1db1d4f6f20247055ae11b81ed9
+2025-07-07T18:14:28.3951188Z Source commit SHA: 5a3ec84eff668545956fd18022155c47e93e2684
+2025-07-07T18:14:28.3951802Z ##[endgroup]
+2025-07-07T18:14:28.5338090Z Download action repository 'microsoft/setup-msbuild@v2' (SHA:6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce)
+2025-07-07T18:14:29.0774076Z ##[group]Download immutable action package 'actions/upload-artifact@v4'
+2025-07-07T18:14:29.0774933Z Version: 4.6.2
+2025-07-07T18:14:29.0775661Z Digest: sha256:290722aa3281d5caf23d0acdc3dbeb3424786a1a01a9cc97e72f147225e37c38
+2025-07-07T18:14:29.0776638Z Source commit SHA: ea165f8d65b6e75b540449e92b4886f43607fa02
+2025-07-07T18:14:29.0777281Z ##[endgroup]
+2025-07-07T18:14:29.3984203Z Complete job name: Build Plugin on windows-latest
+2025-07-07T18:14:29.4899843Z ##[group]Run actions/checkout@v4
+2025-07-07T18:14:29.4900818Z with:
+2025-07-07T18:14:29.4901200Z   submodules: recursive
+2025-07-07T18:14:29.4901651Z   repository: locomorange/clap-jules
+2025-07-07T18:14:29.4902330Z   token: ***
+2025-07-07T18:14:29.4902711Z   ssh-strict: true
+2025-07-07T18:14:29.4903086Z   ssh-user: git
+2025-07-07T18:14:29.4903514Z   persist-credentials: true
+2025-07-07T18:14:29.4903959Z   clean: true
+2025-07-07T18:14:29.4904346Z   sparse-checkout-cone-mode: true
+2025-07-07T18:14:29.4904815Z   fetch-depth: 1
+2025-07-07T18:14:29.4905195Z   fetch-tags: false
+2025-07-07T18:14:29.4905583Z   show-progress: true
+2025-07-07T18:14:29.4905964Z   lfs: false
+2025-07-07T18:14:29.4906330Z   set-safe-directory: true
+2025-07-07T18:14:29.4906947Z env:
+2025-07-07T18:14:29.4907316Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:29.4907788Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:29.4908222Z ##[endgroup]
+2025-07-07T18:14:29.9415851Z Syncing repository: locomorange/clap-jules
+2025-07-07T18:14:29.9479867Z ##[group]Getting Git version info
+2025-07-07T18:14:29.9482510Z Working directory is 'D:\a\clap-jules\clap-jules'
+2025-07-07T18:14:30.1386350Z [command]"C:\Program Files\Git\bin\git.exe" version
+2025-07-07T18:14:30.1946593Z git version 2.50.0.windows.2
+2025-07-07T18:14:30.2084280Z ##[endgroup]
+2025-07-07T18:14:30.2167201Z Temporarily overriding HOME='D:\a\_temp\9935e8b4-8edb-40ea-a158-e026487e3e28' before making global git config changes
+2025-07-07T18:14:30.2169135Z Adding repository directory to the temporary git global config as a safe directory
+2025-07-07T18:14:30.2179330Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\clap-jules\clap-jules
+2025-07-07T18:14:30.2647684Z Deleting the contents of 'D:\a\clap-jules\clap-jules'
+2025-07-07T18:14:30.2653123Z ##[group]Initializing the repository
+2025-07-07T18:14:30.2662479Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\clap-jules\clap-jules
+2025-07-07T18:14:30.3346753Z Initialized empty Git repository in D:/a/clap-jules/clap-jules/.git/
+2025-07-07T18:14:30.3379799Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/locomorange/clap-jules
+2025-07-07T18:14:30.3823506Z ##[endgroup]
+2025-07-07T18:14:30.3824230Z ##[group]Disabling automatic garbage collection
+2025-07-07T18:14:30.3833217Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2025-07-07T18:14:30.4069569Z ##[endgroup]
+2025-07-07T18:14:30.4070238Z ##[group]Setting up auth
+2025-07-07T18:14:30.4071065Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2025-07-07T18:14:30.4291129Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2025-07-07T18:14:31.7294514Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-07-07T18:14:31.7514958Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2025-07-07T18:14:32.1534983Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2025-07-07T18:14:32.1763310Z ##[endgroup]
+2025-07-07T18:14:32.1763817Z ##[group]Fetching the repository
+2025-07-07T18:14:32.1781928Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +8bc0ae0845ed3eb27d31b668458d1b753e5f0e02:refs/remotes/pull/112/merge
+2025-07-07T18:14:33.3214713Z From https://github.com/locomorange/clap-jules
+2025-07-07T18:14:33.3215470Z  * [new ref]         8bc0ae0845ed3eb27d31b668458d1b753e5f0e02 -> pull/112/merge
+2025-07-07T18:14:33.3501297Z ##[endgroup]
+2025-07-07T18:14:33.3501907Z ##[group]Determining the checkout info
+2025-07-07T18:14:33.3502372Z ##[endgroup]
+2025-07-07T18:14:33.3515572Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2025-07-07T18:14:33.3820606Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2025-07-07T18:14:33.4034051Z ##[group]Checking out the ref
+2025-07-07T18:14:33.4042824Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/remotes/pull/112/merge
+2025-07-07T18:14:33.4545088Z Note: switching to 'refs/remotes/pull/112/merge'.
+2025-07-07T18:14:33.4546182Z 
+2025-07-07T18:14:33.4546446Z You are in 'detached HEAD' state. You can look around, make experimental
+2025-07-07T18:14:33.4546896Z changes and commit them, and you can discard any commits you make in this
+2025-07-07T18:14:33.4547317Z state without impacting any branches by switching back to a branch.
+2025-07-07T18:14:33.4547584Z 
+2025-07-07T18:14:33.4547795Z If you want to create a new branch to retain commits you create, you may
+2025-07-07T18:14:33.4548176Z do so (now or later) by using -c with the switch command. Example:
+2025-07-07T18:14:33.4548422Z 
+2025-07-07T18:14:33.4548569Z   git switch -c <new-branch-name>
+2025-07-07T18:14:33.4548736Z 
+2025-07-07T18:14:33.4548857Z Or undo this operation with:
+2025-07-07T18:14:33.4549858Z 
+2025-07-07T18:14:33.4549938Z   git switch -
+2025-07-07T18:14:33.4550081Z 
+2025-07-07T18:14:33.4550280Z Turn off this advice by setting config variable advice.detachedHead to false
+2025-07-07T18:14:33.4550550Z 
+2025-07-07T18:14:33.4550871Z HEAD is now at 8bc0ae0 Merge d6fd8304ba06b8ff6be9546da2a7387fd2645af2 into f6eec128bf4b9c65ec55eb085f3cc1402adbd933
+2025-07-07T18:14:33.4568681Z ##[endgroup]
+2025-07-07T18:14:33.4570081Z ##[group]Setting up auth for fetching submodules
+2025-07-07T18:14:33.4583452Z [command]"C:\Program Files\Git\bin\git.exe" config --global http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2025-07-07T18:14:33.4806742Z [command]"C:\Program Files\Git\bin\git.exe" config --global --unset-all url.https://github.com/.insteadOf
+2025-07-07T18:14:33.5027914Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add url.https://github.com/.insteadOf git@github.com:
+2025-07-07T18:14:33.5271184Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add url.https://github.com/.insteadOf org-47374565@github.com:
+2025-07-07T18:14:33.5544765Z ##[endgroup]
+2025-07-07T18:14:33.5545300Z ##[group]Fetching submodules
+2025-07-07T18:14:33.5554279Z [command]"C:\Program Files\Git\bin\git.exe" submodule sync --recursive
+2025-07-07T18:14:33.9818466Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 submodule update --init --force --depth=1 --recursive
+2025-07-07T18:14:34.3887562Z Submodule 'libs/boost-di' (https://github.com/boost-ext/di.git) registered for path 'libs/boost-di'
+2025-07-07T18:14:34.3888407Z Submodule 'clap' (https://github.com/free-audio/clap.git) registered for path 'libs/clap'
+2025-07-07T18:14:34.3889064Z Submodule 'libs/clap-helpers' (https://github.com/free-audio/clap-helpers.git) registered for path 'libs/clap-helpers'
+2025-07-07T18:14:34.3889791Z Submodule 'googletest' (https://github.com/google/googletest.git) registered for path 'libs/googletest'
+2025-07-07T18:14:34.3890490Z Submodule 'libs/kfr' (https://github.com/kfrlib/kfr.git) registered for path 'libs/kfr'
+2025-07-07T18:14:35.9120480Z Cloning into 'D:/a/clap-jules/clap-jules/libs/boost-di'...
+2025-07-07T18:14:36.7246817Z Cloning into 'D:/a/clap-jules/clap-jules/libs/clap'...
+2025-07-07T18:14:37.3967207Z Cloning into 'D:/a/clap-jules/clap-jules/libs/clap-helpers'...
+2025-07-07T18:14:38.0688550Z Cloning into 'D:/a/clap-jules/clap-jules/libs/googletest'...
+2025-07-07T18:14:39.1336719Z Cloning into 'D:/a/clap-jules/clap-jules/libs/kfr'...
+2025-07-07T18:14:39.8557750Z Submodule path 'libs/boost-di': checked out '20b6454c889f23c1e7c9eb5136cd7e3d6f6d718d'
+2025-07-07T18:14:39.9496674Z Submodule path 'libs/clap': checked out '69a69252fdd6ac1d06e246d9a04c0a89d9607a17'
+2025-07-07T18:14:40.0189254Z Submodule path 'libs/clap-helpers': checked out '58ab81b1dc8219e859529c1306f364bb3aedf7d5'
+2025-07-07T18:14:41.6406997Z From https://github.com/google/googletest
+2025-07-07T18:14:41.6407407Z  * branch            52eb8108c5bdec04579160ae17225d66034bd723 -> FETCH_HEAD
+2025-07-07T18:14:41.7420345Z Submodule path 'libs/googletest': checked out '52eb8108c5bdec04579160ae17225d66034bd723'
+2025-07-07T18:14:42.0251359Z Submodule path 'libs/kfr': checked out '0e964b9feaba938ae6e40098d5556279617199b5'
+2025-07-07T18:14:42.0430073Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local gc.auto 0"
+2025-07-07T18:14:42.4641433Z Entering 'libs/boost-di'
+2025-07-07T18:14:42.5084286Z Entering 'libs/clap'
+2025-07-07T18:14:42.5532022Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:42.5908074Z Entering 'libs/googletest'
+2025-07-07T18:14:42.6277349Z Entering 'libs/kfr'
+2025-07-07T18:14:42.6703242Z ##[endgroup]
+2025-07-07T18:14:42.6703782Z ##[group]Persisting credentials for submodules
+2025-07-07T18:14:42.6716171Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'url\.https\:\/\/github\.com\/\.insteadOf' && git config --local --unset-all 'url.https://github.com/.insteadOf' || :\""
+2025-07-07T18:14:43.0894462Z Entering 'libs/boost-di'
+2025-07-07T18:14:43.1507282Z Entering 'libs/clap'
+2025-07-07T18:14:43.2102285Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:43.2693858Z Entering 'libs/googletest'
+2025-07-07T18:14:43.3286273Z Entering 'libs/kfr'
+2025-07-07T18:14:43.4039378Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local 'http.https://github.com/.extraheader' 'AUTHORIZATION: basic ***' && git config --local --show-origin --name-only --get-regexp remote.origin.url\""
+2025-07-07T18:14:43.8869482Z Entering 'libs/boost-di'
+2025-07-07T18:14:43.9458219Z file:D:/a/clap-jules/clap-jules/.git/modules/libs/boost-di/config	remote.origin.url
+2025-07-07T18:14:43.9590581Z Entering 'libs/clap'
+2025-07-07T18:14:44.0369699Z file:D:/a/clap-jules/clap-jules/.git/modules/clap/config	remote.origin.url
+2025-07-07T18:14:44.0499460Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:44.1089862Z file:D:/a/clap-jules/clap-jules/.git/modules/libs/clap-helpers/config	remote.origin.url
+2025-07-07T18:14:44.1215414Z Entering 'libs/googletest'
+2025-07-07T18:14:44.1799172Z file:D:/a/clap-jules/clap-jules/.git/modules/googletest/config	remote.origin.url
+2025-07-07T18:14:44.1927989Z Entering 'libs/kfr'
+2025-07-07T18:14:44.2512204Z file:D:/a/clap-jules/clap-jules/.git/modules/libs/kfr/config	remote.origin.url
+2025-07-07T18:14:44.2738625Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --add 'url.https://github.com/.insteadOf' 'git@github.com:'"
+2025-07-07T18:14:44.6700952Z Entering 'libs/boost-di'
+2025-07-07T18:14:44.7083687Z Entering 'libs/clap'
+2025-07-07T18:14:44.7463781Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:44.7838398Z Entering 'libs/googletest'
+2025-07-07T18:14:44.8209010Z Entering 'libs/kfr'
+2025-07-07T18:14:44.8636944Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --add 'url.https://github.com/.insteadOf' 'org-47374565@github.com:'"
+2025-07-07T18:14:45.2791190Z Entering 'libs/boost-di'
+2025-07-07T18:14:45.3179292Z Entering 'libs/clap'
+2025-07-07T18:14:45.3551921Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:45.3923613Z Entering 'libs/googletest'
+2025-07-07T18:14:45.4293645Z Entering 'libs/kfr'
+2025-07-07T18:14:45.4722211Z ##[endgroup]
+2025-07-07T18:14:45.4963807Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2025-07-07T18:14:45.5157049Z 8bc0ae0845ed3eb27d31b668458d1b753e5f0e02
+2025-07-07T18:14:45.6803186Z ##[group]Run actions/cache@v4
+2025-07-07T18:14:45.6803452Z with:
+2025-07-07T18:14:45.6803617Z   path: libs/brisk/
+
+2025-07-07T18:14:45.6804021Z   key: brisk-prebuilt-Windows-ee5a4d5b7e3ade239c60c698873b3453ccb22be96a633ab1306eaccd8dbda048
+2025-07-07T18:14:45.6804503Z   restore-keys: brisk-prebuilt-Windows-
+
+2025-07-07T18:14:45.6804767Z   enableCrossOsArchive: false
+2025-07-07T18:14:45.6804978Z   fail-on-cache-miss: false
+2025-07-07T18:14:45.6805163Z   lookup-only: false
+2025-07-07T18:14:45.6805337Z   save-always: false
+2025-07-07T18:14:45.6805491Z env:
+2025-07-07T18:14:45.6805630Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:45.6805824Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:45.6806003Z ##[endgroup]
+2025-07-07T18:14:46.4013168Z Cache hit for: brisk-prebuilt-Windows-ee5a4d5b7e3ade239c60c698873b3453ccb22be96a633ab1306eaccd8dbda048
+2025-07-07T18:14:46.8058100Z Received 1344 of 1344 (100.0%), 0.0 MBs/sec
+2025-07-07T18:14:46.8060956Z Cache Size: ~0 MB (1344 B)
+2025-07-07T18:14:46.8089218Z [command]"C:\Program Files\Git\usr\bin\tar.exe" -xf D:/a/_temp/acea5e59-d43b-4886-8458-8674d9551837/cache.tzst -P -C D:/a/clap-jules/clap-jules --force-local --use-compress-program "zstd -d"
+2025-07-07T18:14:46.9078018Z Cache restored successfully
+2025-07-07T18:14:47.1404971Z Cache restored from key: brisk-prebuilt-Windows-ee5a4d5b7e3ade239c60c698873b3453ccb22be96a633ab1306eaccd8dbda048
+2025-07-07T18:14:47.1643346Z ##[group]Run microsoft/setup-msbuild@v2
+2025-07-07T18:14:47.1643651Z with:
+2025-07-07T18:14:47.1644002Z   msbuild-architecture: x86
+2025-07-07T18:14:47.1644198Z env:
+2025-07-07T18:14:47.1644354Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:47.1644566Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:47.1644759Z ##[endgroup]
+2025-07-07T18:14:47.2903769Z [command]C:\ProgramData\Chocolatey\bin\vswhere.exe -products * -requires Microsoft.Component.MSBuild -property installationPath -latest
+2025-07-07T18:14:47.7260983Z C:\Program Files\Microsoft Visual Studio\2022\Enterprise
+2025-07-07T18:14:47.7535847Z ##[group]Run cmake . -B build
+2025-07-07T18:14:47.7536254Z [36;1mcmake . -B build[0m
+2025-07-07T18:14:47.7924036Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2025-07-07T18:14:47.7924469Z env:
+2025-07-07T18:14:47.7924676Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:47.7924939Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:47.7925196Z ##[endgroup]
+2025-07-07T18:14:48.5579312Z -- Building for: Visual Studio 17 2022
+2025-07-07T18:14:58.5698371Z -- The CXX compiler identification is MSVC 19.44.35209.0
+2025-07-07T18:14:58.7048985Z -- Detecting CXX compiler ABI info
+2025-07-07T18:15:00.0764441Z -- Detecting CXX compiler ABI info - done
+2025-07-07T18:15:00.0895109Z -- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+2025-07-07T18:15:00.0926540Z -- Detecting CXX compile features
+2025-07-07T18:15:00.1040404Z -- Detecting CXX compile features - done
+2025-07-07T18:15:00.8658348Z -- Could NOT find clap (missing: clap_DIR)
+2025-07-07T18:15:00.8659821Z -- Found CLAP headers in D:/a/clap-jules/clap-jules/libs/clap/include
+2025-07-07T18:15:00.8669029Z -- CLAP version: 1.2.6
+2025-07-07T18:15:01.7683128Z -- The C compiler identification is MSVC 19.44.35209.0
+2025-07-07T18:15:01.7838702Z -- Detecting C compiler ABI info
+2025-07-07T18:15:02.4452531Z -- Detecting C compiler ABI info - done
+2025-07-07T18:15:02.4588486Z -- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+2025-07-07T18:15:02.4592494Z -- Detecting C compile features
+2025-07-07T18:15:02.4598687Z -- Detecting C compile features - done
+2025-07-07T18:15:02.4931315Z -- Found clap-helpers, adding as subdirectory
+2025-07-07T18:15:02.4991861Z CMake Warning (dev) at libs/clap-helpers/CMakeLists.txt:101 (install):
+2025-07-07T18:15:02.4992623Z   Policy CMP0177 is not set: install() DESTINATION paths are normalized.  Run
+2025-07-07T18:15:02.4993315Z   "cmake --help-policy CMP0177" for policy details.  Use the cmake_policy
+2025-07-07T18:15:02.4993682Z   command to set the policy and suppress this warning.
+2025-07-07T18:15:02.4994053Z This warning is for project developers.  Use -Wno-dev to suppress it.
+2025-07-07T18:15:02.4994311Z 
+2025-07-07T18:15:02.4994410Z -- Found boost-di, adding include directory
+2025-07-07T18:15:02.4994673Z -- Found KFR, adding as subdirectory
+2025-07-07T18:15:02.5026601Z -- Detecting target architecture
+2025-07-07T18:15:05.1504465Z -- Default CPU architecture for KFR is sse2 (set KFR_ARCH to override)
+2025-07-07T18:15:05.1505769Z -- Runtime dispatch is enabled for architectures: sse2;sse41;avx;avx2;avx512 (set KFR_ARCHS to change, set KFR_ENABLE_MULTIARCH=OFF to disable)
+2025-07-07T18:15:05.1615356Z -- Found Brisk, creating static library
+2025-07-07T18:15:05.1617004Z -- Brisk: Windows support not yet implemented
+2025-07-07T18:15:05.1619667Z -- CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.
+2025-07-07T18:15:05.1946974Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+2025-07-07T18:15:06.7764412Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+2025-07-07T18:15:06.7765093Z -- Looking for pthread_create in pthreads
+2025-07-07T18:15:07.3322982Z -- Looking for pthread_create in pthreads - not found
+2025-07-07T18:15:07.3323496Z -- Looking for pthread_create in pthread
+2025-07-07T18:15:07.8726766Z -- Looking for pthread_create in pthread - not found
+2025-07-07T18:15:07.8893256Z -- Found Threads: TRUE
+2025-07-07T18:15:07.9123274Z -- Configuring done (19.4s)
+2025-07-07T18:15:08.0532112Z -- Generating done (0.1s)
+2025-07-07T18:15:08.0539960Z -- Build files have been written to: D:/a/clap-jules/clap-jules/build
+2025-07-07T18:15:08.0835564Z ##[group]Run cmake --build build --config Release
+2025-07-07T18:15:08.0835956Z [36;1mcmake --build build --config Release[0m
+2025-07-07T18:15:08.0866517Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2025-07-07T18:15:08.0866822Z env:
+2025-07-07T18:15:08.0866981Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:15:08.0867186Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:15:08.0867385Z ##[endgroup]
+2025-07-07T18:15:08.5234594Z MSBuild version 17.14.10+8b8e13593 for .NET Framework
+2025-07-07T18:15:08.5517024Z 
+2025-07-07T18:15:08.8699166Z   1>Checking Build System
+2025-07-07T18:15:09.0248336Z   Building Custom Rule D:/a/clap-jules/clap-jules/CMakeLists.txt
+2025-07-07T18:15:09.1450366Z   brisk.cpp
+2025-07-07T18:15:09.1954667Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(59,27): error C2039: 'function': is not a member of 'std' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1983567Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1984263Z       D:\a\clap-jules\clap-jules\build\predefined C++ types (compiler internal)(357,11):
+2025-07-07T18:15:09.1984709Z       see declaration of 'std'
+2025-07-07T18:15:09.1984956Z   
+2025-07-07T18:15:09.1985827Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(59,27): error C2061: syntax error: identifier 'function' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1986946Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1987374Z   
+2025-07-07T18:15:09.1988133Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(67,10): error C2039: 'function': is not a member of 'std' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1989096Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1989737Z       D:\a\clap-jules\clap-jules\build\predefined C++ types (compiler internal)(357,11):
+2025-07-07T18:15:09.1990308Z       see declaration of 'std'
+2025-07-07T18:15:09.1990543Z   
+2025-07-07T18:15:09.1991200Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(67,18): error C2143: syntax error: missing ';' before '<' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1991976Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1992243Z   
+2025-07-07T18:15:09.1993103Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(67,10): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1994228Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1994646Z   
+2025-07-07T18:15:09.1995135Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(67,42): error C2238: unexpected token(s) preceding ';' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1995727Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1995962Z   
+2025-07-07T18:15:09.1996397Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(51,31): error C2039: 'max': is not a member of 'std' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1996968Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1997353Z       D:\a\clap-jules\clap-jules\build\predefined C++ types (compiler internal)(357,11):
+2025-07-07T18:15:09.1997710Z       see declaration of 'std'
+2025-07-07T18:15:09.1997893Z   
+2025-07-07T18:15:09.1998328Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(51,52): error C2039: 'min': is not a member of 'std' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.1998864Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.1999462Z       D:\a\clap-jules\clap-jules\build\predefined C++ types (compiler internal)(357,11):
+2025-07-07T18:15:09.1999804Z       see declaration of 'std'
+2025-07-07T18:15:09.1999977Z   
+2025-07-07T18:15:09.2002056Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(51,52): error C3861: 'min': identifier not found [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.2002940Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.2003213Z   
+2025-07-07T18:15:09.2003655Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(51,31): error C3861: 'max': identifier not found [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.2004211Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.2004452Z   
+2025-07-07T18:15:09.2004919Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(60,9): error C2065: 'callback_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.2005509Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.2005747Z   
+2025-07-07T18:15:09.2006217Z D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(60,21): error C2065: 'callback': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.2006802Z   (compiling source file '../libs/brisk/src/brisk.cpp')
+2025-07-07T18:15:09.2007040Z   
+2025-07-07T18:15:09.5032715Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(10,19): error C2039: 'initialized_': is not a member of 'brisk::Application' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5034495Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(8,7):
+2025-07-07T18:15:09.5035282Z       see declaration of 'brisk::Application'
+2025-07-07T18:15:09.5035993Z   
+2025-07-07T18:15:09.5037601Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(12,19): error C2084: function 'void brisk::Application::Initialize(void)' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5039138Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(10,17):
+2025-07-07T18:15:09.5040226Z       see previous definition of 'brisk::Application::Initialize'
+2025-07-07T18:15:09.5041105Z   
+2025-07-07T18:15:09.5042999Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(17,19): error C2084: function 'void brisk::Application::Shutdown(void)' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5044785Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(14,17):
+2025-07-07T18:15:09.5045462Z       see previous definition of 'brisk::Application::Shutdown'
+2025-07-07T18:15:09.5045938Z   
+2025-07-07T18:15:09.5046758Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(22,19): error C2039: 'IsInitialized': is not a member of 'brisk::Application' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5047712Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(8,7):
+2025-07-07T18:15:09.5048284Z       see declaration of 'brisk::Application'
+2025-07-07T18:15:09.5048821Z   
+2025-07-07T18:15:09.5049673Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(233,9): error C2084: function 'brisk::Window::Window(void *)' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5050610Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(21,5):
+2025-07-07T18:15:09.5051162Z       see previous definition of 'brisk::Window::Window'
+2025-07-07T18:15:09.5051559Z   
+2025-07-07T18:15:09.5052556Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(234,55): error C2614: 'brisk::Window': illegal member initialization: 'width_' is not a base or member [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5054217Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(234,68): error C2614: 'brisk::Window': illegal member initialization: 'height_' is not a base or member [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5057638Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(238,10): error C2600: 'brisk::Window::~Window': cannot define a compiler-generated special member function (must be declared in the class first) [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5059703Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(240,14): error C2084: function 'void brisk::Window::SetVisible(bool)' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5060866Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(25,10):
+2025-07-07T18:15:09.5061458Z       see previous definition of 'brisk::Window::SetVisible'
+2025-07-07T18:15:09.5061875Z   
+2025-07-07T18:15:09.5062840Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(245,15): error C2084: function 'void *brisk::Window::GetHandle(void) const' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5064031Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(30,11):
+2025-07-07T18:15:09.5064607Z       see previous definition of 'brisk::Window::GetHandle'
+2025-07-07T18:15:09.5065041Z   
+2025-07-07T18:15:09.5065790Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(249,14): error C2039: 'SetSize': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5066837Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5067408Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5068182Z   
+2025-07-07T18:15:09.5069622Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(250,5): error C2065: 'width_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5071772Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(251,5): error C2065: 'height_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5074270Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(254,14): error C2039: 'BeginDraw': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5075436Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5076021Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5076384Z   
+2025-07-07T18:15:09.5077219Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(255,14): error C2039: 'EndDraw': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5078341Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5078813Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5079078Z   
+2025-07-07T18:15:09.5079797Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(257,14): error C2039: 'DrawKnob': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5080873Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5081392Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5081733Z   
+2025-07-07T18:15:09.5082536Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(261,14): error C2039: 'DrawText': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5083597Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5084119Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5084465Z   
+2025-07-07T18:15:09.5085379Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(265,14): error C2084: function 'void brisk::Window::Render(void)' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5086569Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(34,10):
+2025-07-07T18:15:09.5087159Z       see previous definition of 'brisk::Window::Render'
+2025-07-07T18:15:09.5087573Z   
+2025-07-07T18:15:09.5088480Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(269,14): error C2039: 'InitializePlatform': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5089841Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5090470Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5090820Z   
+2025-07-07T18:15:09.5091684Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(270,14): error C2039: 'CleanupPlatform': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5092821Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5093332Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5093668Z   
+2025-07-07T18:15:09.5094671Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(275,7): error C2084: function 'brisk::Knob::Knob(double,double,double)' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5095913Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(45,5):
+2025-07-07T18:15:09.5096485Z       see previous definition of 'brisk::Knob::Knob'
+2025-07-07T18:15:09.5096883Z   
+2025-07-07T18:15:09.5097880Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(277,7): error C2614: 'brisk::Knob': illegal member initialization: 'x_' is not a base or member [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5099684Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(277,14): error C2614: 'brisk::Knob': illegal member initialization: 'y_' is not a base or member [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5101515Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(277,21): error C2614: 'brisk::Knob': illegal member initialization: 'radius_' is not a base or member [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5103258Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(277,34): error C2614: 'brisk::Knob': illegal member initialization: 'needs_redraw_' is not a base or member [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5104297Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(279,12): error C2084: function 'void brisk::Knob::SetValue(double)' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5104963Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(50,10):
+2025-07-07T18:15:09.5105305Z       see previous definition of 'brisk::Knob::SetValue'
+2025-07-07T18:15:09.5105546Z   
+2025-07-07T18:15:09.5105995Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(283,9): error C2065: 'needs_redraw_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5106939Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(287,14): error C2084: function 'double brisk::Knob::GetValue(void) const' already has a body [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5107630Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(55,12):
+2025-07-07T18:15:09.5107969Z       see previous definition of 'brisk::Knob::GetValue'
+2025-07-07T18:15:09.5108200Z   
+2025-07-07T18:15:09.5108860Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(291,12): error C2511: 'void brisk::Knob::SetCallback(std::function<void (double)>)': overloaded member function not found in 'brisk::Knob' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5109669Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(43,7):
+2025-07-07T18:15:09.5109974Z       see declaration of 'brisk::Knob'
+2025-07-07T18:15:09.5110171Z   
+2025-07-07T18:15:09.5110634Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(292,5): error C2065: 'callback_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5111485Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(295,12): error C2039: 'SetPosition': is not a member of 'brisk::Knob' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5112856Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(43,7):
+2025-07-07T18:15:09.5113159Z       see declaration of 'brisk::Knob'
+2025-07-07T18:15:09.5113351Z   
+2025-07-07T18:15:09.5113853Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(296,5): error C2065: 'x_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5114619Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(297,5): error C2065: 'y_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5115406Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(298,5): error C2065: 'needs_redraw_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5116237Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(301,12): error C2039: 'SetRadius': is not a member of 'brisk::Knob' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5116827Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(43,7):
+2025-07-07T18:15:09.5117125Z       see declaration of 'brisk::Knob'
+2025-07-07T18:15:09.5117312Z   
+2025-07-07T18:15:09.5117747Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(302,5): error C2065: 'radius_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5118565Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(303,5): error C2065: 'needs_redraw_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5119370Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(306,12): error C2039: 'Draw': is not a member of 'brisk::Knob' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5119931Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(43,7):
+2025-07-07T18:15:09.5120220Z       see declaration of 'brisk::Knob'
+2025-07-07T18:15:09.5120412Z   
+2025-07-07T18:15:09.5120857Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(307,9): error C2065: 'needs_redraw_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5121690Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(308,17): error C2039: 'DrawKnob': is not a member of 'brisk::Window' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5122301Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(19,7):
+2025-07-07T18:15:09.5139626Z       see declaration of 'brisk::Window'
+2025-07-07T18:15:09.5140041Z   
+2025-07-07T18:15:09.5140781Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(308,26): error C2065: 'x_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5141666Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(308,30): error C2065: 'y_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5143015Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(308,34): error C2065: 'radius_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5143918Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(308,43): error C2065: 'current_value_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5144800Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(308,59): error C2065: 'min_value_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5145724Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(308,71): error C2065: 'max_value_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5147215Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(309,9): error C2065: 'needs_redraw_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5149083Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(313,12): error C2039: 'NeedsRedraw': is not a member of 'brisk::Knob' [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5150096Z       D:\a\clap-jules\clap-jules\libs\brisk\include\brisk\brisk.h(43,7):
+2025-07-07T18:15:09.5151569Z       see declaration of 'brisk::Knob'
+2025-07-07T18:15:09.5152003Z   
+2025-07-07T18:15:09.5155619Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(313,12): error C2270: 'NeedsRedraw': modifiers not allowed on nonmember functions [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5157715Z D:\a\clap-jules\clap-jules\libs\brisk\src\brisk.cpp(314,12): error C2065: 'needs_redraw_': undeclared identifier [D:\a\clap-jules\clap-jules\build\brisk.vcxproj]
+2025-07-07T18:15:09.5815409Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/googletest/googlemock/CMakeLists.txt
+2025-07-07T18:15:09.6414389Z   gtest-all.cc
+2025-07-07T18:15:12.5155968Z   gmock-all.cc
+2025-07-07T18:15:13.9295825Z   Generating Code...
+2025-07-07T18:15:18.4258210Z   gmock.vcxproj -> D:\a\clap-jules\clap-jules\build\lib\Release\gmock.lib
+2025-07-07T18:15:18.4950468Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/googletest/googlemock/CMakeLists.txt
+2025-07-07T18:15:18.5530711Z   gtest-all.cc
+2025-07-07T18:15:20.4511939Z   gmock-all.cc
+2025-07-07T18:15:21.8159803Z   gmock_main.cc
+2025-07-07T18:15:22.8217112Z   Generating Code...
+2025-07-07T18:15:27.2929761Z   gmock_main.vcxproj -> D:\a\clap-jules\clap-jules\build\lib\Release\gmock_main.lib
+2025-07-07T18:15:27.3526125Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/googletest/googletest/CMakeLists.txt
+2025-07-07T18:15:27.4107496Z   gtest-all.cc
+2025-07-07T18:15:32.9605855Z   gtest.vcxproj -> D:\a\clap-jules\clap-jules\build\lib\Release\gtest.lib
+2025-07-07T18:15:33.0218848Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/googletest/googletest/CMakeLists.txt
+2025-07-07T18:15:33.0799196Z   gtest_main.cc
+2025-07-07T18:15:34.0529038Z   gtest_main.vcxproj -> D:\a\clap-jules\clap-jules\build\lib\Release\gtest_main.lib
+2025-07-07T18:15:34.1556914Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/kfr/src/dsp/CMakeLists.txt
+2025-07-07T18:15:34.2177390Z   biquad.cpp
+2025-07-07T18:15:39.8598836Z   fir.cpp
+2025-07-07T18:15:43.5816146Z   sample_rate_conversion.cpp
+2025-07-07T18:15:48.1185934Z   version.cpp
+2025-07-07T18:15:48.1371258Z   Generating Code...
+2025-07-07T18:15:59.2935821Z   kfr_dsp_avx.vcxproj -> D:\a\clap-jules\clap-jules\build\libs\kfr\lib\kfr_dsp_avx.lib
+2025-07-07T18:15:59.3534918Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/kfr/src/dsp/CMakeLists.txt
+2025-07-07T18:15:59.4108470Z   biquad.cpp
+2025-07-07T18:16:05.1988032Z   fir.cpp
+2025-07-07T18:16:09.7612918Z   sample_rate_conversion.cpp
+2025-07-07T18:16:15.0491713Z   version.cpp
+2025-07-07T18:16:15.0681413Z   Generating Code...
+2025-07-07T18:16:26.0736817Z   kfr_dsp_avx2.vcxproj -> D:\a\clap-jules\clap-jules\build\libs\kfr\lib\kfr_dsp_avx2.lib
+2025-07-07T18:16:26.1349687Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/kfr/src/dsp/CMakeLists.txt
+2025-07-07T18:16:26.2025339Z   biquad.cpp
+2025-07-07T18:16:31.9495797Z   fir.cpp
+2025-07-07T18:16:38.8410654Z   sample_rate_conversion.cpp
+2025-07-07T18:16:46.2464990Z   version.cpp
+2025-07-07T18:16:46.2663292Z   Generating Code...
+2025-07-07T18:16:56.8890832Z   kfr_dsp_avx512.vcxproj -> D:\a\clap-jules\clap-jules\build\libs\kfr\lib\kfr_dsp_avx512.lib
+2025-07-07T18:16:56.9498780Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/kfr/src/dsp/CMakeLists.txt
+2025-07-07T18:16:57.0090947Z   biquad.cpp
+2025-07-07T18:17:03.0430577Z   fir.cpp
+2025-07-07T18:17:06.4848036Z   sample_rate_conversion.cpp
+2025-07-07T18:17:10.4721247Z   version.cpp
+2025-07-07T18:17:10.4901584Z   Generating Code...
+2025-07-07T18:17:22.7256794Z   kfr_dsp_sse2.vcxproj -> D:\a\clap-jules\clap-jules\build\libs\kfr\lib\kfr_dsp_sse2.lib
+2025-07-07T18:17:22.7873650Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/kfr/src/dsp/CMakeLists.txt
+2025-07-07T18:17:22.8461306Z   biquad.cpp
+2025-07-07T18:17:28.7244258Z   fir.cpp
+2025-07-07T18:17:32.0768066Z   sample_rate_conversion.cpp
+2025-07-07T18:17:36.0612602Z   version.cpp
+2025-07-07T18:17:36.0792503Z   Generating Code...
+2025-07-07T18:17:47.3219327Z   kfr_dsp_sse41.vcxproj -> D:\a\clap-jules\clap-jules\build\libs\kfr\lib\kfr_dsp_sse41.lib
+2025-07-07T18:17:47.3806668Z   Building Custom Rule D:/a/clap-jules/clap-jules/libs/kfr/src/io/CMakeLists.txt
+2025-07-07T18:17:47.4373639Z   audiofile-impl.cpp
+2025-07-07T18:17:49.2205524Z   version.cpp
+2025-07-07T18:17:49.2385150Z   Generating Code...
+2025-07-07T18:17:52.0163783Z   kfr_io.vcxproj -> D:\a\clap-jules\clap-jules\build\libs\kfr\lib\kfr_io.lib
+2025-07-07T18:17:52.2679182Z ##[error]Process completed with exit code 1.
+2025-07-07T18:17:52.2847883Z Post job cleanup.
+2025-07-07T18:17:52.4904625Z [command]"C:\Program Files\Git\bin\git.exe" version
+2025-07-07T18:17:52.5116642Z git version 2.50.0.windows.2
+2025-07-07T18:17:52.5180065Z Temporarily overriding HOME='D:\a\_temp\c790cc10-a307-4db2-a236-9808806bc109' before making global git config changes
+2025-07-07T18:17:52.5180711Z Adding repository directory to the temporary git global config as a safe directory
+2025-07-07T18:17:52.5190937Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\clap-jules\clap-jules
+2025-07-07T18:17:52.5419922Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2025-07-07T18:17:52.5640891Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2025-07-07T18:17:53.0079946Z Entering 'libs/boost-di'
+2025-07-07T18:17:53.0692317Z Entering 'libs/clap'
+2025-07-07T18:17:53.1292172Z Entering 'libs/clap-helpers'
+2025-07-07T18:17:53.1907340Z Entering 'libs/googletest'
+2025-07-07T18:17:53.2521447Z Entering 'libs/kfr'
+2025-07-07T18:17:53.3186867Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-07-07T18:17:53.3374992Z http.https://github.com/.extraheader
+2025-07-07T18:17:53.3407612Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+2025-07-07T18:17:53.3624188Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2025-07-07T18:17:53.7753370Z Entering 'libs/boost-di'
+2025-07-07T18:17:53.8213391Z http.https://github.com/.extraheader
+2025-07-07T18:17:53.8537455Z Entering 'libs/clap'
+2025-07-07T18:17:53.8992797Z http.https://github.com/.extraheader
+2025-07-07T18:17:53.9316573Z Entering 'libs/clap-helpers'
+2025-07-07T18:17:53.9770038Z http.https://github.com/.extraheader
+2025-07-07T18:17:54.0092193Z Entering 'libs/googletest'
+2025-07-07T18:17:54.0554714Z http.https://github.com/.extraheader
+2025-07-07T18:17:54.0884031Z Entering 'libs/kfr'
+2025-07-07T18:17:54.1341256Z http.https://github.com/.extraheader
+2025-07-07T18:17:54.1874794Z Cleaning up orphan processes
+2025-07-07T18:17:54.2288900Z Terminate orphan process: pid (4300) (vctip)

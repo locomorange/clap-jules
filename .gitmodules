@@ -7,6 +7,16 @@
 [submodule "clap-helpers"]
 	path = libs/clap-helpers
 	url = https://github.com/free-audio/clap-helpers.git
+[submodule "boost-di"]
+	path = libs/boost-di
+	url = https://github.com/boost-ext/di.git
+[submodule "kfr"]
+	path = libs/kfr
+	url = https://github.com/kfrlib/kfr.git
 [submodule "vcpkg"]
 	path = libs/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
+
+[submodule "brisk"]
+	path = libs/brisk
+	url = https://github.com/locomorange/brisk.git

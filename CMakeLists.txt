@@ -1,59 +1,148 @@
-cmake_minimum_required(VERSION 3.16)
-project(MyClapPlugin VERSION 0.0.1 LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-
-# Try to find CLAP automatically, then try to find it in a fixed location.
-# This is useful for development, but you may want to remove it for production.
-# If you want to use a custom location, you can set CLAP_PATH before running cmake.
-# For example: cmake -DCLAP_PATH=/path/to/clap ..
-find_package(clap CONFIG)
-if (NOT CLAP_FOUND)
-    if (DEFINED ENV{CLAP_PATH})
-        set(CLAP_PATH $ENV{CLAP_PATH})
-    elseif(DEFINED CLAP_PATH)
-        # CLAP_PATH is already set (e.g. by cmake -DCLAP_PATH=...)
-    else()
-        # Try a default location (e.g. a submodule)
-        set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
-    endif()
-
-    if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
-        message(STATUS "Found CLAP headers in ${CLAP_PATH}/include")
-    else()
-        message(FATAL_ERROR "Could not find CLAP headers in ${CLAP_PATH}/include. Please set CLAP_PATH to the directory containing the CLAP SDK.")
-    endif()
-
-    # Add clap as a subdirectory.
-    # This will build clap if it's not already built.
-    # This also makes the clap targets available to us.
-    add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
+# vcpkgツールチェーンファイルをセット
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/libs/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 endif()
+
+# Initialize Brisk CMake modules. This must be done before the first project directive.
+set(BRISK_SUBDIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/brisk/")
+# Set Brisk configuration similar to build-brisk-full.sh
+# クロスプラットフォーム対応: OSごとにVCPKG_TARGET_TRIPLETを自動設定（CIで上書きも可）
+if(NOT DEFINED VCPKG_TARGET_TRIPLET)
+    if(WIN32)
+        set(VCPKG_TARGET_TRIPLET "x64-windows-static-md" CACHE STRING "Vcpkg target triplet")
+    elseif(APPLE)
+        set(VCPKG_TARGET_TRIPLET "arm64-osx" CACHE STRING "Vcpkg target triplet")
+    else()
+        set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "Vcpkg target triplet")
+    endif()
+endif()
+#set(VCPKG_INSTALLED_DIR "${BRISK_DIR}/vcpkg_installed")
+set(VCPKG_MANIFEST_INSTALL ON)
+#set(CMAKE_INSTALL_PREFIX dist)
+set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/vcpkg/installed")
+
+
+# Set pack_resource tool path for Brisk
+#include(${BRISK_DIR}/cmake/brisk.cmake)
+
+cmake_minimum_required(VERSION 3.22)
+project(MyClapPlugin VERSION 0.0.1 LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Find required packages
+
+# Find CLAP
+if (DEFINED ENV{CLAP_PATH})
+    set(CLAP_PATH $ENV{CLAP_PATH})
+elseif(NOT DEFINED CLAP_PATH)
+    set(CLAP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap")
+endif()
+
+if (EXISTS "${CLAP_PATH}/include/clap/clap.h")
+    message(STATUS "Found CLAP headers in ${CLAP_PATH}/include")
+    add_subdirectory(${CLAP_PATH} ${CMAKE_CURRENT_BINARY_DIR}/clap)
+else()
+    message(FATAL_ERROR "Could not find CLAP headers")
+endif()
+
+# Include Brisk source. This must be done after the first project directive.
+if (NOT _BRISK_INCLUDE_DIR)
+    
+else()
+    #message(FATAL_ERROR "Could not find Brisk package")
+endif()
+# Add Brisk library - disable examples and unnecessary targets
+set(BRISK_BUILD_EXAMPLES OFF CACHE BOOL "Don't build Brisk examples")
+set(BRISK_BUILD_TESTS OFF CACHE BOOL "Don't build Brisk tests")
+add_subdirectory(${BRISK_SUBDIR} brisk-bin)
+
+# Ensure resource bundling helpers are available in this scope
+include(${BRISK_SUBDIR}/cmake/scripts/compile_resources.cmake)
+
+#find_package(Brisk CONFIG REQUIRED)
+#brisk_setup()
+
+
+# Helper function to setup common target properties
+function(setup_target_deps target)
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    
+    # boost-di (header-only)
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include/boost/di.hpp")
+        target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include")
+    endif()
+    
+    # KFR
+    if (TARGET kfr)
+        target_link_libraries(${target} PRIVATE kfr)
+    endif()
+    
+    # Brisk
+    if (TARGET brisk-widgets)
+        target_compile_definitions(${target} PRIVATE BRISK_FOUND=1 BRISK_WEBGPU=1)
+        target_link_libraries(${target} PRIVATE 
+            brisk-widgets
+            brisk-window
+            brisk-gui
+            brisk-graphics
+            brisk-core
+        )
+    endif()
+endfunction()
 
 # Add clap-helpers if available
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-helpers/CMakeLists.txt")
-    message(STATUS "Found clap-helpers, adding as subdirectory")
     set(CLAP_HELPERS_BUILD_TESTS OFF CACHE BOOL "Don't build clap-helpers tests")
-    set(CLAP_HELPERS_NO_CLAP_IS_FATAL OFF CACHE BOOL "Don't make missing clap fatal for clap-helpers")
     add_subdirectory(libs/clap-helpers)
 endif()
 
-# Add your plugin target here
-add_library(my_clap_plugin SHARED my_plugin.cpp)
+# Add KFR library
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/kfr/CMakeLists.txt")
+    set(KFR_ENABLE_TESTS OFF CACHE BOOL "Don't build KFR tests")
+    set(KFR_ENABLE_EXAMPLES OFF CACHE BOOL "Don't build KFR examples")
+    set(KFR_ENABLE_TOOLS OFF CACHE BOOL "Don't build KFR tools")
+    add_subdirectory(libs/kfr)
+endif()
+
+# Add plugin target
+add_library(my_clap_plugin SHARED 
+    my_plugin.cpp
+    src/plugin_model.h
+    src/audio_processor.h  
+    src/plugin_viewmodel.h
+)
+
+# Check for Brisk integration sources
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/brisk_clap_integration.h")
+    target_sources(my_clap_plugin PRIVATE
+        src/brisk_clap_integration.h
+        src/brisk_clap_integration.cpp
+    )
+endif()
+
+# Basic linking and setup
 target_link_libraries(my_clap_plugin PRIVATE clap)
-# On Windows, CLAP plugins are .clap files, but on Linux/macOS they are .so/.dylib
+setup_target_deps(my_clap_plugin)
+
+# Add Brisk resources to provide resourceEntries symbols required by GUI/fonts
+brisk_bundle_resources(my_clap_plugin)
+
+# Set plugin properties
 if (WIN32)
-  set_target_properties(my_clap_plugin PROPERTIES PREFIX "" SUFFIX ".clap")
+    set_target_properties(my_clap_plugin PROPERTIES 
+        PREFIX "" 
+        SUFFIX ".clap"
+        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+    )
 else()
-  set_target_properties(my_clap_plugin PROPERTIES PREFIX "") # Use default suffix (.so or .dylib)
+    set_target_properties(my_clap_plugin PROPERTIES PREFIX "")
 endif()
 set_target_properties(my_clap_plugin PROPERTIES OUTPUT_NAME "MyFirstClapPlugin")
 
-
-# Install the plugin (optional, but good practice)
-# This will install the plugin to <prefix>/lib/clap on Linux/macOS
-# and <prefix>/CLAP on Windows.
+# Install
 if(WIN32)
     set(CLAP_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/CLAP")
 else()
@@ -61,14 +150,15 @@ else()
 endif()
 install(TARGETS my_clap_plugin DESTINATION ${CLAP_INSTALL_DIR})
 
-message(STATUS "CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.")
-
-# Google Test integration
+# Tests
 add_subdirectory(libs/googletest)
 enable_testing()
 
 add_executable(my_plugin_tests test/test_my_plugin.cpp)
 target_link_libraries(my_plugin_tests PRIVATE gtest gtest_main my_clap_plugin)
+setup_target_deps(my_plugin_tests)
 
 include(GoogleTest)
 gtest_discover_tests(my_plugin_tests)
+
+message(STATUS "CMake configuration complete")

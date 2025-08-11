@@ -66,11 +66,17 @@ case "$OS_TYPE" in
             echo "No previous screenshot found in PR cache"
         fi
         
-        # Start virtual display
+    # Start virtual display
         export DISPLAY=:99
         Xvfb :99 -screen 0 1024x768x24 &
         XVFB_PID=$!
-        sleep 5
+    sleep 5
+
+    # Prefer Vulkan (lavapipe) for Dawn/WebGPU to work under Xvfb
+    export WGPU_BACKEND="vulkan"
+    export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/lvp_icd.x86_64.json:/usr/share/vulkan/icd.d/lvp_icd.i686.json"
+    export VK_LAYER_PATH="/usr/share/vulkan/explicit_layer.d"
+    export MESA_LOADER_DRIVER_OVERRIDE="lavapipe"
         
         # Set up Qt6 library path for runtime
         if [ -n "${QT_ROOT_DIR}" ] && [ -d "${QT_ROOT_DIR}/lib" ]; then
@@ -80,7 +86,8 @@ case "$OS_TYPE" in
         timeout "${TIMEOUT_DURATION}s" bash -c "
             '$CLAP_HOST_EXEC' --clap-plugin '$PLUGIN_FILE' &
             CLAP_PID=\$!
-            sleep 10
+            # Give the host a bit more time to render first frame under virtual display
+            sleep 12
             
             # Take screenshot
             import -window root screenshots/clap-host-linux-screenshot-new.png 2>/dev/null || \

@@ -7,11 +7,21 @@ VCPKG_DIR="libs/vcpkg"
 
 echo "=== Setting up vcpkg for CLAP Host build on $OS_TYPE ==="
 
-# サブモジュールとしてlibs/vcpkgを利用
+ # サブモジュールとしてlibs/vcpkgを利用
 if [ ! -d "$VCPKG_DIR" ] || [ ! -e "$VCPKG_DIR/.git" ]; then
     echo "Error: libs/vcpkg submodule not found. Please initialize submodules."
     exit 1
 fi
+
+# vcpkgサブモジュールの履歴を完全に取得
+cd "$VCPKG_DIR"
+if git rev-parse --is-shallow-repository >/dev/null 2>&1 && git rev-parse --is-shallow-repository | grep -q true; then
+    echo "Fetching full vcpkg history (unshallow)..."
+    git fetch --unshallow || git fetch --all
+else
+    echo "vcpkg repository is already a full clone."
+fi
+cd -
 
 # Bootstrap vcpkg - 重要！
 echo "Bootstrapping vcpkg..."

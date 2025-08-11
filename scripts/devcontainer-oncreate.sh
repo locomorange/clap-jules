@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+# サブモジュール初期化
+git submodule update --init --recursive
 
 # 環境変数の設定
 export CLAP_VALIDATOR_VERSION=0.3.2
@@ -48,6 +50,9 @@ if [ ! -d "$CLAP_HOST_BASE" ]; then
   git submodule update --init --recursive
   cd -
 fi
+
+# Briskフルビルド
+./scripts/build-brisk-full.sh
 
 # CLAP Hostのビルド
 ./scripts/build-clap-host.sh linux

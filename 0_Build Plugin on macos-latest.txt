@@ -1,0 +1,364 @@
+﻿2025-07-07T18:14:22.9912540Z Current runner version: '2.325.0'
+2025-07-07T18:14:22.9932360Z ##[group]Operating System
+2025-07-07T18:14:22.9932870Z macOS
+2025-07-07T18:14:22.9933180Z 14.7.6
+2025-07-07T18:14:22.9933490Z 23H626
+2025-07-07T18:14:22.9933800Z ##[endgroup]
+2025-07-07T18:14:22.9934140Z ##[group]Runner Image
+2025-07-07T18:14:22.9934510Z Image: macos-14-arm64
+2025-07-07T18:14:22.9934880Z Version: 20250630.1634
+2025-07-07T18:14:22.9935670Z Included Software: https://github.com/actions/runner-images/blob/macos-14-arm64/20250630.1634/images/macos/macos-14-arm64-Readme.md
+2025-07-07T18:14:22.9936760Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-14-arm64%2F20250630.1634
+2025-07-07T18:14:22.9937480Z ##[endgroup]
+2025-07-07T18:14:22.9938000Z ##[group]Runner Image Provisioner
+2025-07-07T18:14:22.9938430Z 2.0.437.1+b8a73daf41ec39b19236c1d542c9f2348c5b7c2d
+2025-07-07T18:14:22.9938850Z ##[endgroup]
+2025-07-07T18:14:22.9939750Z ##[group]GITHUB_TOKEN Permissions
+2025-07-07T18:14:22.9941640Z Contents: write
+2025-07-07T18:14:22.9942020Z Metadata: read
+2025-07-07T18:14:22.9942390Z PullRequests: write
+2025-07-07T18:14:22.9942750Z ##[endgroup]
+2025-07-07T18:14:22.9944430Z Secret source: Actions
+2025-07-07T18:14:22.9944930Z Prepare workflow directory
+2025-07-07T18:14:23.0375780Z Prepare all required actions
+2025-07-07T18:14:23.0402920Z Getting action download info
+2025-07-07T18:14:23.2987550Z ##[group]Download immutable action package 'actions/checkout@v4'
+2025-07-07T18:14:23.2988230Z Version: 4.2.2
+2025-07-07T18:14:23.2988830Z Digest: sha256:ccb2698953eaebd21c7bf6268a94f9c26518a7e38e27e0b83c1fe1ad049819b1
+2025-07-07T18:14:23.2989550Z Source commit SHA: 11bd71901bbe5b1630ceea73d27597364c9af683
+2025-07-07T18:14:23.2989980Z ##[endgroup]
+2025-07-07T18:14:23.5864310Z ##[group]Download immutable action package 'actions/cache@v4'
+2025-07-07T18:14:23.5864880Z Version: 4.2.3
+2025-07-07T18:14:23.5865350Z Digest: sha256:c8a3bb963e1f1826d8fcc8d1354f0dd29d8ac1db1d4f6f20247055ae11b81ed9
+2025-07-07T18:14:23.5865990Z Source commit SHA: 5a3ec84eff668545956fd18022155c47e93e2684
+2025-07-07T18:14:23.5866450Z ##[endgroup]
+2025-07-07T18:14:23.7219040Z Download action repository 'microsoft/setup-msbuild@v2' (SHA:6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce)
+2025-07-07T18:14:24.8940910Z ##[group]Download immutable action package 'actions/upload-artifact@v4'
+2025-07-07T18:14:24.8941760Z Version: 4.6.2
+2025-07-07T18:14:24.8942500Z Digest: sha256:290722aa3281d5caf23d0acdc3dbeb3424786a1a01a9cc97e72f147225e37c38
+2025-07-07T18:14:24.8945210Z Source commit SHA: ea165f8d65b6e75b540449e92b4886f43607fa02
+2025-07-07T18:14:24.8945920Z ##[endgroup]
+2025-07-07T18:14:25.0643340Z Complete job name: Build Plugin on macos-latest
+2025-07-07T18:14:25.1159010Z ##[group]Run actions/checkout@v4
+2025-07-07T18:14:25.1159720Z with:
+2025-07-07T18:14:25.1160030Z   submodules: recursive
+2025-07-07T18:14:25.1160420Z   repository: locomorange/clap-jules
+2025-07-07T18:14:25.1161180Z   token: ***
+2025-07-07T18:14:25.1161480Z   ssh-strict: true
+2025-07-07T18:14:25.1161800Z   ssh-user: git
+2025-07-07T18:14:25.1162260Z   persist-credentials: true
+2025-07-07T18:14:25.1162660Z   clean: true
+2025-07-07T18:14:25.1163000Z   sparse-checkout-cone-mode: true
+2025-07-07T18:14:25.1163440Z   fetch-depth: 1
+2025-07-07T18:14:25.1163760Z   fetch-tags: false
+2025-07-07T18:14:25.1164100Z   show-progress: true
+2025-07-07T18:14:25.1164440Z   lfs: false
+2025-07-07T18:14:25.1164750Z   set-safe-directory: true
+2025-07-07T18:14:25.1165260Z env:
+2025-07-07T18:14:25.1165560Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:25.1165980Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:25.1166370Z ##[endgroup]
+2025-07-07T18:14:25.4012870Z Syncing repository: locomorange/clap-jules
+2025-07-07T18:14:25.4014500Z ##[group]Getting Git version info
+2025-07-07T18:14:25.4015170Z Working directory is '/Users/runner/work/clap-jules/clap-jules'
+2025-07-07T18:14:25.4016160Z [command]/opt/homebrew/bin/git version
+2025-07-07T18:14:25.4570780Z git version 2.50.0
+2025-07-07T18:14:25.4597160Z ##[endgroup]
+2025-07-07T18:14:25.4602280Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/e3b9a27b-b162-4fdd-aa2f-a626b263af9f/.gitconfig'
+2025-07-07T18:14:25.4608660Z Temporarily overriding HOME='/Users/runner/work/_temp/e3b9a27b-b162-4fdd-aa2f-a626b263af9f' before making global git config changes
+2025-07-07T18:14:25.4610190Z Adding repository directory to the temporary git global config as a safe directory
+2025-07-07T18:14:25.4612500Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/clap-jules/clap-jules
+2025-07-07T18:14:25.4691590Z Deleting the contents of '/Users/runner/work/clap-jules/clap-jules'
+2025-07-07T18:14:25.4693700Z ##[group]Initializing the repository
+2025-07-07T18:14:25.4698080Z [command]/opt/homebrew/bin/git init /Users/runner/work/clap-jules/clap-jules
+2025-07-07T18:14:25.5126820Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-07-07T18:14:25.5128120Z hint: is subject to change. To configure the initial branch name to use in all
+2025-07-07T18:14:25.5129190Z hint: of your new repositories, which will suppress this warning, call:
+2025-07-07T18:14:25.5130410Z hint:
+2025-07-07T18:14:25.5131020Z hint: 	git config --global init.defaultBranch <name>
+2025-07-07T18:14:25.5131660Z hint:
+2025-07-07T18:14:25.5132250Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-07-07T18:14:25.5133370Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-07-07T18:14:25.5134070Z hint:
+2025-07-07T18:14:25.5134390Z hint: 	git branch -m <name>
+2025-07-07T18:14:25.5134780Z hint:
+2025-07-07T18:14:25.5135360Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-07-07T18:14:25.5136380Z Initialized empty Git repository in /Users/runner/work/clap-jules/clap-jules/.git/
+2025-07-07T18:14:25.5138210Z [command]/opt/homebrew/bin/git remote add origin https://github.com/locomorange/clap-jules
+2025-07-07T18:14:25.5187370Z ##[endgroup]
+2025-07-07T18:14:25.5188020Z ##[group]Disabling automatic garbage collection
+2025-07-07T18:14:25.5189790Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2025-07-07T18:14:25.5230170Z ##[endgroup]
+2025-07-07T18:14:25.5230770Z ##[group]Setting up auth
+2025-07-07T18:14:25.5233080Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-07-07T18:14:25.5272010Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-07-07T18:14:25.5878980Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-07-07T18:14:25.5923320Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-07-07T18:14:25.6371430Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-07-07T18:14:25.6439050Z ##[endgroup]
+2025-07-07T18:14:25.6440510Z ##[group]Fetching the repository
+2025-07-07T18:14:25.6445390Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +8bc0ae0845ed3eb27d31b668458d1b753e5f0e02:refs/remotes/pull/112/merge
+2025-07-07T18:14:26.4185390Z From https://github.com/locomorange/clap-jules
+2025-07-07T18:14:26.4186330Z  * [new ref]         8bc0ae0845ed3eb27d31b668458d1b753e5f0e02 -> pull/112/merge
+2025-07-07T18:14:26.4245310Z ##[endgroup]
+2025-07-07T18:14:26.4245990Z ##[group]Determining the checkout info
+2025-07-07T18:14:26.4246750Z ##[endgroup]
+2025-07-07T18:14:26.4247260Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2025-07-07T18:14:26.4317830Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2025-07-07T18:14:26.4365220Z ##[group]Checking out the ref
+2025-07-07T18:14:26.4369010Z [command]/opt/homebrew/bin/git checkout --progress --force refs/remotes/pull/112/merge
+2025-07-07T18:14:26.4559660Z HEAD is now at 8bc0ae0 Merge d6fd8304ba06b8ff6be9546da2a7387fd2645af2 into f6eec128bf4b9c65ec55eb085f3cc1402adbd933
+2025-07-07T18:14:26.4843950Z ##[endgroup]
+2025-07-07T18:14:26.4858790Z ##[group]Setting up auth for fetching submodules
+2025-07-07T18:14:26.4859890Z [command]/opt/homebrew/bin/git config --global http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-07-07T18:14:26.4861940Z [command]/opt/homebrew/bin/git config --global --unset-all url.https://github.com/.insteadOf
+2025-07-07T18:14:26.4864010Z [command]/opt/homebrew/bin/git config --global --add url.https://github.com/.insteadOf git@github.com:
+2025-07-07T18:14:26.4866050Z [command]/opt/homebrew/bin/git config --global --add url.https://github.com/.insteadOf org-47374565@github.com:
+2025-07-07T18:14:26.4868300Z ##[endgroup]
+2025-07-07T18:14:26.4869340Z ##[group]Fetching submodules
+2025-07-07T18:14:26.4870180Z [command]/opt/homebrew/bin/git submodule sync --recursive
+2025-07-07T18:14:26.5652590Z [command]/opt/homebrew/bin/git -c protocol.version=2 submodule update --init --force --depth=1 --recursive
+2025-07-07T18:14:26.6235640Z Submodule 'libs/boost-di' (https://github.com/boost-ext/di.git) registered for path 'libs/boost-di'
+2025-07-07T18:14:26.6238950Z Submodule 'clap' (https://github.com/free-audio/clap.git) registered for path 'libs/clap'
+2025-07-07T18:14:26.6243410Z Submodule 'libs/clap-helpers' (https://github.com/free-audio/clap-helpers.git) registered for path 'libs/clap-helpers'
+2025-07-07T18:14:26.6288540Z Submodule 'googletest' (https://github.com/google/googletest.git) registered for path 'libs/googletest'
+2025-07-07T18:14:26.6290340Z Submodule 'libs/kfr' (https://github.com/kfrlib/kfr.git) registered for path 'libs/kfr'
+2025-07-07T18:14:26.6369500Z Cloning into '/Users/runner/work/clap-jules/clap-jules/libs/boost-di'...
+2025-07-07T18:14:28.7355840Z Cloning into '/Users/runner/work/clap-jules/clap-jules/libs/clap'...
+2025-07-07T18:14:30.2296720Z Cloning into '/Users/runner/work/clap-jules/clap-jules/libs/clap-helpers'...
+2025-07-07T18:14:31.2624440Z Cloning into '/Users/runner/work/clap-jules/clap-jules/libs/googletest'...
+2025-07-07T18:14:32.5925340Z Cloning into '/Users/runner/work/clap-jules/clap-jules/libs/kfr'...
+2025-07-07T18:14:34.6765870Z Submodule path 'libs/boost-di': checked out '20b6454c889f23c1e7c9eb5136cd7e3d6f6d718d'
+2025-07-07T18:14:34.7181020Z Submodule path 'libs/clap': checked out '69a69252fdd6ac1d06e246d9a04c0a89d9607a17'
+2025-07-07T18:14:34.7444860Z Submodule path 'libs/clap-helpers': checked out '58ab81b1dc8219e859529c1306f364bb3aedf7d5'
+2025-07-07T18:14:36.8308250Z From https://github.com/google/googletest
+2025-07-07T18:14:36.8417840Z  * branch            52eb8108c5bdec04579160ae17225d66034bd723 -> FETCH_HEAD
+2025-07-07T18:14:36.9198570Z Submodule path 'libs/googletest': checked out '52eb8108c5bdec04579160ae17225d66034bd723'
+2025-07-07T18:14:37.1279200Z Submodule path 'libs/kfr': checked out '0e964b9feaba938ae6e40098d5556279617199b5'
+2025-07-07T18:14:37.1432440Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local gc.auto 0
+2025-07-07T18:14:37.2362950Z Entering 'libs/boost-di'
+2025-07-07T18:14:37.2554480Z Entering 'libs/clap'
+2025-07-07T18:14:37.2721630Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:37.2870990Z Entering 'libs/googletest'
+2025-07-07T18:14:37.3070560Z Entering 'libs/kfr'
+2025-07-07T18:14:37.3278920Z ##[endgroup]
+2025-07-07T18:14:37.3279360Z ##[group]Persisting credentials for submodules
+2025-07-07T18:14:37.3282130Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'url\.https\:\/\/github\.com\/\.insteadOf' && git config --local --unset-all 'url.https://github.com/.insteadOf' || :"
+2025-07-07T18:14:37.3927330Z Entering 'libs/boost-di'
+2025-07-07T18:14:37.4077960Z Entering 'libs/clap'
+2025-07-07T18:14:37.4210020Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:37.4427520Z Entering 'libs/googletest'
+2025-07-07T18:14:37.4589820Z Entering 'libs/kfr'
+2025-07-07T18:14:37.4758400Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local 'http.https://github.com/.extraheader' 'AUTHORIZATION: basic ***' && git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2025-07-07T18:14:37.5402860Z Entering 'libs/boost-di'
+2025-07-07T18:14:37.6176000Z file:/Users/runner/work/clap-jules/clap-jules/.git/modules/libs/boost-di/config	remote.origin.url
+2025-07-07T18:14:37.6535900Z Entering 'libs/clap'
+2025-07-07T18:14:37.7295450Z file:/Users/runner/work/clap-jules/clap-jules/.git/modules/clap/config	remote.origin.url
+2025-07-07T18:14:37.7497420Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:37.7798510Z file:/Users/runner/work/clap-jules/clap-jules/.git/modules/libs/clap-helpers/config	remote.origin.url
+2025-07-07T18:14:37.7899250Z Entering 'libs/googletest'
+2025-07-07T18:14:37.8204850Z file:/Users/runner/work/clap-jules/clap-jules/.git/modules/googletest/config	remote.origin.url
+2025-07-07T18:14:37.8304400Z Entering 'libs/kfr'
+2025-07-07T18:14:37.8905460Z file:/Users/runner/work/clap-jules/clap-jules/.git/modules/libs/kfr/config	remote.origin.url
+2025-07-07T18:14:37.9726370Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --add 'url.https://github.com/.insteadOf' 'git@github.com:'
+2025-07-07T18:14:38.0457110Z Entering 'libs/boost-di'
+2025-07-07T18:14:38.0566020Z Entering 'libs/clap'
+2025-07-07T18:14:38.0674780Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:38.0782930Z Entering 'libs/googletest'
+2025-07-07T18:14:38.0888780Z Entering 'libs/kfr'
+2025-07-07T18:14:38.1014590Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --add 'url.https://github.com/.insteadOf' 'org-47374565@github.com:'
+2025-07-07T18:14:38.1671930Z Entering 'libs/boost-di'
+2025-07-07T18:14:38.1799460Z Entering 'libs/clap'
+2025-07-07T18:14:38.1928750Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:38.2070390Z Entering 'libs/googletest'
+2025-07-07T18:14:38.2215940Z Entering 'libs/kfr'
+2025-07-07T18:14:38.2398200Z ##[endgroup]
+2025-07-07T18:14:38.2480480Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2025-07-07T18:14:38.2537410Z 8bc0ae0845ed3eb27d31b668458d1b753e5f0e02
+2025-07-07T18:14:38.3650140Z ##[group]Run actions/cache@v4
+2025-07-07T18:14:38.3650400Z with:
+2025-07-07T18:14:38.3650530Z   path: libs/brisk/
+
+2025-07-07T18:14:38.3650900Z   key: brisk-prebuilt-macOS-7bd607a752ed87aea800940feadcbbc344fba5e2644cfa7ba62d43229d017367
+2025-07-07T18:14:38.3651280Z   restore-keys: brisk-prebuilt-macOS-
+
+2025-07-07T18:14:38.3651530Z   enableCrossOsArchive: false
+2025-07-07T18:14:38.3652040Z   fail-on-cache-miss: false
+2025-07-07T18:14:38.3652260Z   lookup-only: false
+2025-07-07T18:14:38.3652480Z   save-always: false
+2025-07-07T18:14:38.3652650Z env:
+2025-07-07T18:14:38.3652830Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:38.3653050Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:38.3653310Z ##[endgroup]
+2025-07-07T18:14:38.7143590Z Cache hit for: brisk-prebuilt-macOS-7bd607a752ed87aea800940feadcbbc344fba5e2644cfa7ba62d43229d017367
+2025-07-07T18:14:38.7839340Z Received 1439 of 1439 (100.0%), 0.1 MBs/sec
+2025-07-07T18:14:38.7841360Z Cache Size: ~0 MB (1439 B)
+2025-07-07T18:14:38.7855190Z [command]/opt/homebrew/bin/gtar -xf /Users/runner/work/_temp/6c9a4e6b-fbed-4f73-abd6-8d362344d5cf/cache.tzst -P -C /Users/runner/work/clap-jules/clap-jules --delay-directory-restore --use-compress-program unzstd
+2025-07-07T18:14:38.8326290Z Cache restored successfully
+2025-07-07T18:14:38.8704510Z Cache restored from key: brisk-prebuilt-macOS-7bd607a752ed87aea800940feadcbbc344fba5e2644cfa7ba62d43229d017367
+2025-07-07T18:14:38.8938040Z ##[group]Run cmake . -B build
+2025-07-07T18:14:38.8938310Z [36;1mcmake . -B build[0m
+2025-07-07T18:14:38.9015970Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2025-07-07T18:14:38.9016250Z env:
+2025-07-07T18:14:38.9016420Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:38.9016600Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:38.9016770Z ##[endgroup]
+2025-07-07T18:14:42.2593040Z -- The CXX compiler identification is AppleClang 15.0.0.15000309
+2025-07-07T18:14:42.3067070Z -- Detecting CXX compiler ABI info
+2025-07-07T18:14:43.1030140Z -- Detecting CXX compiler ABI info - done
+2025-07-07T18:14:43.1157840Z -- Check for working CXX compiler: /Applications/Xcode_15.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ - skipped
+2025-07-07T18:14:43.1161820Z -- Detecting CXX compile features
+2025-07-07T18:14:43.1172050Z -- Detecting CXX compile features - done
+2025-07-07T18:14:43.1419560Z -- Could NOT find clap (missing: clap_DIR)
+2025-07-07T18:14:43.1476400Z -- Found CLAP headers in /Users/runner/work/clap-jules/clap-jules/libs/clap/include
+2025-07-07T18:14:43.1485740Z -- CLAP version: 1.2.6
+2025-07-07T18:14:43.2677040Z -- The C compiler identification is AppleClang 15.0.0.15000309
+2025-07-07T18:14:43.2767270Z -- Detecting C compiler ABI info
+2025-07-07T18:14:43.4082670Z -- Detecting C compiler ABI info - done
+2025-07-07T18:14:43.4226850Z -- Check for working C compiler: /Applications/Xcode_15.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc - skipped
+2025-07-07T18:14:43.4230550Z -- Detecting C compile features
+2025-07-07T18:14:43.4234110Z -- Detecting C compile features - done
+2025-07-07T18:14:43.4311710Z -- Found clap-helpers, adding as subdirectory
+2025-07-07T18:14:43.4362440Z CMake Warning (dev) at libs/clap-helpers/CMakeLists.txt:101 (install):
+2025-07-07T18:14:43.4363510Z -- Found boost-di, adding include directory
+2025-07-07T18:14:43.4366590Z   Policy CMP0177 is not set: install() DESTINATION paths are normalized.  Run
+2025-07-07T18:14:43.4368360Z -- Found KFR, adding as subdirectory
+2025-07-07T18:14:43.4369110Z   "cmake --help-policy CMP0177" for policy details.  Use the cmake_policy
+2025-07-07T18:14:43.4369910Z   command to set the policy and suppress this warning.
+2025-07-07T18:14:43.4370900Z This warning is for project developers.  Use -Wno-dev to suppress it.
+2025-07-07T18:14:43.4371440Z 
+2025-07-07T18:14:43.4423300Z -- Default CPU architecture for KFR is neon64 (set by KFR_ARCH)
+2025-07-07T18:14:43.4424650Z -- Runtime dispatch is enabled for architectures: neon64 (set KFR_ARCHS to change, set KFR_ENABLE_MULTIARCH=OFF to disable)
+2025-07-07T18:14:43.4504240Z -- Found Brisk, creating static library
+2025-07-07T18:14:43.4504940Z -- Brisk: macOS support not yet implemented
+2025-07-07T18:14:43.4505830Z -- CMake setup for CLAP plugin is complete. Plugin target 'MyFirstClapPlugin' added.
+2025-07-07T18:14:43.4634010Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+2025-07-07T18:14:43.7012690Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+2025-07-07T18:14:43.7031090Z -- Found Threads: TRUE
+2025-07-07T18:14:43.7144110Z -- Configuring done (4.7s)
+2025-07-07T18:14:43.7968270Z -- Generating done (0.1s)
+2025-07-07T18:14:43.7974470Z -- Build files have been written to: /Users/runner/work/clap-jules/clap-jules/build
+2025-07-07T18:14:43.8029600Z ##[group]Run cmake --build build --config Release
+2025-07-07T18:14:43.8029900Z [36;1mcmake --build build --config Release[0m
+2025-07-07T18:14:43.8081480Z shell: /bin/bash -e {0}
+2025-07-07T18:14:43.8081670Z env:
+2025-07-07T18:14:43.8081840Z   CLAP_VALIDATOR_VERSION: 0.3.2
+2025-07-07T18:14:43.8082050Z   CLAP_INFO_VERSION: v1.2.2
+2025-07-07T18:14:43.8082210Z ##[endgroup]
+2025-07-07T18:14:43.8932660Z [  2%] Building CXX object CMakeFiles/brisk.dir/libs/brisk/src/brisk.cpp.o
+2025-07-07T18:14:43.9146760Z In file included from /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:1:
+2025-07-07T18:14:43.9153030Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:59:22: error: use of undeclared identifier 'std'
+2025-07-07T18:14:43.9158370Z     void SetCallback(std::function<void(double)> callback) {
+2025-07-07T18:14:43.9158970Z                      ^
+2025-07-07T18:14:43.9159900Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:67:5: error: use of undeclared identifier 'std'
+2025-07-07T18:14:43.9160360Z     std::function<void(double)> callback_;
+2025-07-07T18:14:43.9161510Z     ^
+2025-07-07T18:14:43.9161870Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:51:26: error: use of undeclared identifier 'std'
+2025-07-07T18:14:43.9162360Z         current_value_ = std::max(min_value_, std::min(max_value_, value));
+2025-07-07T18:14:43.9162610Z                          ^
+2025-07-07T18:14:43.9162980Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:51:47: error: use of undeclared identifier 'std'
+2025-07-07T18:14:43.9163460Z         current_value_ = std::max(min_value_, std::min(max_value_, value));
+2025-07-07T18:14:43.9163720Z                                               ^
+2025-07-07T18:14:45.0081110Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:10:19: error: no member named 'initialized_' in 'brisk::Application'
+2025-07-07T18:14:45.0082080Z bool Application::initialized_ = false;
+2025-07-07T18:14:45.0082520Z      ~~~~~~~~~~~~~^
+2025-07-07T18:14:45.0083920Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:12:19: error: redefinition of 'Initialize'
+2025-07-07T18:14:45.0084440Z void Application::Initialize() {
+2025-07-07T18:14:45.0084620Z                   ^
+2025-07-07T18:14:45.0085020Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:10:17: note: previous definition is here
+2025-07-07T18:14:45.0085450Z     static void Initialize() {
+2025-07-07T18:14:45.0085610Z                 ^
+2025-07-07T18:14:45.0087230Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:17:19: error: redefinition of 'Shutdown'
+2025-07-07T18:14:45.0087700Z void Application::Shutdown() {
+2025-07-07T18:14:45.0087930Z                   ^
+2025-07-07T18:14:45.0088850Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:14:17: note: previous definition is here
+2025-07-07T18:14:45.0089280Z     static void Shutdown() {
+2025-07-07T18:14:45.0089590Z                 ^
+2025-07-07T18:14:45.0123640Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:22:19: error: out-of-line definition of 'IsInitialized' does not match any declaration in 'brisk::Application'
+2025-07-07T18:14:45.0124340Z bool Application::IsInitialized() {
+2025-07-07T18:14:45.0124660Z                   ^~~~~~~~~~~~~
+2025-07-07T18:14:45.0125170Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:233:9: error: redefinition of 'Window'
+2025-07-07T18:14:45.0125660Z Window::Window(void* parent_handle) 
+2025-07-07T18:14:45.0127320Z         ^
+2025-07-07T18:14:45.0128780Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:21:5: note: previous definition is here
+2025-07-07T18:14:45.0132900Z     Window(void* parent_handle) : parent_handle_(parent_handle) {
+2025-07-07T18:14:45.0133620Z     ^
+2025-07-07T18:14:45.0136800Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:234:55: error: member initializer 'width_' does not name a non-static data member or base class
+2025-07-07T18:14:45.0138480Z     : parent_handle_(parent_handle), visible_(false), width_(400), height_(300) {
+2025-07-07T18:14:45.0139280Z                                                       ^~~~~~~~~~~
+2025-07-07T18:14:45.0140660Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:234:68: error: member initializer 'height_' does not name a non-static data member or base class
+2025-07-07T18:14:45.0142290Z     : parent_handle_(parent_handle), visible_(false), width_(400), height_(300) {
+2025-07-07T18:14:45.0143080Z                                                                    ^~~~~~~~~~~~
+2025-07-07T18:14:45.0144390Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:238:9: error: definition of implicitly declared destructor
+2025-07-07T18:14:45.0145560Z Window::~Window() {}
+2025-07-07T18:14:45.0145950Z         ^
+2025-07-07T18:14:45.0146850Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:240:14: error: redefinition of 'SetVisible'
+2025-07-07T18:14:45.0147920Z void Window::SetVisible(bool visible) {
+2025-07-07T18:14:45.0148420Z              ^
+2025-07-07T18:14:45.0156380Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:25:10: note: previous definition is here
+2025-07-07T18:14:45.0159120Z     void SetVisible(bool visible) {
+2025-07-07T18:14:45.0159730Z          ^
+2025-07-07T18:14:45.0160650Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:245:15: error: redefinition of 'GetHandle'
+2025-07-07T18:14:45.0161770Z void* Window::GetHandle() const {
+2025-07-07T18:14:45.0162260Z               ^
+2025-07-07T18:14:45.0163200Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/include/brisk/brisk.h:30:11: note: previous definition is here
+2025-07-07T18:14:45.0164360Z     void* GetHandle() const {
+2025-07-07T18:14:45.0164880Z           ^
+2025-07-07T18:14:45.0166240Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:249:14: error: out-of-line definition of 'SetSize' does not match any declaration in 'brisk::Window'
+2025-07-07T18:14:45.0169110Z void Window::SetSize(int width, int height) {
+2025-07-07T18:14:45.0170670Z              ^~~~~~~
+2025-07-07T18:14:45.0171290Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:250:5: error: use of undeclared identifier 'width_'; did you mean 'width'?
+2025-07-07T18:14:45.0171770Z     width_ = width;
+2025-07-07T18:14:45.0171920Z     ^~~~~~
+2025-07-07T18:14:45.0172050Z     width
+2025-07-07T18:14:45.0172370Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:249:26: note: 'width' declared here
+2025-07-07T18:14:45.0172770Z void Window::SetSize(int width, int height) {
+2025-07-07T18:14:45.0173000Z                          ^
+2025-07-07T18:14:45.0204840Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:251:5: error: use of undeclared identifier 'height_'; did you mean 'height'?
+2025-07-07T18:14:45.0217780Z     height_ = height;
+2025-07-07T18:14:45.0218220Z     ^~~~~~~
+2025-07-07T18:14:45.0218640Z     height
+2025-07-07T18:14:45.0219470Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:249:37: note: 'height' declared here
+2025-07-07T18:14:45.0220610Z void Window::SetSize(int width, int height) {
+2025-07-07T18:14:45.0221180Z                                     ^
+2025-07-07T18:14:45.0224070Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:254:14: error: out-of-line definition of 'BeginDraw' does not match any declaration in 'brisk::Window'
+2025-07-07T18:14:45.0224990Z void Window::BeginDraw() {}
+2025-07-07T18:14:45.0225220Z              ^~~~~~~~~
+2025-07-07T18:14:45.0230310Z /Users/runner/work/clap-jules/clap-jules/libs/brisk/src/brisk.cpp:255:14: error: out-of-line definition of 'EndDraw' does not match any declaration in 'brisk::Window'
+2025-07-07T18:14:45.0231570Z void Window::EndDraw() {}
+2025-07-07T18:14:45.0231750Z              ^~~~~~~
+2025-07-07T18:14:45.0252440Z fatal error: too many errors emitted, stopping now [-ferror-limit=]
+2025-07-07T18:14:45.0267330Z 20 errors generated.
+2025-07-07T18:14:45.0294590Z make[2]: *** [CMakeFiles/brisk.dir/libs/brisk/src/brisk.cpp.o] Error 1
+2025-07-07T18:14:45.0300530Z make[1]: *** [CMakeFiles/brisk.dir/all] Error 2
+2025-07-07T18:14:45.0303510Z make: *** [all] Error 2
+2025-07-07T18:14:45.0326070Z ##[error]Process completed with exit code 2.
+2025-07-07T18:14:45.0436640Z Post job cleanup.
+2025-07-07T18:14:45.1852810Z [command]/opt/homebrew/bin/git version
+2025-07-07T18:14:45.1955570Z git version 2.50.0
+2025-07-07T18:14:45.2277940Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/28ac8146-e94a-4f88-8569-45c0c9cd7893/.gitconfig'
+2025-07-07T18:14:45.2278670Z Temporarily overriding HOME='/Users/runner/work/_temp/28ac8146-e94a-4f88-8569-45c0c9cd7893' before making global git config changes
+2025-07-07T18:14:45.2279360Z Adding repository directory to the temporary git global config as a safe directory
+2025-07-07T18:14:45.2280010Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/clap-jules/clap-jules
+2025-07-07T18:14:45.2281520Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-07-07T18:14:45.2300690Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-07-07T18:14:45.3471380Z Entering 'libs/boost-di'
+2025-07-07T18:14:45.3652140Z Entering 'libs/clap'
+2025-07-07T18:14:45.3829290Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:45.4322430Z Entering 'libs/googletest'
+2025-07-07T18:14:45.4826110Z Entering 'libs/kfr'
+2025-07-07T18:14:45.5433000Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-07-07T18:14:45.5455970Z http.https://github.com/.extraheader
+2025-07-07T18:14:45.5503820Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-07-07T18:14:45.5565220Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-07-07T18:14:45.6882600Z Entering 'libs/boost-di'
+2025-07-07T18:14:45.7083860Z http.https://github.com/.extraheader
+2025-07-07T18:14:45.7286820Z Entering 'libs/clap'
+2025-07-07T18:14:45.7560660Z http.https://github.com/.extraheader
+2025-07-07T18:14:45.7763350Z Entering 'libs/clap-helpers'
+2025-07-07T18:14:45.8544560Z http.https://github.com/.extraheader
+2025-07-07T18:14:45.8855100Z Entering 'libs/googletest'
+2025-07-07T18:14:45.9055150Z http.https://github.com/.extraheader
+2025-07-07T18:14:45.9178870Z Entering 'libs/kfr'
+2025-07-07T18:14:45.9355460Z http.https://github.com/.extraheader
+2025-07-07T18:14:45.9636750Z Cleaning up orphan processes

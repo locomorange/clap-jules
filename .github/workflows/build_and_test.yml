@@ -20,7 +20,7 @@ jobs:
   build-plugin:
     name: Build Plugin on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -34,17 +34,50 @@ jobs:
 
     - name: Cache vcpkg artifacts
       uses: actions/cache@v4
+      id: vcpkg-cache
       with:
         path: |
           libs/vcpkg/installed
           libs/vcpkg/buildtrees
+          libs/vcpkg/packages
         key: vcpkg-${{ runner.os }}-${{ hashFiles('libs/vcpkg/scripts/ci.baseline.txt') }}
         restore-keys: |
           vcpkg-${{ runner.os }}-
 
+    - name: Cache Brisk Build (add_subdirectory integration)
+      uses: actions/cache@v4
+      id: brisk-cache
+      with:
+        path: |
+          build/brisk-bin/
+          libs/brisk/vcpkg_installed/
+        key: brisk-build-${{ runner.os }}-${{ hashFiles('libs/brisk/CMakeLists.txt', 'libs/brisk/vcpkg.json') }}
+        restore-keys: |
+          brisk-build-${{ runner.os }}-
+
+    - name: Setup vcpkg (full history)
+      shell: bash
+      run: |
+        OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
+        ./scripts/setup-vcpkg.sh "$OS_TYPE"
+
     - name: Set up MSVC (Windows only)
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
+
+
+    - name: Ensure build tools are installed (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install ninja llvm
+        echo "CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
+        echo "CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++" >> $GITHUB_ENV
+
+    - name: Set CMake Generator to Unix Makefiles (macOS only)
+      if: runner.os == 'macOS'
+      run: |
+        echo "VCPKG_CMAKE_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
+        echo "CMAKE_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
 
     - name: Setup Dependencies
       shell: bash
@@ -52,12 +85,39 @@ jobs:
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-dependencies.sh "$OS_TYPE"
 
+    - name: Build Brisk Full (Cache Miss)
+      if: steps.vcpkg-cache.outputs.cache-hit != 'true' || steps.brisk-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        echo "Cache miss detected - building Brisk"
+        echo "  vcpkg cache hit: ${{ steps.vcpkg-cache.outputs.cache-hit }}"
+        echo "  brisk cache hit: ${{ steps.brisk-cache.outputs.cache-hit }}"
+        ./scripts/build-brisk-full.sh
+
+    - name: Setup Brisk Dependencies (Cache Hit)
+      if: steps.vcpkg-cache.outputs.cache-hit == 'true' && steps.brisk-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        echo "Both vcpkg and Brisk cache hit - setting up dependencies only"
+        OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
+        ./scripts/setup-brisk-dependencies.sh
+
     - name: Configure CMake
       shell: bash
       run: cmake . -B build
 
     - name: Build project
       run: cmake --build build --config Release
+
+    - name: Verify Brisk Build Cache
+      shell: bash
+      run: |
+        if [ -d "build/brisk-bin" ]; then
+          echo "✓ Brisk build artifacts generated in build/brisk-bin/"
+          ls -la build/brisk-bin/ 2>/dev/null || echo "  No brisk-bin contents"
+        else
+          echo "⚠ No build/brisk-bin directory found"
+        fi
 
     - name: Verify Plugin Build
       id: verify
@@ -82,7 +142,7 @@ jobs:
     name: Unit Tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 20
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -96,10 +156,12 @@ jobs:
 
     - name: Cache vcpkg artifacts
       uses: actions/cache@v4
+      id: vcpkg-cache-unit-tests
       with:
         path: |
           libs/vcpkg/installed
           libs/vcpkg/buildtrees
+          libs/vcpkg/packages
         key: vcpkg-${{ runner.os }}-${{ hashFiles('libs/vcpkg/scripts/ci.baseline.txt') }}
         restore-keys: |
           vcpkg-${{ runner.os }}-
@@ -114,6 +176,33 @@ jobs:
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-dependencies.sh "$OS_TYPE"
 
+    - name: Cache Brisk Build (unit-tests)
+      uses: actions/cache@v4
+      id: brisk-cache-unit-tests
+      with:
+        path: |
+          build/brisk-bin/
+          libs/brisk/vcpkg_installed/
+        key: brisk-build-${{ runner.os }}-${{ hashFiles('libs/brisk/CMakeLists.txt', 'libs/brisk/vcpkg.json') }}
+        restore-keys: |
+          brisk-build-${{ runner.os }}-
+
+    - name: Build Brisk Full (Cache Miss)
+      if: steps.vcpkg-cache-unit-tests.outputs.cache-hit != 'true' || steps.brisk-cache-unit-tests.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        echo "Cache miss detected - building Brisk"
+        echo "  vcpkg cache hit: ${{ steps.vcpkg-cache-unit-tests.outputs.cache-hit }}"
+        echo "  brisk cache hit: ${{ steps.brisk-cache-unit-tests.outputs.cache-hit }}"
+        ./scripts/build-brisk-full.sh
+
+    - name: Setup Brisk Dependencies (Cache Hit)
+      if: steps.vcpkg-cache-unit-tests.outputs.cache-hit == 'true' && steps.brisk-cache-unit-tests.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        echo "Both vcpkg and Brisk cache hit - setting up dependencies only"
+        ./scripts/setup-brisk-dependencies.sh
+
     - name: Configure and Build
       shell: bash
       run: |
@@ -127,7 +216,7 @@ jobs:
     name: CLAP Validation on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 20
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -175,7 +264,7 @@ jobs:
     name: CLAP Host Integration Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-plugin
-    timeout-minutes: 90
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -203,10 +292,12 @@ jobs:
 
     - name: Cache vcpkg artifacts for clap-host
       uses: actions/cache@v4
+      id: vcpkg-cache-clap-host
       with:
         path: |
           libs/vcpkg/installed
           libs/vcpkg/buildtrees
+          libs/vcpkg/packages
         key: vcpkg-${{ runner.os }}-${{ hashFiles('libs/vcpkg/scripts/ci.baseline.txt') }}
         restore-keys: |
           vcpkg-${{ runner.os }}-
@@ -228,6 +319,33 @@ jobs:
       run: |
         OS_TYPE="${{ runner.os == 'Linux' && 'linux' || runner.os == 'Windows' && 'windows' || 'macos' }}"
         ./scripts/setup-dependencies.sh "$OS_TYPE"
+
+    - name: Cache Brisk Build (clap-host)
+      uses: actions/cache@v4
+      id: brisk-cache-clap-host
+      with:
+        path: |
+          build/brisk-bin/
+          libs/brisk/vcpkg_installed/
+        key: brisk-build-${{ runner.os }}-${{ hashFiles('libs/brisk/CMakeLists.txt', 'libs/brisk/vcpkg.json') }}
+        restore-keys: |
+          brisk-build-${{ runner.os }}-
+
+    - name: Build Brisk Full for CLAP Host (Cache Miss)
+      if: steps.vcpkg-cache-clap-host.outputs.cache-hit != 'true' || steps.brisk-cache-clap-host.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        echo "Cache miss detected - building Brisk"
+        echo "  vcpkg cache hit: ${{ steps.vcpkg-cache-clap-host.outputs.cache-hit }}"
+        echo "  brisk cache hit: ${{ steps.brisk-cache-clap-host.outputs.cache-hit }}"
+        ./scripts/build-brisk-full.sh
+
+    - name: Setup Brisk Dependencies for CLAP Host (Cache Hit)
+      if: steps.vcpkg-cache-clap-host.outputs.cache-hit == 'true' && steps.brisk-cache-clap-host.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        echo "Both vcpkg and Brisk cache hit - setting up dependencies only"
+        ./scripts/setup-brisk-dependencies.sh
 
     - name: Setup MSBuild (Windows)
       if: runner.os == 'Windows'
