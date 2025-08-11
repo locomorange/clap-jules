@@ -11,7 +11,7 @@ case "$OS_TYPE" in
         echo "Installing GUI dependencies for Linux..."
         sudo apt-get update -y
         
-        for attempt in 1 2 3; do
+    for attempt in 1 2 3; do
             if sudo apt-get install -y --no-install-recommends \
                 libx11-dev \
                 libxcursor-dev \
@@ -22,6 +22,9 @@ case "$OS_TYPE" in
                 libglu1-mesa-dev \
                 libxxf86vm-dev \
                 libxfixes-dev \
+        libvulkan1 \
+        mesa-vulkan-drivers \
+        vulkan-tools \
                 pkg-config \
                 build-essential \
                 mesa-utils \
